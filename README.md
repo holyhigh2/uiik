@@ -1,12 +1,12 @@
-![npm](https://img.shields.io/npm/v/uii?style=plastic)
-![NPM](https://img.shields.io/npm/l/uii)
+![npm](https://img.shields.io/npm/v/uiik?style=plastic)
+![NPM](https://img.shields.io/npm/l/uiik)
 
-# Uii
-A UI Interactions lib includes draggable, splittable, rotatable, selectable, etc.
+# Uiik
+A UI interaction kit includes draggable, splittable, rotatable, selectable, etc.
 > English | [中文](./README_ZH.md)
 
-- [📑 Documentation](https://holyhigh2.github.io/uii/)
-- [⚡ Play on StackBlitz](https://stackblitz.com/edit/func-js?file=index.ts)
+- [📑 Documentation](https://holyhigh2.github.io/uiik/)
+- [⚡ Play on StackBlitz](https://stackblitz.com/edit/uiik)
 
 ## Features
 - Draggable/Droppable/Splittable/rotatable/selectable/Resizable
@@ -16,20 +16,20 @@ A UI Interactions lib includes draggable, splittable, rotatable, selectable, etc
 ## Quick start
 1. install
 ```sh
-npm i uii
+npm i uiik
 ```
 2. import
 ```ts
-import uii from 'uii'
+import uiik from 'uiik'
 //or
-import {newSplittable} from 'uii'
+import {newSplittable} from 'uiik'
 //or
-import {Splittable} from 'uii'
+import {Splittable} from 'uiik'
 //or
-import uii from 'https://cdn.skypack.dev/uii'
+import uiik from 'https://cdn.skypack.dev/uiik'
 ```
 
 ## Development
 1. use `test` to do jest 
-2. use `build` to rollup uii
+2. use `build` to rollup uiik
 3. use `doc` to gen tsdoc

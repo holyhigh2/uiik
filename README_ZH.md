@@ -1,12 +1,12 @@
-![npm](https://img.shields.io/npm/v/uii?style=plastic)
-![NPM](https://img.shields.io/npm/l/uii)
+![npm](https://img.shields.io/npm/v/uiik?style=plastic)
+![NPM](https://img.shields.io/npm/l/uiik)
 
-# Uii
-一个UI交互库，提供了可拖动、可分隔、可旋转、可选择等交互控制
+# Uiik
+一个UI交互工具库，提供了可拖动、可分隔、可旋转、可选择等交互控制
 > 中文 | [English](./README.md)
 
-- [📑 文档](https://holyhigh2.github.io/uii/)
-- [⚡ 在线体验](https://stackblitz.com/edit/func-js?file=index.ts)
+- [📑 文档](https://holyhigh2.github.io/uiik/)
+- [⚡ 在线体验](https://stackblitz.com/edit/uiik)
 
 ## 特性
 - Draggable/Droppable/Splittable/rotatable/selectable/Resizable
@@ -16,17 +16,17 @@
 ## 快速上手
 1. 安装
 ```sh
-npm i uii
+npm i uiik
 ```
 2. 导入
 ```ts
-import uii from 'uii'
+import uiik from 'uiik'
 //or
-import {newSplittable} from 'uii'
+import {newSplittable} from 'uiik'
 //or
-import {Splittable} from 'uii'
+import {Splittable} from 'uiik'
 //or
-import uii from 'https://cdn.skypack.dev/uii'
+import uiik from 'https://cdn.skypack.dev/uiik'
 ```
 
 ## 开发

@@ -22,7 +22,7 @@ if (!welcome) {
     }
   })
   console.info(
-    `%c %c %c Uii - UI Interactions | v${packageInfo.version} %c %c `,
+    `%c %c %c Uiik - UI Interactions Kit | v${packageInfo.version} %c %c `,
     ...ssAry,
     `💎 ${packageInfo.repository.url}`
   )
