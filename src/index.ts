@@ -8,9 +8,7 @@ import { newSelectable } from './selectable'
 import * as packageInfo from '../package.json'
 
 // welcome info
-const welcome = globalThis.top
-  ? (globalThis.top as any).welcome
-  : (globalThis as any).welcome
+const welcome = (globalThis as any).welcome
 if (!welcome) {
   const ssAry: string[] = []
   ;['102,227,255', '59,208,251', '67,180,255'].forEach((v, i) => {
@@ -22,15 +20,13 @@ if (!welcome) {
     }
   })
   console.info(
-    `%c %c %c Uiik - UI Interactions Kit | v${packageInfo.version} %c %c `,
+    `%c %c %c Uiik - UI interactions kit | v${packageInfo.version} %c %c `,
     ...ssAry,
     `💎 ${packageInfo.repository.url}`
   )
-  if (globalThis.top) {
-    ;(globalThis.top as any).welcome = true
-  } else {
-    ;(globalThis as any).welcome = true
-  }
+
+  ;(globalThis as any).welcome = true
+  
 }
 
 export * from './splittable'

@@ -1,4 +1,4 @@
-/* uiik 1.0.0 @holyhigh2 https://github.com/holyhigh2/uiik */
+/* uiik 1.0.2 @holyhigh2 https://github.com/holyhigh2/uiik */
 (function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -8336,16 +8336,14 @@ function newSelectable(container, opts) {
     return new Selectable(container, opts);
 }
 
-var version = "1.0.1";
+var version = "1.0.2";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"
 };
 
 // welcome info
-const welcome = globalThis.top
-    ? globalThis.top.welcome
-    : globalThis.welcome;
+const welcome = globalThis.welcome;
 if (!welcome) {
     const ssAry = [];
     ['102,227,255', '59,208,251', '67,180,255'].forEach((v, i) => {
@@ -8357,13 +8355,8 @@ if (!welcome) {
             ssAry[i] = 'color:#fff;' + cu;
         }
     });
-    console.info(`%c %c %c Uiik - UI Interactions Kit | v${version} %c %c `, ...ssAry, `💎 ${repository.url}`);
-    if (globalThis.top) {
-        globalThis.top.welcome = true;
-    }
-    else {
-        globalThis.welcome = true;
-    }
+    console.info(`%c %c %c Uiik - UI interactions kit | v${version} %c %c `, ...ssAry, `💎 ${repository.url}`);
+    globalThis.welcome = true;
 }
 const VERSION = version;
 var index = {

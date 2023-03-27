@@ -1,7 +1,6 @@
 /* eslint-disable max-len */
 import { nodeResolve } from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
-import terser from '@rollup/plugin-terser'
 import banner2 from 'rollup-plugin-banner2'
 import json from '@rollup/plugin-json'
 import copy from 'rollup-plugin-copy'
@@ -62,7 +61,7 @@ export default {
     {
       file: 'dist/index.js',
       format: 'umd',
-      name: 'uii'
+      name: 'uiik'
     }
   ],
 }

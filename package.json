@@ -1,7 +1,7 @@
 {
   "name": "uiik",
-  "version": "1.0.1",
-  "description": "A UI interaction kit includes draggable, splittable, rotatable, selectable, etc.",
+  "version": "1.0.2",
+  "description": "A UI interactions kit includes draggable, splittable, rotatable, selectable, etc.",
   "main": "index.js",
   "module": "index.esm.js",
   "types": "types/index.d.ts",

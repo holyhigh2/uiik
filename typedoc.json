@@ -7,15 +7,16 @@
         "external": false,
     },
     "excludeInternal": true,
-    // "hideBreadcrumbs":true,
-    // "hideInPageTOC":true, 
+    "excludePrivate":true,
+    "hideBreadcrumbs":true,
+    "hideInPageTOC":true, 
     "entryPoints": [
         "src/index.ts"
     ],
     "out": "docs",
     "plugin": [
-        // "typedoc-plugin-markdown"
+        "typedoc-plugin-markdown"
     ],
-    // "theme": "markdown",
+    "theme": "markdown",
     "tsconfig": "./tsconfig.json"
 }

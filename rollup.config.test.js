@@ -8,7 +8,7 @@ const pkg = require('./package.json')
 export default {
   input: 'src/index.ts',
   output: {
-    file: 'test/uii.js',
+    file: 'test/uiik.js',
     format: 'esm',
     banner: `/* ${pkg.name} ${pkg.version} @${pkg.author} ${pkg.repository.url} */`,
   },
