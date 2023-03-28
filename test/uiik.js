@@ -7353,7 +7353,7 @@ function bindEvent(registerEvent, el, opts, handleMap) {
         if (group) {
             let i = -1;
             each(DRAGGER_GROUPS[group], el => {
-                const z = parseInt(window.getComputedStyle(el).zIndex);
+                const z = parseInt(window.getComputedStyle(el).zIndex) || 0;
                 if (z > i)
                     i = z;
             });
@@ -8358,7 +8358,7 @@ function newSelectable(container, opts) {
     return new Selectable(container, opts);
 }
 
-var version = "1.0.6";
+var version = "1.0.7";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

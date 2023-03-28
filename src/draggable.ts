@@ -192,7 +192,7 @@ function bindEvent(
     if(group){
       let i = -1
       each(DRAGGER_GROUPS[group],el=>{
-        const z = parseInt(window.getComputedStyle(el).zIndex)
+        const z = parseInt(window.getComputedStyle(el).zIndex) || 0
         if(z>i)i = z
       })
       zIndex = i + 1
