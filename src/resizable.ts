@@ -5,7 +5,7 @@
  */
 import { assign, call, each, isArray, isFunction, isNumber } from '@holyhigh/func.js'
 import { ResizableOptions, Uii } from './types'
-import { lockPage, unlockPage } from './utils';
+import { lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from './utils';
 
 const THRESHOLD = 2;
 const CLASS_RESIZABLE_HANDLE = "uii-resizable-handle";
@@ -144,7 +144,7 @@ function bindHandle(
     let currentH: number = originH
 
     let dragging = false;
-    let bodyCursor = document.body.style.cursor
+    saveCursor()
 
     const dragListener = (ev: MouseEvent) => {
       const offsetx = ev.clientX - originPosX
@@ -177,7 +177,7 @@ function bindHandle(
           }
 
           lockPage()
-          document.body.style.cursor = handle.dataset.cursor ||''
+          setCursor(handle.dataset.cursor ||'')
 
           call(onStart, originW, originH)
         } else {
@@ -267,7 +267,7 @@ function bindHandle(
       handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE)
 
       unlockPage()
-      document.body.style.cursor = bodyCursor
+      restoreCursor()
 
       call(onEnd,currentW, currentH)
     }

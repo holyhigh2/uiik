@@ -23,7 +23,7 @@ import {
   isDefined,
 } from "@holyhigh/func.js";
 import { DraggableOptions, Uii } from "./types";
-import { EDGE_THRESHOLD, getOffset, lockPage, unlockPage } from "./utils";
+import { EDGE_THRESHOLD, getOffset, lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from "./utils";
 
 const DRAGGER_GROUPS:Record<string, Array<HTMLElement>> = {}
 const CLASS_DRAGGABLE = "uii-draggable";
@@ -292,7 +292,7 @@ function bindEvent(
     let toRight = false
     let toBottom = false
 
-    let bodyCursor = document.body.style.cursor
+    saveCursor()
 
     const dragListener = (ev: MouseEvent) => {
       const newX = ev.clientX - rect.x + container.scrollLeft;
@@ -339,7 +339,7 @@ function bindEvent(
 
           lockPage()
           if (isDefined(opts.cursor)){
-            document.body.style.cursor = opts.cursor.active || 'move'
+            setCursor(opts.cursor.active || 'move')
           }
           
           //notify
@@ -570,7 +570,7 @@ function bindEvent(
 
       if (dragging) {
         unlockPage()
-        document.body.style.cursor = bodyCursor
+        restoreCursor()
 
         if (ghost){
           dragDom.parentNode?.removeChild(copyNode);

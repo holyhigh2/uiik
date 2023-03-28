@@ -5,7 +5,7 @@
  */
 import { assign, call, each, includes, isArray, isEmpty, map, reject, some, split, test } from '@holyhigh/func.js'
 import { SplittableOptions, Uii } from './types'
-import { lockPage, unlockPage } from './utils';
+import { lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from './utils';
 
 const THRESHOLD = 1;
 const CLASS_SPLITTABLE = "uii-splittable";
@@ -207,7 +207,7 @@ export class Splittable extends Uii{
         sticked = 'end'
       }
       let dragging = false;
-      let bodyCursor = document.body.style.cursor
+      saveCursor()
       let startPos = dir === 'v' ? dom1.offsetTop : dom1.offsetLeft
       let ds1:number, anotherSize:number
 
@@ -239,7 +239,7 @@ export class Splittable extends Uii{
             }
 
             lockPage()
-            document.body.style.cursor = handle?.dataset.cursor || ''
+            setCursor(handle?.dataset.cursor || '')
 
             call(onStart, originSize, originSize1)
           } else {
@@ -362,7 +362,7 @@ export class Splittable extends Uii{
           }
 
           unlockPage()
-          document.body.style.cursor = bodyCursor
+          restoreCursor()
 
           call(onEnd,originSize, originSize1)
         }

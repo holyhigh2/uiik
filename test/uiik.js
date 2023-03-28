@@ -6581,6 +6581,18 @@ function getFirstSS() {
     }
     return sheet || find(document.styleSheets, ss => !ss.href);
 }
+let cursor = { html: '', body: '' };
+function saveCursor() {
+    cursor.body = document.body.style.cursor;
+    cursor.html = document.documentElement.style.cursor;
+}
+function setCursor(cursor) {
+    document.body.style.cursor = document.documentElement.style.cursor = cursor;
+}
+function restoreCursor() {
+    document.body.style.cursor = cursor.body;
+    document.documentElement.style.cursor = cursor.html;
+}
 
 var _Splittable_instances, _Splittable_checkDirection, _Splittable_bindHandle;
 const THRESHOLD$3 = 1;
@@ -6752,7 +6764,7 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
             sticked = 'end';
         }
         let dragging = false;
-        let bodyCursor = document.body.style.cursor;
+        saveCursor();
         let startPos = dir === 'v' ? dom1.offsetTop : dom1.offsetLeft;
         let ds1, anotherSize;
         const dragListener = (ev) => {
@@ -6778,7 +6790,7 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
                         }
                     }
                     lockPage();
-                    document.body.style.cursor = (handle === null || handle === void 0 ? void 0 : handle.dataset.cursor) || '';
+                    setCursor((handle === null || handle === void 0 ? void 0 : handle.dataset.cursor) || '');
                     call(onStart, originSize, originSize1);
                 }
                 else {
@@ -6886,7 +6898,7 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
                     (_a = ghostNode.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(ghostNode);
                 }
                 unlockPage();
-                document.body.style.cursor = bodyCursor;
+                restoreCursor();
                 call(onEnd, originSize, originSize1);
             }
         };
@@ -7023,7 +7035,7 @@ function bindHandle$1(handle, dir, panel, opts) {
         let currentW = originW;
         let currentH = originH;
         let dragging = false;
-        let bodyCursor = document.body.style.cursor;
+        saveCursor();
         const dragListener = (ev) => {
             var _a;
             const offsetx = ev.clientX - originPosX;
@@ -7052,7 +7064,7 @@ function bindHandle$1(handle, dir, panel, opts) {
                         style = ghostNode === null || ghostNode === void 0 ? void 0 : ghostNode.style;
                     }
                     lockPage();
-                    document.body.style.cursor = handle.dataset.cursor || '';
+                    setCursor(handle.dataset.cursor || '');
                     call(onStart, originW, originH);
                 }
                 else {
@@ -7141,7 +7153,7 @@ function bindHandle$1(handle, dir, panel, opts) {
             }
             handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
             unlockPage();
-            document.body.style.cursor = bodyCursor;
+            restoreCursor();
             call(onEnd, currentW, currentH);
         };
         document.addEventListener('mousemove', dragListener, false);
@@ -7426,7 +7438,7 @@ function bindEvent(registerEvent, el, opts, handleMap) {
         let toTop = false;
         let toRight = false;
         let toBottom = false;
-        let bodyCursor = document.body.style.cursor;
+        saveCursor();
         const dragListener = (ev) => {
             var _a;
             const newX = ev.clientX - rect.x + container.scrollLeft;
@@ -7466,7 +7478,7 @@ function bindEvent(registerEvent, el, opts, handleMap) {
                     call(onStart, dragDom, ev);
                     lockPage();
                     if (isDefined(opts.cursor)) {
-                        document.body.style.cursor = opts.cursor.active || 'move';
+                        setCursor(opts.cursor.active || 'move');
                     }
                     //notify
                     const customEv = new Event("uii-dragactive", { "bubbles": true, "cancelable": false });
@@ -7678,7 +7690,7 @@ function bindEvent(registerEvent, el, opts, handleMap) {
             dragDom.dispatchEvent(customEv);
             if (dragging) {
                 unlockPage();
-                document.body.style.cursor = bodyCursor;
+                restoreCursor();
                 if (ghost) {
                     (_a = dragDom.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(copyNode);
                     if (moveToGhost !== false) {
@@ -7734,7 +7746,7 @@ class Droppable extends Uii {
                 });
             }
             if (__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver) {
-                document.body.style.cursor = __classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver;
+                setCursor(__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver);
             }
             call(opts.onEnter, el, e);
         });
@@ -7748,7 +7760,7 @@ class Droppable extends Uii {
                 });
             }
             if (__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver) {
-                document.body.style.cursor = __classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorActive || '';
+                setCursor(__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorActive || '');
             }
             call(opts.onLeave, el, e);
         });
@@ -7916,7 +7928,7 @@ function bindHandle(handle, el, opts) {
             startDeg = 360 + startDeg;
         const offsetDeg = startDeg - deg;
         let dragging = false;
-        let bodyCursor = document.body.style.cursor;
+        saveCursor();
         const dragListener = (ev) => {
             var _a;
             const offsetx = ev.clientX - centerX;
@@ -7929,7 +7941,7 @@ function bindHandle(handle, el, opts) {
                     call(onStart, deg);
                     lockPage();
                     if (isDefined(opts.cursor)) {
-                        document.body.style.cursor = ((_a = opts.cursor) === null || _a === void 0 ? void 0 : _a.active) || 'crosshair';
+                        setCursor(((_a = opts.cursor) === null || _a === void 0 ? void 0 : _a.active) || 'crosshair');
                     }
                 }
                 else {
@@ -7951,7 +7963,7 @@ function bindHandle(handle, el, opts) {
             window.removeEventListener('blur', dragEndListener, false);
             if (dragging) {
                 unlockPage();
-                document.body.style.cursor = bodyCursor;
+                restoreCursor();
                 el.classList.toggle(CLASS_ROTATABLE_ACTIVE, false);
                 call(onEnd, deg);
             }
@@ -8344,7 +8356,7 @@ function newSelectable(container, opts) {
     return new Selectable(container, opts);
 }
 
-var version = "1.0.3";
+var version = "1.0.4";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

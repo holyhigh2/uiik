@@ -14,6 +14,7 @@ import {
   call
 } from "@holyhigh/func.js";
 import { DroppableOptions, Uii } from "./types";
+import { setCursor } from "./utils";
 
 const Droppables:Array<Droppable> = []
 const CLASS_DROPPABLE = "uii-droppable";
@@ -61,7 +62,7 @@ export class Droppable extends Uii {
       }
 
       if(this.#active.dataset.cursorOver){
-        document.body.style.cursor = this.#active.dataset.cursorOver
+        setCursor(this.#active.dataset.cursorOver)
       }
 
       call(opts.onEnter,el,e)
@@ -77,7 +78,7 @@ export class Droppable extends Uii {
       }
 
       if(this.#active.dataset.cursorOver){
-        document.body.style.cursor = this.#active.dataset.cursorActive || ''
+        setCursor(this.#active.dataset.cursorActive || '')
       }
 
       call(opts.onLeave,el,e)

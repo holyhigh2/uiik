@@ -6,7 +6,7 @@
 
 import { call, each, isDefined } from '@holyhigh/func.js'
 import { RotatableOptions, Uii } from './types'
-import { lockPage, unlockPage } from './utils';
+import { lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from './utils';
 
 const ONE_DEG = 180 / Math.PI
 const THRESHOLD = 2
@@ -96,7 +96,7 @@ function bindHandle(
     const offsetDeg = startDeg - deg
 
     let dragging = false;
-    let bodyCursor = document.body.style.cursor
+    saveCursor()
     
     const dragListener = (ev: MouseEvent) => {
       const offsetx = ev.clientX - centerX
@@ -113,7 +113,7 @@ function bindHandle(
 
           lockPage()
           if (isDefined(opts.cursor)){
-            document.body.style.cursor = opts.cursor?.active || 'crosshair'
+            setCursor(opts.cursor?.active || 'crosshair')
           }
           
         } else {
@@ -139,7 +139,7 @@ function bindHandle(
 
       if (dragging) {
         unlockPage()
-        document.body.style.cursor = bodyCursor
+        restoreCursor()
 
         el.classList.toggle(CLASS_ROTATABLE_ACTIVE,false)
 

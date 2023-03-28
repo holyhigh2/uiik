@@ -54,3 +54,18 @@ function getFirstSS(){
 
   return sheet || find(document.styleSheets,ss=>!ss.href)
 }
+
+let cursor = {html:'',body:''}
+export function saveCursor(){
+  cursor.body = document.body.style.cursor
+  cursor.html = document.documentElement.style.cursor
+}
+
+export function setCursor(cursor:string){
+  document.body.style.cursor = document.documentElement.style.cursor = cursor
+}
+
+export function restoreCursor(){
+  document.body.style.cursor = cursor.body
+  document.documentElement.style.cursor = cursor.html
+}
