@@ -7644,7 +7644,7 @@ function bindEvent(registerEvent, el, opts, handleMap) {
                     if (direction === "v") {
                         copyNode.style.top = `${y}px`;
                     }
-                    else if (direction === "v") {
+                    else if (direction === "h") {
                         copyNode.style.left = `${x}px`;
                     }
                     else {
@@ -7656,7 +7656,7 @@ function bindEvent(registerEvent, el, opts, handleMap) {
                     if (direction === "v") {
                         style.top = `${y}px`;
                     }
-                    else if (direction === "v") {
+                    else if (direction === "h") {
                         style.left = `${x}px`;
                     }
                     else {
@@ -8358,7 +8358,7 @@ function newSelectable(container, opts) {
     return new Selectable(container, opts);
 }
 
-var version = "1.0.5";
+var version = "1.0.6";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

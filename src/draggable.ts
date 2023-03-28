@@ -521,7 +521,7 @@ function bindEvent(
         if (copyNode) {
           if (direction === "v") {
             copyNode.style.top = `${y}px`;
-          } else if (direction === "v") {
+          } else if (direction === "h") {
             copyNode.style.left = `${x}px`;
           } else {
             copyNode.style.left = `${x}px`;
@@ -530,7 +530,7 @@ function bindEvent(
         } else {
           if (direction === "v") {
             style.top = `${y}px`;
-          } else if (direction === "v") {
+          } else if (direction === "h") {
             style.left = `${x}px`;
           } else {
             style.left = `${x}px`;
