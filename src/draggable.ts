@@ -237,16 +237,16 @@ function bindEvent(
     const originH = dragDom.offsetHeight + parseFloat(computedStyle.borderTopWidth) + parseFloat(computedStyle.borderBottomWidth);
 
     // boundary
-    let minX: number;
-    let minY: number;
-    let maxX: number;
-    let maxY: number;
+    let minX: number = 0;
+    let minY: number = 0;
+    let maxX: number = 0;
+    let maxY: number = 0;
     if (inContainer) {
-      minX = 0;
-      minY = 0;
       maxX = container.scrollWidth - originW 
       maxY = container.scrollHeight - originH 
     }
+    if(maxX<0)maxX = 0
+    if(maxY<0)maxY = 0
 
     //start point
     const rect = container.getBoundingClientRect();

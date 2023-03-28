@@ -1,4 +1,4 @@
-/* uiik 1.0.3 @holyhigh2 https://github.com/holyhigh2/uiik */
+/* uiik 1.0.4 @holyhigh2 https://github.com/holyhigh2/uiik */
 (function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -7389,16 +7389,18 @@ function bindEvent(registerEvent, el, opts, handleMap) {
         const originW = dragDom.offsetWidth + parseFloat(computedStyle.borderLeftWidth) + parseFloat(computedStyle.borderRightWidth);
         const originH = dragDom.offsetHeight + parseFloat(computedStyle.borderTopWidth) + parseFloat(computedStyle.borderBottomWidth);
         // boundary
-        let minX;
-        let minY;
-        let maxX;
-        let maxY;
+        let minX = 0;
+        let minY = 0;
+        let maxX = 0;
+        let maxY = 0;
         if (inContainer) {
-            minX = 0;
-            minY = 0;
             maxX = container.scrollWidth - originW;
             maxY = container.scrollHeight - originH;
         }
+        if (maxX < 0)
+            maxX = 0;
+        if (maxY < 0)
+            maxY = 0;
         //start point
         const rect = container.getBoundingClientRect();
         const offset = getOffset(t, container);
@@ -8356,7 +8358,7 @@ function newSelectable(container, opts) {
     return new Selectable(container, opts);
 }
 
-var version = "1.0.4";
+var version = "1.0.5";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

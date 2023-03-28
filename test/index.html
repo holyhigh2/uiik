@@ -714,10 +714,13 @@
       uii.newDraggable('#dragger3', {group:'xx', threshold: 20, container: true })
       uii.newDraggable('#dragger4', {
         group:'xx',
-        threshold: 10,
+        threshold: 50,
         // type:'yyy',
         onStart: function (t) {
           t.style['pointer-events'] = 'none'
+        },
+        onDrag(t,ox,oy,x,y){
+          console.log(ox,oy,x,y)
         },
         onEnd: function (t) {
           t.style['pointer-events'] = ''
