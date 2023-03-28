@@ -1,4 +1,4 @@
-/* uiik 1.0.2 @holyhigh2 https://github.com/holyhigh2/uiik */
+/* uiik 1.0.3 @holyhigh2 https://github.com/holyhigh2/uiik */
 (function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -6542,10 +6542,6 @@ _Uii_listeners = new WeakMap();
 
 /* eslint-disable max-len */
 /**
- * 工具包
- * @author holyhigh2
- */
-/**
  * 获取child相对于parent的offset信息。含border宽度
  * @returns
  */
@@ -6567,11 +6563,23 @@ function getOffset(child, parent) {
  */
 const EDGE_THRESHOLD = 5;
 const DRAGGING_RULE = "body * { pointer-events: none; }";
+let lockSheet;
 function lockPage() {
-    document.styleSheets[0].insertRule(DRAGGING_RULE, 0);
+    lockSheet = getFirstSS();
+    lockSheet === null || lockSheet === void 0 ? void 0 : lockSheet.insertRule(DRAGGING_RULE, 0);
 }
 function unlockPage() {
-    document.styleSheets[0].deleteRule(0);
+    lockSheet === null || lockSheet === void 0 ? void 0 : lockSheet.deleteRule(0);
+}
+function getFirstSS() {
+    if (document.styleSheets.length < 1) {
+        document.head.appendChild(document.createElement('style'));
+    }
+    const sheet = find(document.styleSheets, ss => !ss.href);
+    if (!sheet) {
+        document.head.appendChild(document.createElement('style'));
+    }
+    return sheet || find(document.styleSheets, ss => !ss.href);
 }
 
 var _Splittable_instances, _Splittable_checkDirection, _Splittable_bindHandle;
@@ -8336,7 +8344,7 @@ function newSelectable(container, opts) {
     return new Selectable(container, opts);
 }
 
-var version = "1.0.2";
+var version = "1.0.3";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

@@ -4,6 +4,8 @@
  * @author holyhigh2
  */
 
+import { find } from "@holyhigh/func.js"
+
 /**
  * 获取child相对于parent的offset信息。含border宽度
  * @returns
@@ -32,9 +34,23 @@ export const EDGE_THRESHOLD = 5
 
 export const DRAGGING_RULE = "body * { pointer-events: none; }"
 
+let lockSheet: CSSStyleSheet | undefined
 export function lockPage() {
-  document.styleSheets[0].insertRule(DRAGGING_RULE, 0)
+  lockSheet = getFirstSS()
+  lockSheet?.insertRule(DRAGGING_RULE, 0)
 }
 export function unlockPage() {
-  document.styleSheets[0].deleteRule(0)
+  lockSheet?.deleteRule(0)
+}
+
+function getFirstSS(){
+  if(document.styleSheets.length<1){
+    document.head.appendChild(document.createElement('style'))
+  }
+  const sheet = find(document.styleSheets,ss=>!ss.href)
+  if(!sheet){
+    document.head.appendChild(document.createElement('style'))
+  }
+
+  return sheet || find(document.styleSheets,ss=>!ss.href)
 }
