@@ -305,6 +305,10 @@
   </head>
 
   <body>
+    <div class="dragger" id="xxx">
+xxx
+    </div>
+
     <h2 class="logo">uii</h2>
     <main>
       <h3>splitter</h3>
@@ -702,6 +706,11 @@
         onDrop: function (t) {
           t.classList.toggle('drop',true)
         },
+      })
+
+      uii.newDraggable('#xxx',{
+        container: true,
+  grid: 30,
       })
 
       uii.newDraggable('#dragger1',{cursor:{

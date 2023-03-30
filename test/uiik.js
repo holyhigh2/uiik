@@ -1,4 +1,4 @@
-/* uiik 1.0.4 @holyhigh2 https://github.com/holyhigh2/uiik */
+/* uiik 1.0.8 @holyhigh2 https://github.com/holyhigh2/uiik */
 (function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -7151,10 +7151,12 @@ function bindHandle$1(handle, dir, panel, opts) {
                 panelStyle.width = ghostNode.style.width;
                 panelStyle.height = ghostNode.style.height;
             }
-            handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
-            unlockPage();
-            restoreCursor();
-            call(onEnd, currentW, currentH);
+            if (dragging) {
+                handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
+                unlockPage();
+                restoreCursor();
+                call(onEnd, currentW, currentH);
+            }
         };
         document.addEventListener('mousemove', dragListener, false);
         document.addEventListener('mouseup', dragEndListener, false);
@@ -7298,28 +7300,12 @@ class Draggable extends Uii {
                 opts.droppable = () => [droppable];
             }
         }
-        if (opts.snap) {
-            opts.snapTargets = map(document.querySelectorAll(opts.snap), (el) => {
-                let offX = 0, offY = 0;
-                closest(el, (el) => {
-                    offX += el.offsetLeft;
-                    offY += el.offsetTop;
-                    return false;
-                }, "offsetParent");
-                return {
-                    x1: offX,
-                    y1: offY,
-                    x2: offX + el.offsetWidth,
-                    y2: offY + el.offsetHeight,
-                    el: el,
-                };
-            });
-        }
     }
 }
 _Draggable_handleMap = new WeakMap();
 function bindEvent(registerEvent, el, opts, handleMap) {
     registerEvent(el, "mousedown", (e) => {
+        var _a;
         // get options
         let dragDom = e.currentTarget;
         let t = e.target;
@@ -7338,7 +7324,7 @@ function bindEvent(registerEvent, el, opts, handleMap) {
         const computedStyle = window.getComputedStyle(dragDom);
         const container = dragDom.offsetParent || document.body;
         const inContainer = opts.container;
-        const threshold = opts.threshold;
+        const threshold = opts.threshold || 0;
         const ghost = opts.ghost;
         const ghostClass = opts.ghostClass;
         const direction = opts.direction;
@@ -7348,7 +7334,7 @@ function bindEvent(registerEvent, el, opts, handleMap) {
         const onClone = opts.onClone;
         const originalZIndex = computedStyle.zIndex;
         let zIndex = opts.zIndex || originalZIndex;
-        const classes = opts.classes;
+        const classes = opts.classes || '';
         const group = opts.group;
         if (group) {
             let i = -1;
@@ -7371,13 +7357,28 @@ function bindEvent(registerEvent, el, opts, handleMap) {
             gridX = gridY = grid;
         }
         const snapOn = opts.snap;
-        const snappable = opts.snapTargets;
-        const snapTolerance = opts.snapOptions.tolerance;
+        let snappable;
+        const snapTolerance = ((_a = opts.snapOptions) === null || _a === void 0 ? void 0 : _a.tolerance) || 10;
         const onSnap = opts.onSnap;
         let lastSnapDirY = "", lastSnapDirX = "";
         let lastSnapping = "";
         let parentOffsetX = 0, parentOffsetY = 0;
         if (snapOn) {
+            snappable = map(document.querySelectorAll(snapOn), (el) => {
+                let offX = 0, offY = 0;
+                closest(el, (el) => {
+                    offX += el.offsetLeft;
+                    offY += el.offsetTop;
+                    return false;
+                }, "offsetParent");
+                return {
+                    x1: offX,
+                    y1: offY,
+                    x2: offX + el.offsetWidth,
+                    y2: offY + el.offsetHeight,
+                    el: el,
+                };
+            });
             closest(dragDom, (el, times) => {
                 if (times > 0) {
                     parentOffsetX += el.offsetLeft;
@@ -7462,7 +7463,7 @@ function bindEvent(registerEvent, el, opts, handleMap) {
                         }
                         copyNode.style.left = dragDom.style.left;
                         copyNode.style.top = dragDom.style.top;
-                        copyNode.style.zIndex = zIndex;
+                        copyNode.style.zIndex = zIndex + '';
                         if (ghostClass) {
                             copyNode.classList.add(...compact(split(ghostClass, ' ')));
                         }
@@ -7475,11 +7476,11 @@ function bindEvent(registerEvent, el, opts, handleMap) {
                     }
                     //apply classes
                     dragDom.classList.add(...compact(split(classes, ' ')));
-                    dragDom.style.zIndex = zIndex;
+                    dragDom.style.zIndex = zIndex + '';
                     dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE, true);
                     call(onStart, dragDom, ev);
                     lockPage();
-                    if (isDefined(opts.cursor)) {
+                    if (opts.cursor) {
                         setCursor(opts.cursor.active || 'move');
                     }
                     //notify
@@ -8358,7 +8359,7 @@ function newSelectable(container, opts) {
     return new Selectable(container, opts);
 }
 
-var version = "1.0.7";
+var version = "1.0.8";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

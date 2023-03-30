@@ -264,12 +264,14 @@ function bindHandle(
         panelStyle.height = ghostNode.style.height
       }
 
-      handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE)
+      if(dragging){
+        handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE)
 
-      unlockPage()
-      restoreCursor()
+        unlockPage()
+        restoreCursor()
 
-      call(onEnd,currentW, currentH)
+        call(onEnd,currentW, currentH)
+      }
     }
 
     document.addEventListener('mousemove', dragListener, false)

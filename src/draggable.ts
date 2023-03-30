@@ -119,36 +119,13 @@ export class Draggable extends Uii {
         opts.droppable = () => [droppable];
       }
     }
-
-    if (opts.snap) {
-      opts.snapTargets = map(document.querySelectorAll(opts.snap), (el) => {
-        let offX = 0,
-          offY = 0;
-        closest(
-          el,
-          (el) => {
-            offX += el.offsetLeft;
-            offY += el.offsetTop;
-            return false;
-          },
-          "offsetParent"
-        );
-        return {
-          x1: offX,
-          y1: offY,
-          x2: offX + el.offsetWidth,
-          y2: offY + el.offsetHeight,
-          el: el,
-        };
-      });
-    }
   }
 }
 
 function bindEvent(
   registerEvent:Function,
   el: HTMLElement,
-  opts: Record<string, any>,
+  opts: DraggableOptions,
   handleMap: WeakMap<HTMLElement, HTMLElement>
 ) {
   registerEvent(el, "mousedown", (e: MouseEvent) => {
@@ -174,7 +151,7 @@ function bindEvent(
     const container = dragDom.offsetParent || document.body;
 
     const inContainer = opts.container;
-    const threshold = opts.threshold;
+    const threshold = opts.threshold || 0;
     const ghost = opts.ghost;
     const ghostClass = opts.ghostClass;
     const direction = opts.direction;
@@ -186,7 +163,7 @@ function bindEvent(
 
     const originalZIndex = computedStyle.zIndex
     let zIndex = opts.zIndex || originalZIndex
-    const classes = opts.classes
+    const classes = opts.classes || ''
 
     const group = opts.group
     if(group){
@@ -211,8 +188,8 @@ function bindEvent(
     }
 
     const snapOn = opts.snap;
-    const snappable = opts.snapTargets;
-    const snapTolerance = opts.snapOptions.tolerance;
+    let snappable:Array<any>
+    const snapTolerance = opts.snapOptions?.tolerance || 10;
     const onSnap = opts.onSnap;
     let lastSnapDirY = "",
       lastSnapDirX = "";
@@ -220,6 +197,26 @@ function bindEvent(
     let parentOffsetX = 0,
       parentOffsetY = 0;
     if (snapOn) {
+      snappable = map(document.querySelectorAll(snapOn), (el) => {
+        let offX = 0,
+          offY = 0;
+        closest(
+          el,
+          (el) => {
+            offX += el.offsetLeft;
+            offY += el.offsetTop;
+            return false;
+          },
+          "offsetParent"
+        );
+        return {
+          x1: offX,
+          y1: offY,
+          x2: offX + el.offsetWidth,
+          y2: offY + el.offsetHeight,
+          el: el,
+        };
+      });
       closest(
         dragDom,
         (el, times) => {
@@ -317,7 +314,7 @@ function bindEvent(
 
             copyNode.style.left = dragDom.style.left;
             copyNode.style.top = dragDom.style.top;
-            copyNode.style.zIndex = zIndex
+            copyNode.style.zIndex = zIndex+''
 
             if (ghostClass) {
               copyNode.classList.add(...compact(split(ghostClass,' ')))
@@ -331,14 +328,14 @@ function bindEvent(
           }
           //apply classes
           dragDom.classList.add(...compact(split(classes,' ')))
-          dragDom.style.zIndex = zIndex
+          dragDom.style.zIndex = zIndex+''
 
           dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE,true)
 
           call(onStart,dragDom, ev)
 
           lockPage()
-          if (isDefined(opts.cursor)){
+          if (opts.cursor){
             setCursor(opts.cursor.active || 'move')
           }
           
