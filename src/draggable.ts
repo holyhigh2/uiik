@@ -328,7 +328,8 @@ function bindEvent(
           }
           //apply classes
           dragDom.classList.add(...compact(split(classes,' ')))
-          dragDom.style.zIndex = zIndex+''
+          if (!copyNode)
+            dragDom.style.zIndex = zIndex+''
 
           dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE,true)
 
@@ -569,8 +570,8 @@ function bindEvent(
         unlockPage()
         restoreCursor()
 
-        if (ghost){
-          dragDom.parentNode?.removeChild(copyNode);
+        if (ghost){          
+          dragDom.parentNode?.contains(copyNode) && dragDom.parentNode?.removeChild(copyNode);
           if (moveToGhost !== false) {
             style.left = copyNode.style.left;
             style.top = copyNode.style.top;

@@ -358,7 +358,7 @@ export class Splittable extends Uii{
               handle!.style.left = startPos + ds1 - handleSize / 2 + 'px'
             }
 
-            ghostNode.parentNode?.removeChild(ghostNode)
+            ghostNode.parentNode?.contains(ghostNode) && ghostNode.parentNode?.removeChild(ghostNode)
           }
 
           unlockPage()

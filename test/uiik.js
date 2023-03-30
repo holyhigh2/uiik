@@ -6864,7 +6864,7 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
             return false;
         };
         const dragEndListener = (ev) => {
-            var _a;
+            var _a, _b;
             document.removeEventListener('mousemove', dragListener, false);
             document.removeEventListener('mouseup', dragEndListener, false);
             window.removeEventListener('blur', dragEndListener, false);
@@ -6895,7 +6895,7 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
                     else {
                         handle.style.left = startPos + ds1 - handleSize / 2 + 'px';
                     }
-                    (_a = ghostNode.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(ghostNode);
+                    ((_a = ghostNode.parentNode) === null || _a === void 0 ? void 0 : _a.contains(ghostNode)) && ((_b = ghostNode.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(ghostNode));
                 }
                 unlockPage();
                 restoreCursor();
@@ -7140,12 +7140,12 @@ function bindHandle$1(handle, dir, panel, opts) {
             return false;
         };
         const dragEndListener = (ev) => {
-            var _a;
+            var _a, _b;
             document.removeEventListener('mousemove', dragListener, false);
             document.removeEventListener('mouseup', dragEndListener, false);
             window.removeEventListener('blur', dragEndListener, false);
             if (ghost && ghostNode) {
-                (_a = panel.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(ghostNode);
+                ((_a = panel.parentNode) === null || _a === void 0 ? void 0 : _a.contains(ghostNode)) && ((_b = panel.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(ghostNode));
                 panelStyle.left = ghostNode.style.left;
                 panelStyle.top = ghostNode.style.top;
                 panelStyle.width = ghostNode.style.width;
@@ -7476,7 +7476,8 @@ function bindEvent(registerEvent, el, opts, handleMap) {
                     }
                     //apply classes
                     dragDom.classList.add(...compact(split(classes, ' ')));
-                    dragDom.style.zIndex = zIndex + '';
+                    if (!copyNode)
+                        dragDom.style.zIndex = zIndex + '';
                     dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE, true);
                     call(onStart, dragDom, ev);
                     lockPage();
@@ -7670,7 +7671,7 @@ function bindEvent(registerEvent, el, opts, handleMap) {
             return false;
         };
         const dragEndListener = (ev) => {
-            var _a;
+            var _a, _b;
             document.removeEventListener("mousemove", dragListener);
             document.removeEventListener("mouseup", dragEndListener);
             window.removeEventListener("blur", dragEndListener);
@@ -7695,7 +7696,7 @@ function bindEvent(registerEvent, el, opts, handleMap) {
                 unlockPage();
                 restoreCursor();
                 if (ghost) {
-                    (_a = dragDom.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(copyNode);
+                    ((_a = dragDom.parentNode) === null || _a === void 0 ? void 0 : _a.contains(copyNode)) && ((_b = dragDom.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(copyNode));
                     if (moveToGhost !== false) {
                         style.left = copyNode.style.left;
                         style.top = copyNode.style.top;
@@ -8359,7 +8360,7 @@ function newSelectable(container, opts) {
     return new Selectable(container, opts);
 }
 
-var version = "1.0.8";
+var version = "1.0.9";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

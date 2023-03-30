@@ -257,7 +257,7 @@ function bindHandle(
       window.removeEventListener('blur', dragEndListener, false)
 
       if (ghost && ghostNode) {
-        panel.parentNode?.removeChild(ghostNode)
+        panel.parentNode?.contains(ghostNode) && panel.parentNode?.removeChild(ghostNode)
         panelStyle.left = ghostNode.style.left
         panelStyle.top = ghostNode.style.top
         panelStyle.width = ghostNode.style.width
