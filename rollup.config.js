@@ -6,27 +6,43 @@ import json from '@rollup/plugin-json'
 import copy from 'rollup-plugin-copy'
 import typescript from 'rollup-plugin-typescript2'
 import clear from 'rollup-plugin-clear'
+import terser from '@rollup/plugin-terser'
 const pkg = require('./package.json')
+const fs = require("fs")
+const path = require("path")
+
+const files = fs.readdirSync('./dist')
+
+  //扁平化
+  files.forEach((item, index) => {
+    var fullpath = path.join('dist', item)
+    const stat = fs.statSync(fullpath)
+    if (!stat.isDirectory()) {
+      return
+    }
+
+    fs.readdirSync(fullpath).forEach(fileName => {
+      fs.copyFileSync(
+        path.join(fullpath, fileName),
+        './dist/' + fileName
+      )
+    })
+    fs.rmSync(fullpath, { recursive: true })
+  })
 
 export default {
   input: 'src/index.ts',
-  external: ['myfx/*'],
+  external: ['myfx'],
   plugins: [
-    nodeResolve(),
-    clear({
-      targets: ['dist'],
-    }),
     typescript({
-      clean: true,
-      useTsconfigDeclarationDir: true,
       tsconfigOverride: {
         compilerOptions: {
-          declarationDir: './dist/types',
+          declaration:false
         },
       },
     }),
     commonjs(),
-    // terser(),
+    terser(),
     banner2(
       () => `/**
  * ${pkg.name} v${pkg.version}
@@ -61,7 +77,9 @@ export default {
     {
       file: 'dist/index.js',
       format: 'umd',
-      name: 'uiik'
+      name: 'uiik',
+      plugins:[
+        nodeResolve()]
     }
   ],
 }

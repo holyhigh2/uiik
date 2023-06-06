@@ -28,6 +28,12 @@ import {Splittable} from 'uiik'
 //or
 import uiik from 'https://cdn.skypack.dev/uiik'
 ```
+3. import module
+```ts
+import {newSplittable} from 'uiik/splittable'
+//or
+import {newSortable} from 'uiik/sortable'
+```
 
 ## Development
 1. use `test` to do jest 

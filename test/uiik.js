@@ -1,33 +1,5 @@
 /* uiik 1.1.0 @holyhigh2 https://github.com/holyhigh2/uiik */
 (function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
-/******************************************************************************
-Copyright (c) Microsoft Corporation.
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-PERFORMANCE OF THIS SOFTWARE.
-***************************************************************************** */
-
-function __classPrivateFieldGet(receiver, state, kind, f) {
-    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
-    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
-    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
-}
-
-function __classPrivateFieldSet(receiver, state, value, kind, f) {
-    if (kind === "m") throw new TypeError("Private method is not writable");
-    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
-    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
-    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
-}
-
 function isArray(v) {
     return Array.isArray(v);
 }
@@ -543,6 +515,17 @@ function merge(target, ...sources) {
     return mergeWith(target, ...sources, noop);
 }
 
+var __classPrivateFieldGet$6 = (undefined && undefined.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
+var __classPrivateFieldSet$4 = (undefined && undefined.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
+    if (kind === "m") throw new TypeError("Private method is not writable");
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
+    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
+};
 var _Uii_listeners;
 /**
  * A Base class for all Uii classes
@@ -575,10 +558,10 @@ class Uii {
      * 销毁uii对象，包括卸载事件、清空元素等
      */
     destroy() {
-        each(__classPrivateFieldGet(this, _Uii_listeners, "f"), (ev) => {
+        each(__classPrivateFieldGet$6(this, _Uii_listeners, "f"), (ev) => {
             ev[0].removeEventListener(ev[1], ev[2], ev[3]);
         });
-        __classPrivateFieldSet(this, _Uii_listeners, [], "f");
+        __classPrivateFieldSet$4(this, _Uii_listeners, [], "f");
     }
     /**
      * 注册事件，以便在{@link destroy}方法中卸载
@@ -594,7 +577,7 @@ class Uii {
             hook(ev);
         }).bind(this);
         el.addEventListener(event, wrapper, useCapture);
-        __classPrivateFieldGet(this, _Uii_listeners, "f").push([el, event, wrapper, useCapture]);
+        __classPrivateFieldGet$6(this, _Uii_listeners, "f").push([el, event, wrapper, useCapture]);
     }
     /**
      * 禁用uii实例，禁用后的dom不会响应事件
@@ -700,6 +683,11 @@ function restoreCursor() {
     document.documentElement.style.cursor = cursor.html;
 }
 
+var __classPrivateFieldGet$5 = (undefined && undefined.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
 var _Splittable_instances, _Splittable_checkDirection, _Splittable_bindHandle;
 const THRESHOLD$4 = 1;
 const CLASS_SPLITTABLE = "uii-splittable";
@@ -749,7 +737,7 @@ class Splittable extends Uii {
                     return true;
                 return false;
             });
-            const dir = __classPrivateFieldGet(this, _Splittable_instances, "m", _Splittable_checkDirection).call(this, con);
+            const dir = __classPrivateFieldGet$5(this, _Splittable_instances, "m", _Splittable_checkDirection).call(this, con);
             con.classList.toggle(dir === 'v' ? CLASS_SPLITTABLE_V : CLASS_SPLITTABLE_H, true);
             const minSizeAry = map(children, (c, i) => {
                 if (isArray(this.opts.minSize)) {
@@ -770,7 +758,7 @@ class Splittable extends Uii {
             if (isEmpty(handleDoms)) {
                 const len = children.length - 1;
                 for (let i = 0; i < len; i++) {
-                    __classPrivateFieldGet(this, _Splittable_instances, "m", _Splittable_bindHandle).call(this, minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, children[i], children[i + 1]);
+                    __classPrivateFieldGet$5(this, _Splittable_instances, "m", _Splittable_bindHandle).call(this, minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, children[i], children[i + 1]);
                 }
             }
             else {
@@ -785,7 +773,7 @@ class Splittable extends Uii {
                         dom2 = getRootEl(h, con);
                         dom1 = dom2.previousElementSibling;
                     }
-                    __classPrivateFieldGet(this, _Splittable_instances, "m", _Splittable_bindHandle).call(this, minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, dom1, dom2, h);
+                    __classPrivateFieldGet$5(this, _Splittable_instances, "m", _Splittable_bindHandle).call(this, minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, dom1, dom2, h);
                 });
             }
         });
@@ -1371,6 +1359,11 @@ function findIndex(array, predicate, fromIndex) {
     return rs;
 }
 
+var __classPrivateFieldGet$4 = (undefined && undefined.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
 var _Draggable_handleMap;
 const DRAGGER_GROUPS = {};
 const CLASS_DRAGGABLE = "uii-draggable";
@@ -1406,7 +1399,7 @@ class Draggable extends Uii {
                     console.error('No handle found "' + this.opts.handle + '"');
                     return false;
                 }
-                __classPrivateFieldGet(this, _Draggable_handleMap, "f").set(el, h);
+                __classPrivateFieldGet$4(this, _Draggable_handleMap, "f").set(el, h);
             });
         }
         this.onOptionChanged(this.opts);
@@ -1418,11 +1411,11 @@ class Draggable extends Uii {
             DRAGGER_GROUPS[this.opts.group].push(...this.ele);
         }
         each(this.ele, (el) => {
-            bindEvent(this.registerEvent.bind(this), el, this.opts, __classPrivateFieldGet(this, _Draggable_handleMap, "f"));
+            bindEvent(this.registerEvent.bind(this), el, this.opts, __classPrivateFieldGet$4(this, _Draggable_handleMap, "f"));
             if (isDefined(this.opts.type))
                 el.dataset.dropType = this.opts.type;
             el.classList.toggle(CLASS_DRAGGABLE, true);
-            const ee = __classPrivateFieldGet(this, _Draggable_handleMap, "f").get(el) || el;
+            const ee = __classPrivateFieldGet$4(this, _Draggable_handleMap, "f").get(el) || el;
             ee.classList.toggle(CLASS_DRAGGABLE_HANDLE, true);
             if (isDefined(this.opts.cursor)) {
                 el.style.cursor = this.opts.cursor.default || 'move';
@@ -1883,6 +1876,17 @@ function newDraggable(els, opts) {
     return new Draggable(els, opts);
 }
 
+var __classPrivateFieldGet$3 = (undefined && undefined.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
+var __classPrivateFieldSet$3 = (undefined && undefined.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
+    if (kind === "m") throw new TypeError("Private method is not writable");
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
+    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
+};
 var _Droppable_active;
 const Droppables = [];
 const CLASS_DROPPABLE = "uii-droppable";
@@ -1904,48 +1908,48 @@ class Droppable extends Uii {
     bindEvent(droppable, opts) {
         //dragenter
         this.registerEvent(droppable, "mouseenter", (e) => {
-            if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
+            if (!__classPrivateFieldGet$3(this, _Droppable_active, "f"))
                 return;
             if (opts.hoverClass) {
                 each(split(opts.hoverClass, ' '), cls => {
                     droppable.classList.toggle(cls, true);
                 });
             }
-            if (__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver) {
-                setCursor(__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver);
+            if (__classPrivateFieldGet$3(this, _Droppable_active, "f").dataset.cursorOver) {
+                setCursor(__classPrivateFieldGet$3(this, _Droppable_active, "f").dataset.cursorOver);
             }
-            opts.onEnter && opts.onEnter({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
+            opts.onEnter && opts.onEnter({ draggable: __classPrivateFieldGet$3(this, _Droppable_active, "f"), droppable }, e);
         });
         //dragleave
         this.registerEvent(droppable, "mouseleave", (e) => {
-            if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
+            if (!__classPrivateFieldGet$3(this, _Droppable_active, "f"))
                 return;
             if (opts.hoverClass) {
                 each(split(opts.hoverClass, ' '), cls => {
                     droppable.classList.toggle(cls, false);
                 });
             }
-            if (__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver) {
-                setCursor(__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorActive || '');
+            if (__classPrivateFieldGet$3(this, _Droppable_active, "f").dataset.cursorOver) {
+                setCursor(__classPrivateFieldGet$3(this, _Droppable_active, "f").dataset.cursorActive || '');
             }
-            opts.onLeave && opts.onLeave({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
+            opts.onLeave && opts.onLeave({ draggable: __classPrivateFieldGet$3(this, _Droppable_active, "f"), droppable }, e);
         });
         //dragover
         this.registerEvent(droppable, "mousemove", (e) => {
-            if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
+            if (!__classPrivateFieldGet$3(this, _Droppable_active, "f"))
                 return;
-            opts.onOver && opts.onOver({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
+            opts.onOver && opts.onOver({ draggable: __classPrivateFieldGet$3(this, _Droppable_active, "f"), droppable }, e);
         });
         //drop
         this.registerEvent(droppable, "mouseup", (e) => {
-            if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
+            if (!__classPrivateFieldGet$3(this, _Droppable_active, "f"))
                 return;
             if (opts.hoverClass) {
                 each(split(opts.hoverClass, ' '), cls => {
                     droppable.classList.toggle(cls, false);
                 });
             }
-            opts.onDrop && opts.onDrop({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
+            opts.onDrop && opts.onDrop({ draggable: __classPrivateFieldGet$3(this, _Droppable_active, "f"), droppable }, e);
         });
     }
     /**
@@ -1963,7 +1967,7 @@ class Droppable extends Uii {
         }
         if (!valid)
             return;
-        __classPrivateFieldSet(this, _Droppable_active, target, "f");
+        __classPrivateFieldSet$3(this, _Droppable_active, target, "f");
         if (opts.activeClass) {
             each(this.ele, el => {
                 each(split(opts.activeClass || '', ' '), cls => {
@@ -1983,9 +1987,9 @@ class Droppable extends Uii {
      * @internal
      */
     deactive(target) {
-        if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
+        if (!__classPrivateFieldGet$3(this, _Droppable_active, "f"))
             return;
-        __classPrivateFieldSet(this, _Droppable_active, null, "f");
+        __classPrivateFieldSet$3(this, _Droppable_active, null, "f");
         const opts = this.opts;
         if (opts.activeClass) {
             each(this.ele, el => {
@@ -2151,11 +2155,22 @@ function newRotatable(els, opts) {
     return new Rotatable(els, opts);
 }
 
+var __classPrivateFieldSet$2 = (undefined && undefined.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
+    if (kind === "m") throw new TypeError("Private method is not writable");
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
+    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
+};
+var __classPrivateFieldGet$2 = (undefined && undefined.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
 var _CollisionDetector__targets;
 class CollisionDetector {
     constructor(el, targets, opts) {
         _CollisionDetector__targets.set(this, void 0);
-        __classPrivateFieldSet(this, _CollisionDetector__targets, targets, "f");
+        __classPrivateFieldSet$2(this, _CollisionDetector__targets, targets, "f");
         this.opts = {
             container: document.body
         };
@@ -2184,17 +2199,17 @@ class CollisionDetector {
      */
     update() {
         let targets;
-        if (isFunction(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
-            targets = __classPrivateFieldGet(this, _CollisionDetector__targets, "f").call(this);
+        if (isFunction(__classPrivateFieldGet$2(this, _CollisionDetector__targets, "f"))) {
+            targets = __classPrivateFieldGet$2(this, _CollisionDetector__targets, "f").call(this);
         }
-        else if (isString(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
-            targets = this.opts.container.querySelectorAll(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"));
+        else if (isString(__classPrivateFieldGet$2(this, _CollisionDetector__targets, "f"))) {
+            targets = this.opts.container.querySelectorAll(__classPrivateFieldGet$2(this, _CollisionDetector__targets, "f"));
         }
-        else if (isElement(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
-            targets = [__classPrivateFieldGet(this, _CollisionDetector__targets, "f")];
+        else if (isElement(__classPrivateFieldGet$2(this, _CollisionDetector__targets, "f"))) {
+            targets = [__classPrivateFieldGet$2(this, _CollisionDetector__targets, "f")];
         }
         else {
-            targets = __classPrivateFieldGet(this, _CollisionDetector__targets, "f");
+            targets = __classPrivateFieldGet$2(this, _CollisionDetector__targets, "f");
         }
         this.targetsData = flatMap(targets, t => {
             if (!t)
@@ -2260,6 +2275,17 @@ function newCollisionDetector(el, targets, opts) {
     return new CollisionDetector(el, targets, opts);
 }
 
+var __classPrivateFieldSet$1 = (undefined && undefined.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
+    if (kind === "m") throw new TypeError("Private method is not writable");
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
+    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
+};
+var __classPrivateFieldGet$1 = (undefined && undefined.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
 var _Selectable_instances, _Selectable__detector, _Selectable__lastSelected, _Selectable_bindEvent;
 const CLASS_SELECTOR = "uii-selector";
 const CLASS_SELECTING = "uii-selecting";
@@ -2298,16 +2324,16 @@ class Selectable extends Uii {
         }
         domEl.appendChild(selector);
         //create detector
-        __classPrivateFieldSet(this, _Selectable__detector, newCollisionDetector(selector, this.opts.targets, {
+        __classPrivateFieldSet$1(this, _Selectable__detector, newCollisionDetector(selector, this.opts.targets, {
             container: domEl,
         }), "f");
-        __classPrivateFieldGet(this, _Selectable_instances, "m", _Selectable_bindEvent).call(this, selector, domEl);
+        __classPrivateFieldGet$1(this, _Selectable_instances, "m", _Selectable_bindEvent).call(this, selector, domEl);
     }
     /**
      *  更新targets
      */
     updateTargets() {
-        __classPrivateFieldGet(this, _Selectable__detector, "f").update();
+        __classPrivateFieldGet$1(this, _Selectable__detector, "f").update();
     }
     /**
      * @internal
@@ -2371,7 +2397,7 @@ _Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap()
                 if (Math.abs(offsetx) > THRESHOLD$1 || Math.abs(offsety) > THRESHOLD$1) {
                     dragging = true;
                     //update targets count & positions
-                    __classPrivateFieldGet(this, _Selectable__detector, "f").update();
+                    __classPrivateFieldGet$1(this, _Selectable__detector, "f").update();
                     //detect container position
                     const pos = window.getComputedStyle(con).position;
                     if (pos === "static") {
@@ -2379,10 +2405,10 @@ _Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap()
                         con.style.position = "relative";
                     }
                     //clear _lastSelected
-                    each(__classPrivateFieldGet(this, _Selectable__lastSelected, "f"), t => {
+                    each(__classPrivateFieldGet$1(this, _Selectable__lastSelected, "f"), t => {
                         t.classList.toggle(CLASS_SELECTED, false);
                     });
-                    onStart && onStart({ selection: __classPrivateFieldGet(this, _Selectable__lastSelected, "f"), selectable: con }, ev);
+                    onStart && onStart({ selection: __classPrivateFieldGet$1(this, _Selectable__lastSelected, "f"), selectable: con }, ev);
                 }
                 else {
                     ev.preventDefault();
@@ -2445,10 +2471,10 @@ _Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap()
             style.height = h + "px";
             //detect collision
             if (mode === "overlap") {
-                selection = __classPrivateFieldGet(that, _Selectable__detector, "f").getOverlaps(x1, y1, x1 + w, y1 + h);
+                selection = __classPrivateFieldGet$1(that, _Selectable__detector, "f").getOverlaps(x1, y1, x1 + w, y1 + h);
             }
             else if (mode === "inclusion") {
-                selection = __classPrivateFieldGet(that, _Selectable__detector, "f").getInclusions(x1, y1, x1 + w, y1 + h);
+                selection = __classPrivateFieldGet$1(that, _Selectable__detector, "f").getInclusions(x1, y1, x1 + w, y1 + h);
             }
             each(lastSelection, (t) => {
                 if (!includes(selection, t)) {
@@ -2497,7 +2523,7 @@ _Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap()
                 t.classList.toggle(CLASS_SELECTING, false);
                 t.classList.toggle(CLASS_SELECTED, true);
             });
-            __classPrivateFieldSet(this, _Selectable__lastSelected, selection, "f");
+            __classPrivateFieldSet$1(this, _Selectable__lastSelected, selection, "f");
             if (dragging && onEnd)
                 onEnd({ selection, selectable: con }, ev);
         };
@@ -2526,6 +2552,17 @@ function alphaId(len) {
     return rs;
 }
 
+var __classPrivateFieldSet = (undefined && undefined.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
+    if (kind === "m") throw new TypeError("Private method is not writable");
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
+    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
+};
+var __classPrivateFieldGet = (undefined && undefined.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
 var _Sortable_removeListenItems;
 const SORTABLE_GROUPS = {};
 const CLASS_SORTABLE_CONTAINER = "uii-sortable-container";

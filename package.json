@@ -4,7 +4,7 @@
   "description": "A UI interactions kit includes draggable, splittable, rotatable, selectable, etc.",
   "main": "index.js",
   "module": "index.esm.js",
-  "types": "types/index.d.ts",
+  "types": "index.d.ts",
   "author": "holyhigh2",
   "license": "MIT",
   "repository": {
@@ -26,7 +26,7 @@
     "detector"
   ],
   "scripts": {
-    "build": "rollup --config",
+    "build": "rimraf ./dist & tsc & rollup --config",
     "test": "rollup --config rollup.config.test.js --watch",
     "doc": "npx typedoc"
   },

@@ -28,6 +28,12 @@ import {Splittable} from 'uiik'
 //or
 import uiik from 'https://cdn.skypack.dev/uiik'
 ```
+3. 导入模块
+```ts
+import {newSplittable} from 'uiik/splittable'
+//or
+import {newSortable} from 'uiik/sortable'
+```
 
 ## 开发
 1. 使用 `test` 执行jest测试 

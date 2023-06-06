@@ -1,8 +1,9 @@
 # Changelog
 ## [1.1.0] - 2023/6/6 ⚠️BreakChange
 ### Add
-- sortable
+- Sortable
 ### Optimize
 - Unified events params to {data,ev}
+- Modularity
 ### Change
-- switch the func-lib to myfx
+- Switch the func-lib to myfx
