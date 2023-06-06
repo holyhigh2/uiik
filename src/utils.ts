@@ -4,7 +4,7 @@
  * @author holyhigh2
  */
 
-import { find } from "@holyhigh/func.js"
+import { find } from "myfx/collection"
 
 /**
  * 获取child相对于parent的offset信息。含border宽度

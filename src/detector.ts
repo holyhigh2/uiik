@@ -3,7 +3,9 @@
  * CollisionDetector
  * @author holyhigh2
  */
-import { assign, flatMap, isElement, isFunction, isString } from "@holyhigh/func.js"
+import { isElement, isFunction, isString } from "myfx/is"
+import { flatMap} from "myfx/collection"
+import { assign} from "myfx/object"
 import { CollisionData, CollisionDetectorOptions } from "./types"
 import { getOffset } from "./utils"
 

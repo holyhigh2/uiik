@@ -4,6 +4,7 @@ import { newDraggable } from './draggable'
 import { newDroppable } from './droppable'
 import { newRotatable } from './rotatable'
 import { newSelectable } from './selectable'
+import { newSortable } from './sortable'
 
 import * as packageInfo from '../package.json'
 
@@ -35,6 +36,7 @@ export * from './draggable'
 export * from './droppable'
 export * from './rotatable'
 export * from './selectable'
+export * from './sortable'
 export * from './detector'
 export * from './types'
 
@@ -47,5 +49,6 @@ export default {
   newDraggable,
   newDroppable,
   newRotatable,
-  newSelectable
+  newSelectable,
+  newSortable
 }

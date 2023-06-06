@@ -3,7 +3,9 @@
  * splitter
  * @author holyhigh
  */
-import { assign, call, each, includes, isArray, isEmpty, map, reject, some, split, test } from '@holyhigh/func.js'
+import { isArray, isEmpty} from 'myfx/is'
+import { each, includes, map, reject } from 'myfx/collection'
+import { assign } from 'myfx/object'
 import { SplittableOptions, Uii } from './types'
 import { lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from './utils';
 
@@ -54,59 +56,59 @@ export class Splittable extends Uii{
       )
     );
 
-    const con = this.ele[0]
-    //detect container position
-    const pos = window.getComputedStyle(con).position;
-    if (pos === "static") {
-      con.style.position = "relative";
-    }
-    con.classList.toggle(CLASS_SPLITTABLE,true)
-    const handleDoms = con.querySelectorAll(this.opts.handle)
-    const children = reject(con.children,c=>{
-      if (includes(handleDoms,c))return true
-      return false
-    })
-    const dir = this.#checkDirection(con)
-    
-    con.classList.toggle(dir === 'v' ? CLASS_SPLITTABLE_V : CLASS_SPLITTABLE_H, true)
-
-    const minSizeAry: Array<number> = map<number,number>(children,(c,i)=>{
-      if (isArray(this.opts.minSize)) {
-        return this.opts.minSize[i] || 0
-      } else {
-        return this.opts.minSize
+    each(this.ele,con=>{
+      //detect container position
+      const pos = window.getComputedStyle(con).position;
+      if (pos === "static") {
+        con.style.position = "relative";
       }
-    })
-
-    const stickyAry: Array<boolean> = map<boolean, number>(children, (c, i) => {
-      if (isArray(this.opts.sticky)) {
-        return this.opts.sticky[i] || false
-      } else {
-        return this.opts.sticky
-      }
-    })
-    
-
-    if (isEmpty(handleDoms)){
-      const len = children.length - 1
-      for (let i = 0; i < len; i ++) {
-        this.#bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, children[i] as HTMLElement, children[i + 1] as HTMLElement)
-      }
-    }else{
-      each(handleDoms,(h,i:number)=>{
-        const isRoot = h.parentNode.classList.contains(CLASS_SPLITTABLE)
-        let dom1:HTMLElement,dom2:HTMLElement
-        if(isRoot){
-          dom1 = h.previousElementSibling
-          dom2 = h.nextElementSibling
-        }else{
-          dom2 = getRootEl(h, con) as HTMLElement
-          dom1 = dom2.previousElementSibling as HTMLElement
-        }
-        this.#bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, dom1, dom2,h)
+      con.classList.toggle(CLASS_SPLITTABLE,true)
+      const handleDoms = con.querySelectorAll(this.opts.handle)
+      const children = reject(con.children,c=>{
+        if (includes(handleDoms,c))return true
+        return false
       })
-    }
-    
+      const dir = this.#checkDirection(con)
+      
+      con.classList.toggle(dir === 'v' ? CLASS_SPLITTABLE_V : CLASS_SPLITTABLE_H, true)
+
+      const minSizeAry: Array<number> = map<number,number>(children,(c,i)=>{
+        if (isArray(this.opts.minSize)) {
+          return this.opts.minSize[i] || 0
+        } else {
+          return this.opts.minSize
+        }
+      })
+
+      const stickyAry: Array<boolean> = map<boolean, number>(children, (c, i) => {
+        if (isArray(this.opts.sticky)) {
+          return this.opts.sticky[i] || false
+        } else {
+          return this.opts.sticky
+        }
+      })
+      
+
+      if (isEmpty(handleDoms)){
+        const len = children.length - 1
+        for (let i = 0; i < len; i ++) {
+          this.#bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, children[i] as HTMLElement, children[i + 1] as HTMLElement)
+        }
+      }else{
+        each(handleDoms,(h,i:number)=>{
+          const isRoot = h.parentNode.classList.contains(CLASS_SPLITTABLE)
+          let dom1:HTMLElement,dom2:HTMLElement
+          if(isRoot){
+            dom1 = h.previousElementSibling
+            dom2 = h.nextElementSibling
+          }else{
+            dom2 = getRootEl(h, con) as HTMLElement
+            dom1 = dom2.previousElementSibling as HTMLElement
+          }
+          this.#bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, dom1, dom2,h)
+        })
+      }
+    })
   }
 
   /**
@@ -234,14 +236,14 @@ export class Splittable extends Uii{
                 }
                 handle?.parentNode?.appendChild(ghostNode)
 
-                call(onClone, ghostNode, e)
+                onClone && onClone({clone:ghostNode}, e)
               }
             }
 
             lockPage()
             setCursor(handle?.dataset.cursor || '')
 
-            call(onStart, originSize, originSize1)
+            onStart && onStart({size1:originSize,size2:originSize1},ev)
           } else {
             ev.preventDefault();
             return false;
@@ -304,7 +306,7 @@ export class Splittable extends Uii{
           }
 
           if (doSticky) {
-            call(onSticky, ds1, anotherSize, sticked)
+            onSticky && onSticky({size1:ds1, size2:anotherSize,position: sticked},ev)
           }
 
           //update handle
@@ -315,7 +317,7 @@ export class Splittable extends Uii{
           }
         }
 
-        call(onSplit, ds1, anotherSize)
+        onSplit && onSplit( {size1:ds1, size2:anotherSize},ev)
 
         ev.preventDefault()
         return false
@@ -364,7 +366,7 @@ export class Splittable extends Uii{
           unlockPage()
           restoreCursor()
 
-          call(onEnd,originSize, originSize1)
+          onEnd && onEnd({size1:originSize, size2:originSize1},ev)
         }
       }
       document.addEventListener('mousemove', dragListener, false)

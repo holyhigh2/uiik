@@ -3,8 +3,8 @@
  * dom rotator
  * @author holyhigh2
  */
-
-import { call, each, isDefined } from '@holyhigh/func.js'
+import { isDefined } from 'myfx/is'
+import { each } from 'myfx/collection'
 import { RotatableOptions, Uii } from './types'
 import { lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from './utils';
 
@@ -109,7 +109,7 @@ function bindHandle(
           //apply classes
           el.classList.toggle(CLASS_ROTATABLE_ACTIVE,true)
 
-          call(onStart,deg)
+          onStart && onStart({deg},ev)
 
           lockPage()
           if (isDefined(opts.cursor)){
@@ -125,7 +125,7 @@ function bindHandle(
       deg = Math.atan2(offsety, offsetx) * ONE_DEG + 90 - offsetDeg
       if(deg < 0)deg = 360 + deg
 
-      call(onRotate,deg)
+      onRotate && onRotate({deg},ev)
 
       style.transform = style.transform.replace(/rotateZ\(.*?\)/,'') + ' rotateZ('+deg+'deg)'
 
@@ -143,7 +143,7 @@ function bindHandle(
 
         el.classList.toggle(CLASS_ROTATABLE_ACTIVE,false)
 
-        call(onEnd,deg)
+        onEnd && onEnd({deg},ev)
       }
       
     }

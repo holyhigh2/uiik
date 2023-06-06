@@ -3,7 +3,11 @@
  * dom resizer
  * @author holyhigh2
  */
-import { assign, call, each, isArray, isFunction, isNumber } from '@holyhigh/func.js'
+import {
+  each,
+} from "myfx/collection"
+import {assign} from 'myfx/object'
+import { isArray, isFunction, isNumber } from 'myfx/is'
 import { ResizableOptions, Uii } from './types'
 import { lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from './utils';
 
@@ -171,7 +175,7 @@ function bindHandle(
               }
               panel.parentNode?.appendChild(ghostNode)
 
-              call(onClone, ghostNode, e)
+              onClone && onClone({clone:ghostNode}, ev)
             }
             style = ghostNode?.style!
           }
@@ -179,7 +183,7 @@ function bindHandle(
           lockPage()
           setCursor(handle.dataset.cursor ||'')
 
-          call(onStart, originW, originH)
+          onStart && onStart({w:originW,h: originH},ev)
         } else {
           ev.preventDefault();
           return false;
@@ -246,7 +250,7 @@ function bindHandle(
       currentW = w
       currentH = h
 
-      call(onResize,w,h)
+      onResize && onResize({w,h},ev)
 
       ev.preventDefault()
       return false
@@ -270,7 +274,7 @@ function bindHandle(
         unlockPage()
         restoreCursor()
 
-        call(onEnd,currentW, currentH)
+        onEnd && onEnd({w:currentW, h:currentH},ev)
       }
     }
 

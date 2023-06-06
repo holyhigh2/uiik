@@ -3,17 +3,11 @@
  * selector
  * @author holyhigh2
  */
-
-import {
-  assign,
-  call,
-  compact,
-  each,
-  includes,
-  isFunction,
-  some,
-  split,
-} from "@holyhigh/func.js";
+import { each,includes,some } from 'myfx/collection'
+import { assign } from 'myfx/object'
+import { split } from 'myfx/string'
+import { compact } from 'myfx/array'
+import { isFunction } from 'myfx/is'
 import { CollisionDetector, newCollisionDetector } from "./detector";
 import { SelectableOptions, Uii } from "./types";
 import { EDGE_THRESHOLD, getOffset } from "./utils";
@@ -83,19 +77,20 @@ export class Selectable extends Uii {
    */
   #bindEvent(selector: HTMLElement, con: HTMLElement) {
     const that = this;
+    const opts:SelectableOptions = this.opts
 
     this.registerEvent(con, "mousedown", (e: MouseEvent) => {
       const t = e.target as HTMLElement;
 
-      const onStart = that.opts.onStart;
-      const onSelect = that.opts.onSelect;
-      const onEnd = that.opts.onEnd;
-      const mode = that.opts.mode || "overlap";
-      const scroll = that.opts.scroll;
-      const scrollSpeed = that.opts.scrollSpeed || 10;
-      const filter = that.opts.filter;
-      const selectingClassAry = compact(split(that.opts.selectingClass, " "));
-      const selectedClassAry = compact(split(that.opts.selectedClass, " "));
+      const onStart = opts.onStart;
+      const onSelect = opts.onSelect;
+      const onEnd = opts.onEnd;
+      const mode = opts.mode || "overlap";
+      const scroll = opts.scroll;
+      const scrollSpeed = opts.scrollSpeed || 10;
+      const filter = opts.filter;
+      const selectingClassAry = compact(split(opts.selectingClass, " "));
+      const selectedClassAry = compact(split(opts.selectedClass, " "));
 
       //check filter
       if (filter) {
@@ -160,7 +155,7 @@ export class Selectable extends Uii {
               t.classList.toggle(CLASS_SELECTED, false);
             })
 
-            call(onStart,t as HTMLElement);
+            onStart && onStart({selection:this.#_lastSelected,selectable:con},ev);
           } else {
             ev.preventDefault();
             return false;
@@ -250,7 +245,7 @@ export class Selectable extends Uii {
 
         lastSelection = selection;
 
-        if (changed) call(onSelect,selection);
+        if (changed && onSelect) onSelect({selection,selectable:con},ev);
 
         ev.preventDefault();
         return false;
@@ -287,7 +282,7 @@ export class Selectable extends Uii {
 
         this.#_lastSelected = selection;
 
-        if (dragging) call(onEnd,selection);
+        if (dragging && onEnd) onEnd({selection,selectable:con},ev);
       };
 
       document.addEventListener("mousemove", dragListener, false);

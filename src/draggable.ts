@@ -5,23 +5,25 @@
  * @author holyhigh2
  */
 import {
+  each,
+  map,
+  some,
+} from "myfx/collection"
+import {assign} from 'myfx/object'
+import {split} from 'myfx/string'
+import {closest} from 'myfx/tree'
+import { compact} from 'myfx/array'
+import {
   isString,
   isArrayLike,
   isFunction,
   isUndefined,
-  each,
   isElement,
-  closest,
-  map,
   isArray,
   isNumber,
-  assign,
-  compact,
-  split,
-  some,
-  call,
   isDefined,
-} from "@holyhigh/func.js";
+} from 'myfx/is'
+
 import { DraggableOptions, Uii } from "./types";
 import { EDGE_THRESHOLD, getOffset, lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from "./utils";
 
@@ -322,9 +324,8 @@ function bindEvent(
             copyNode.classList.add(...compact(split(classes,' ')))
             copyNode.classList.toggle(CLASS_DRAGGABLE_GHOST,true)
             dragDom.parentNode?.appendChild(copyNode);
-            if (onClone) {
-              onClone(copyNode, ev);
-            }
+
+              onClone && onClone({clone:copyNode}, ev);
           }
           //apply classes
           dragDom.classList.add(...compact(split(classes,' ')))
@@ -333,7 +334,7 @@ function bindEvent(
 
           dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE,true)
 
-          call(onStart,dragDom, ev)
+          onStart && onStart({draggable:dragDom}, ev)
 
           lockPage()
           if (opts.cursor){
@@ -493,11 +494,13 @@ function bindEvent(
             setTimeout(() => {
               //emit after relocate
               onSnap(
-                copyNode || dragDom,
-                targetX,
-                targetY,
-                snapDirX,
-                snapDirY
+                {
+                  el: copyNode || dragDom,
+                  targetH: targetX,
+                  targetV: targetY,
+                  dirH: snapDirX,
+                  dirV: snapDirY,
+              },ev
               );
             }, 0);
 
@@ -511,7 +514,13 @@ function bindEvent(
       }
 
       if (onDrag && !emitSnap) {
-        if (onDrag(dragDom, ev, offsetx, offsety,x,y) === false) {
+        if (onDrag( {
+          draggable: dragDom,
+          ox: offsetx,
+          oy: offsety,
+          x: x,
+          y: y
+      }, ev) === false) {
           canDrag = false;
         }
       }
@@ -559,8 +568,8 @@ function bindEvent(
       dragDom.classList.remove(CLASS_DRAGGABLE_ACTIVE)
 
       let moveToGhost = true;
-      if (dragging) {
-        moveToGhost = call(onEnd,dragDom, ev);
+      if (dragging && onEnd) {
+        moveToGhost = onEnd({draggable:dragDom}, ev) === false?false:true;
       }
       //notify
       const customEv = new Event("uii-dragdeactive", {"bubbles":true, "cancelable":false});
