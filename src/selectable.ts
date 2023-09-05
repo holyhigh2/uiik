@@ -10,7 +10,7 @@ import { compact } from 'myfx/array'
 import { isFunction } from 'myfx/is'
 import { CollisionDetector, newCollisionDetector } from "./detector";
 import { SelectableOptions, Uii } from "./types";
-import { EDGE_THRESHOLD, getOffset } from "./utils";
+import { EDGE_THRESHOLD, getBox, getPointOffset } from "./utils";
 
 const CLASS_SELECTOR = "uii-selector";
 const CLASS_SELECTING = "uii-selecting";
@@ -44,19 +44,22 @@ export class Selectable extends Uii {
     const domEl = this.ele[0] as HTMLElement;
 
     //create selector
-    const selector = document.createElement("div");
-    selector.className = CLASS_SELECTOR;
+    let selector:any = document.createElement("div");
+    if (domEl instanceof SVGElement) {
+      selector = document.createElementNS('http://www.w3.org/2000/svg', "rect");
+    }
+    selector.setAttribute('class', CLASS_SELECTOR)
     selector.style.cssText = `
       position:absolute;
       left:-9999px;
     `;
     if (this.opts.class) {
-      selector.className += " " + this.opts.class;
+      selector.setAttribute('class', selector.getAttribute('class') + " " + this.opts.class)
     } else {
-      selector.style.cssText += "border:1px dashed #000;";
+      selector.style.cssText += "border:1px dashed #000;stroke:#000;";
     }
     domEl.appendChild(selector);
-
+    
     //create detector
     this.#_detector = newCollisionDetector(selector, this.opts.targets, {
       container: domEl,
@@ -92,6 +95,9 @@ export class Selectable extends Uii {
       const selectingClassAry = compact(split(opts.selectingClass, " "));
       const selectedClassAry = compact(split(opts.selectedClass, " "));
 
+      //reset pos
+      selector.style.left = selector.style.top = '0'
+
       //check filter
       if (filter) {
         if (isFunction(filter)) {
@@ -108,13 +114,16 @@ export class Selectable extends Uii {
       const blw = parseFloat(conStyle.borderLeftWidth)
       const btw = parseFloat(conStyle.borderTopWidth)
 
-      let hitPosX = e.offsetX + con.scrollLeft,
-        hitPosY = e.offsetY + con.scrollTop;
+      const [ox, oy] = getPointOffset(e, getBox(t, con))
+      console.log(ox,oy)
+
+      let hitPosX = ox + con.scrollLeft,
+        hitPosY = oy + con.scrollTop;
       if (t !== con) {
-        const offset = getOffset(t, con);
+        const offset = getBox(t, con);
         const style = window.getComputedStyle(t)
-        hitPosX = offset.x + e.offsetX + parseFloat(style.borderLeftWidth);
-        hitPosY = offset.y + e.offsetY + parseFloat(style.borderTopWidth);
+        hitPosX = offset.x + ox + parseFloat(style.borderLeftWidth);
+        hitPosY = offset.y + oy + parseFloat(style.borderTopWidth);
       }
 
       const style = selector.style;
@@ -213,10 +222,10 @@ export class Selectable extends Uii {
           y = y1 = newY;
         }
 
-        style.left = x + "px";
-        style.top = y + "px";
         style.width = w + "px";
         style.height = h + "px";
+
+        style.transform = `translate3d(${x}px,${y}px,0)`
 
         //detect collision
         if (mode === "overlap") {

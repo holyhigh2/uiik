@@ -1,6 +1,6 @@
 {
   "name": "uiik",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A UI interactions kit includes draggable, splittable, rotatable, selectable, etc.",
   "main": "index.js",
   "module": "index.esm.js",
@@ -54,7 +54,7 @@
     "rollup-pluginutils": "^2.8.2",
     "tslib": "^2.4.0",
     "typescript": "^4.8.2",
-    "typedoc": "^0.23.28",
+    "typedoc": "^0.24.8",
     "typedoc-plugin-markdown": "^3.14.0"
   }
 }

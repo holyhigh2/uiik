@@ -1,4 +1,9 @@
 # Changelog
+
+## [1.2.0] - 2023/9/3
+### Add
+- SVG support —— draggable/resizable/selectable/rotatable
+
 ## [1.1.0] - 2023/6/6 ⚠️BreakChange
 ### Add
 - Sortable

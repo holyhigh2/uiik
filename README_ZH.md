@@ -12,6 +12,7 @@
 - Draggable/Droppable/Splittable/rotatable/selectable/Resizable
 - 可定制的CSS接口，如'uii-draggable-handle', 'uii-splittable-handle'...
 - 丰富的配置选项
+- SVG支持
 
 ## 快速上手
 1. 安装
@@ -34,6 +35,9 @@ import {newSplittable} from 'uiik/splittable'
 //or
 import {newSortable} from 'uiik/sortable'
 ```
+
+## 常见问题
+1. draggable —— dom元素的offsetParent不是parentNode且中间元素产生边距时会影响光标定位
 
 ## 开发
 1. 使用 `test` 执行jest测试 

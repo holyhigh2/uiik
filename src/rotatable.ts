@@ -3,10 +3,9 @@
  * dom rotator
  * @author holyhigh2
  */
-import { isDefined } from 'myfx/is'
 import { each } from 'myfx/collection'
 import { RotatableOptions, Uii } from './types'
-import { lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from './utils';
+import { rotateTo } from './transform'
 
 const ONE_DEG = 180 / Math.PI
 const THRESHOLD = 2
@@ -22,139 +21,116 @@ const CLASS_ROTATABLE_ACTIVE = "uii-rotatable-active"
  * - .uii-rotatable-active
  * @public
  */
-export class Rotatable extends Uii{
-  constructor(els: string | HTMLElement, opts?: RotatableOptions) {
+export class Rotatable extends Uii {
+  constructor(els: string | Element, opts?: RotatableOptions) {
     super(
       els,
       opts
     );
-    
+
     each(this.ele, (el) => {
-      initHandle(el,this.opts)
+      initHandle(this, el, this.opts)
     });
   }
 }
 
-function initHandle(el:HTMLElement,opts:RotatableOptions){
-    const handle = document.createElement('div')
-    handle.className = CLASS_ROTATABLE_HANDLE
-    handle.style.cssText = `
-    position:absolute;
-    width:12px;
-    height:12px;
-    border-radius:50%;
-    left: calc(50% - 6px);
-    top: -24px;
-    `
+function initHandle(uiik: Uii, el: HTMLElement | SVGElement, opts: RotatableOptions) {
+  let handleStr = opts.handle
+  let handles: any
+  if (handleStr) {
+    handles = document.querySelectorAll(handleStr)
+  }
 
-    handle.style.cursor = opts.cursor?.default || 'crosshair'
+  each(handles,(h:SVGStyleElement|HTMLStyleElement)=>{
+    h.style.cursor = opts.cursor?.default || 'crosshair'
     
-    bindHandle(handle, el, opts)
-    el.classList.toggle(CLASS_ROTATABLE,true)
-    el.appendChild(handle)
+    bindHandle(uiik, h,el as HTMLElement, opts)
+  })
+
+  el.classList.toggle(CLASS_ROTATABLE, true)
 }
 
 function bindHandle(
-  handle: HTMLElement,
+  uiik: Uii,
+  handle: Element,
   el: HTMLElement,
   opts: RotatableOptions
 ) {
   const onStart = opts.onStart
   const onRotate = opts.onRotate
   const onEnd = opts.onEnd
-  handle.onmousedown = function (e) {
-    // calc center
-    const center = window.getComputedStyle(el).transformOrigin || ''
-    const centerPair = center.split(' ')
 
-    const shadowDom = el.cloneNode() as HTMLElement
-    shadowDom.style.cssText = 'transform:rotate(0);z-index:-999;position:absolute;'
+  let deg = 0
+  let offsetDeg = 0
+  let centerX = 0, centerY = 0
+  let style = el.style
+
+  uiik.addPointerDown(handle, ({ pointX, pointY, onPointerStart, onPointerMove, onPointerEnd }) => {
+
+    // calc center
+    const center = style.transformOrigin || '50% 50%'
+    const centerPair = center.split(' ')
+    
+    const shadowDom = el.cloneNode() as Element
+
+    rotateTo(shadowDom as any,0)
+
     el.parentElement?.appendChild(shadowDom)
     const offsetXY = shadowDom.getBoundingClientRect()
-    el.parentElement?.removeChild(shadowDom)
-    
-    let centerX = parseFloat(centerPair[0]) + offsetXY.x
-    let centerY = parseFloat(centerPair[1]) + offsetXY.y
+    let startX = offsetXY.x, startY = offsetXY.y
 
-    let a = 0,b = 0
+    el.parentElement?.removeChild(shadowDom)
+
+    let offWidth = offsetXY.width * (parseFloat(centerPair[0])/100 || 0)
+    let offHeight = offsetXY.height * (parseFloat(centerPair[1])/100 || 0)
+
+    centerX = startX + offWidth
+    centerY = startY + offHeight
+    let a = 1, b = 0
     const matrix = window.getComputedStyle(el).transform
-    if (matrix.indexOf('matrix')>-1){
+    if (matrix.indexOf('matrix') > -1) {
       const abcd = matrix.replace(/^matrix\(|\)$/mg, '').split(',')
       a = parseFloat(abcd[0])
       b = parseFloat(abcd[1])
     }
 
-    let deg = Math.atan2(b, a) * ONE_DEG
+    deg = Math.atan2(b, a) * ONE_DEG
     if (deg < 0) deg = 360 - deg
-    if (deg > 360) deg = 360 - deg%360
+    if (deg > 360) deg = 360 - deg % 360
 
-    const style = el.style
-
-    let startDeg = Math.atan2(e.clientY - centerY, e.clientX - centerX) * ONE_DEG + 90
+    let startDeg = Math.atan2(pointY - centerY, pointX - centerX) * ONE_DEG + 90
     if (startDeg < 0) startDeg = 360 + startDeg
 
-    const offsetDeg = startDeg - deg
+    offsetDeg = startDeg - deg
 
-    let dragging = false;
-    saveCursor()
-    
-    const dragListener = (ev: MouseEvent) => {
-      const offsetx = ev.clientX - centerX
-      const offsety = ev.clientY - centerY
-
-      if (!dragging) {
-        if (Math.abs(offsetx) > THRESHOLD || Math.abs(offsety) > THRESHOLD) {
-          dragging = true;
-
-          //apply classes
-          el.classList.toggle(CLASS_ROTATABLE_ACTIVE,true)
-
-          onStart && onStart({deg},ev)
-
-          lockPage()
-          if (isDefined(opts.cursor)){
-            setCursor(opts.cursor?.active || 'crosshair')
-          }
-          
-        } else {
-          ev.preventDefault();
-          return false;
-        }
-      }
-
-      deg = Math.atan2(offsety, offsetx) * ONE_DEG + 90 - offsetDeg
-      if(deg < 0)deg = 360 + deg
-
-      onRotate && onRotate({deg},ev)
-
-      style.transform = style.transform.replace(/rotateZ\(.*?\)/,'') + ' rotateZ('+deg+'deg)'
-
-      ev.preventDefault()
-      return false
-    }
-    const dragEndListener = (ev: MouseEvent) => {
-      document.removeEventListener('mousemove', dragListener, false)
-      document.removeEventListener('mouseup', dragEndListener, false)
-      window.removeEventListener('blur', dragEndListener, false)
-
-      if (dragging) {
-        unlockPage()
-        restoreCursor()
-
-        el.classList.toggle(CLASS_ROTATABLE_ACTIVE,false)
-
-        onEnd && onEnd({deg},ev)
-      }
+    //bind events
+    onPointerStart(function (args: Record<string, any>) {
+      const { ev } = args
+      //apply classes
+      el.classList.toggle(CLASS_ROTATABLE_ACTIVE, true)
+      onStart && onStart({ deg,cx:centerX,cy:centerY }, ev)
+    })
+    onPointerMove((args: Record<string, any>) => {
+      const { ev, pointX, pointY } = args
+      deg = Math.atan2(pointY - centerY, pointX - centerX) * ONE_DEG + 90 - offsetDeg
+      if (deg < 0) deg = 360 + deg
       
-    }
+      console.log(deg,offsetDeg,pointX, pointY,centerX,centerY)
 
-    document.addEventListener('mousemove', dragListener, false)
-    document.addEventListener('mouseup', dragEndListener, false)
-    window.addEventListener('blur', dragEndListener, false)
+      onRotate && onRotate({ deg,cx:centerX,cy:centerY }, ev)
+      
+      rotateTo(el,deg,offWidth,offHeight)
+    })
+    onPointerEnd((args: Record<string, any>) => {
+      const { ev } = args
+      el.classList.toggle(CLASS_ROTATABLE_ACTIVE, false)
 
-    e.preventDefault()
-    return false
-  }
+      onEnd && onEnd({ deg }, ev)
+    })
+  }, {
+    threshold: THRESHOLD,
+    lockPage: true
+  })
 }
 
 /**

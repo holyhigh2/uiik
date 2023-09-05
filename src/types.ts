@@ -1,6 +1,7 @@
-import { isElement, isString,isArrayLike} from 'myfx/is'
+import { isElement, isString,isArrayLike, isEmpty} from 'myfx/is'
 import { each, map, toArray } from 'myfx/collection'
-import { assign } from 'myfx/object'
+import { assign, get } from 'myfx/object'
+import { lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from './utils';
 
 /**
  * A Base class for all Uii classes
@@ -13,17 +14,17 @@ export abstract class Uii {
   /**
    * 当前uii对象的选项
    */
-  protected opts: Record<string, any>;
+  opts: Record<string, any>;
   protected enabled: boolean = true;
-  #listeners: Array<[HTMLElement, string, Function, boolean]> = [];
+  #listeners: Array<[Element, string, Function, boolean]> = [];
 
   constructor(
     ele:
       | string
-      | HTMLElement
+      | Element
       | NodeList
       | HTMLCollection
-      | Array<string | HTMLElement>,
+      | Array<string | Element>,
     opts?: Record<string, any>
   ) {
     this.opts = opts || {};
@@ -57,6 +58,108 @@ export abstract class Uii {
     this.#listeners = [];
   }
 
+
+//通用指针事件处理接口
+  addPointerDown(el: Element, pointerDown: (args: Record<string, any>) => void, opts: {
+  threshold?: number,
+  lockPage?: boolean
+}) {
+    const onPointerDown = pointerDown
+    let onPointerStart:Function
+    let onPointerMove: Function
+    let onPointerEnd: Function
+  const threshold = opts.threshold || 0
+  const toLockPage = opts.lockPage || false
+
+  const uiiOptions = this.opts
+  /**
+   * 1. 计算鼠标点与元素左上角偏移坐标
+   * 2. 
+   */
+  this.registerEvent(el, 'mousedown', (e: PointerEvent) => {
+    let t = e.target as HTMLElement
+    if (!t) return;
+
+    //uiik options
+    const hasCursor = !isEmpty(get(uiiOptions, 'cursor.active'))
+
+    //提取通用信息
+    const currentStyle = (el as HTMLStyleElement).style
+    const currentCStyle = window.getComputedStyle(el)
+    const currentRect = el.getBoundingClientRect()
+
+    let dragging = false;
+    const originPosX = e.clientX
+    const originPosY = e.clientY
+
+    if (hasCursor) {
+      saveCursor()
+    }
+
+    onPointerDown({ 
+      onPointerMove: (pm: (args: Record<string, any>) => void) => { onPointerMove = pm},
+      onPointerStart: (ps: (args: Record<string, any>) => void) => { onPointerStart = ps }, 
+      onPointerEnd: (pe: (args: Record<string, any>) => void) => { onPointerEnd = pe }, 
+    ev: e, 
+    pointX: e.clientX, pointY: e.clientY, 
+    currentTarget: el, currentStyle, currentCStyle, currentRect })
+
+    //函数
+    const pointerMove = (ev: MouseEvent) => {
+      const offX = ev.clientX - originPosX
+      const offY = ev.clientY - originPosY
+
+      if (!dragging) {
+        if (Math.abs(offX) > threshold || Math.abs(offY) > threshold) {
+          dragging = true;
+
+          if (toLockPage) {
+            lockPage()
+          }
+
+          if (hasCursor) {
+            setCursor(uiiOptions.cursor.active)
+          }
+
+          onPointerStart({ ev })
+
+        } else {
+          ev.preventDefault();
+          return false;
+        }
+      }
+
+      onPointerMove({ ev, pointX: ev.clientX, pointY: ev.clientY, offX, offY, currentStyle, currentCStyle })
+    }
+    const pointerEnd = (ev: MouseEvent) => {
+      document.removeEventListener('mousemove', pointerMove, false)
+      document.removeEventListener('mouseup', pointerEnd, false)
+      window.removeEventListener('blur', pointerEnd, false)
+
+      if (dragging) {
+        if (toLockPage) {
+          unlockPage()
+        }
+        if (hasCursor) {
+          restoreCursor()
+        }
+
+        onPointerEnd({ ev, currentStyle })
+      }
+
+    }
+
+    document.addEventListener("mousemove", pointerMove);
+    document.addEventListener("mouseup", pointerEnd);
+    window.addEventListener("blur", pointerEnd);
+
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  })
+}
+
+
   /**
    * 注册事件，以便在{@link destroy}方法中卸载
    * @param el dom元素
@@ -64,8 +167,8 @@ export abstract class Uii {
    * @param hook 回调函数
    * @param useCapture 默认false
    */
-  protected registerEvent(
-    el: HTMLElement,
+  registerEvent(
+    el: Element,
     event: string,
     hook: Function,
     useCapture: boolean = false
@@ -130,9 +233,9 @@ export abstract class Uii {
 
 export type ResizableOptions = {
   /**
-   * handle的宽高，默认8
+   * 控制器元素选择器(1-n个元素)，如果为空表示点击任意元素即可触发
    */
-  handleSize?: number;
+  handle?:string;
   /**
    * 拖动元素的最小size，如果是数组，表示 [width,height]
    */
@@ -146,10 +249,6 @@ export type ResizableOptions = {
    */
   dir?: string[];
   /**
-   * handle所在元素的位置偏移，负数向内，正数向外。默认0
-   */
-  offset?: number;
-  /**
    * 宽高比，小数
    */
   aspectRatio?: number;
@@ -159,7 +258,7 @@ export type ResizableOptions = {
   ghost?: boolean | Function;
   ghostClass?: string;
   onStart?: (data: { w: number; h: number }, event: MouseEvent) => void;
-  onResize?: (data: { w: number; h: number }, event: MouseEvent) => void;
+  onResize?: (data: { w: number; h: number,ow:number,oh:number }, event: MouseEvent) => void;
   onEnd?: (data: { w: number; h: number }, event: MouseEvent) => void;
   onClone?: (data: { clone: HTMLElement }, event: MouseEvent) => void;
 };
@@ -269,10 +368,6 @@ export type DraggableOptions = {
     tolerance: number;
   };
   /**
-   * 拖动时元素左上角距离指针的距离，支持百分比及负数
-   */
-  cursorAt?: { left: number | string; top: number | string };
-  /**
    * 可定义拖动时不同状态下的指针，默认move
    */
   cursor?: {
@@ -373,8 +468,12 @@ export type RotatableOptions = {
     default?: string;
     active?: string;
   };
-  onStart?: (data: { deg: number }, event: MouseEvent) => {};
-  onRotate?: (data: { deg: number }, event: MouseEvent) => {};
+  /**
+   * 控制器元素选择器(1-n个元素)，如果为空表示点击任意元素即可触发
+   */
+  handle?:string;
+  onStart?: (data: { deg: number,cx:number,cy:number }, event: MouseEvent) => {};
+  onRotate?: (data: { deg: number,cx:number,cy:number }, event: MouseEvent) => {};
   onEnd?: (data: { deg: number }, event: MouseEvent) => {};
 };
 

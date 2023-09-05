@@ -4,10 +4,10 @@
  * @author holyhigh2
  */
 import { isElement, isFunction, isString } from "myfx/is"
-import { flatMap} from "myfx/collection"
+import { flatMap, reject} from "myfx/collection"
 import { assign} from "myfx/object"
 import { CollisionData, CollisionDetectorOptions } from "./types"
-import { getOffset } from "./utils"
+import { getBox } from "./utils"
 
 export class CollisionDetector {
   #_targets: (() => Array<HTMLElement>) | string | HTMLElement | Array<HTMLElement> | NodeList | HTMLCollection
@@ -31,7 +31,7 @@ export class CollisionDetector {
     this.el = domEl
 
     //el data
-    const offset = getOffset(ele,this.opts.container)
+    const offset = getBox(ele,this.opts.container)
     const rect = { x: offset.x, y: offset.y, width: ele.offsetWidth, height: ele.offsetHeight }
 
     this.elData = {
@@ -54,6 +54,7 @@ export class CollisionDetector {
       targets = this.#_targets()
     } else if (isString(this.#_targets)) {
       targets = this.opts.container.querySelectorAll(this.#_targets)
+      targets = reject(targets,t=>t === this.el)
     } else if (isElement(this.#_targets)) {
       targets = [this.#_targets]
     } else {
@@ -62,10 +63,10 @@ export class CollisionDetector {
 
     this.targetsData = flatMap<HTMLElement, any, CollisionData>(targets, t => {
       if (!t) return []
-      if (!isElement(t)) return []
 
-      const offset = getOffset(t,this.opts.container)
-      const rect = {x:offset.x,y:offset.y,width:t.offsetWidth,height:t.offsetHeight}
+      const offset = getBox(t,this.opts.container)
+
+      const rect = { x: offset.x, y: offset.y, width: offset.w, height: offset.h}
 
       return {
         x1: rect.x,

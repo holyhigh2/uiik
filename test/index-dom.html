@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>uii tests</title>
+    <style>
+      body {
+        padding: 0 5vh;
+      }
+
+      .logo {
+        font-size: 5vh;
+      }
+
+      #splitter {
+        width: 0px;
+      }
+
+      .splitter[dragging] .uii-splitter-sensor {
+        background: rgba(0, 255, 102, 0.5);
+      }
+
+      .uii-splittable-handle {
+        transition: background 0.5s 0.3s;
+      }
+
+      .uii-splittable-handle:hover {
+        background: rgba(0, 255, 102, 0.5);
+      }
+
+      .splitter-container-h {
+        display: flex;
+        height: 100px;
+        width: 400px;
+        /* grid-template-columns: auto 0px auto; */
+      }
+
+      .splitter-container-v {
+        /* display: grid; */
+        height: 300px;
+        width: 100px;
+        /* grid-template-rows: auto 0px auto; */
+      }
+
+      .splitter-container-h-strip {
+        display: grid;
+        height: 100px;
+        width: 400px;
+        grid-template-columns: auto 20px auto;
+      }
+
+      .splitter-container-v-strip {
+        /* display: grid; */
+        width: 100px;
+        height: 400px;
+        grid-template-rows: auto 20px auto;
+      }
+
+      .splitter-container-h-container {
+        display: grid;
+        height: 100px;
+        width: 400px;
+        grid-template-columns: auto auto;
+      }
+
+      .splitter-container-h-container .splitter {
+        height: 100%;
+        width: 20px;
+        background-color: rgb(210, 224, 12);
+      }
+
+      #splitter3 {
+        /* background-color: teal; */
+        /* width: 20px; */
+      }
+
+      #splitter4 {
+        background-color: teal;
+        /* height: 20px; */
+      }
+
+      .box {
+        background-color: tomato;
+        text-align: center;
+        color: #fff;
+        /* transition: all 0.3s; */
+      }
+
+      .box2 {
+        background-color: navy;
+        text-align: center;
+        color: #fff;
+        flex: 1;
+      }
+
+      .uii-resizable-handle,
+      .uii-rotatable-handle {
+        position: absolute;
+        background: rgba(100, 100, 100, 0.5);
+        height: 10px;
+        width: 10px;
+      }
+
+      .resizer {
+        width: 160px;
+        height: 160px;
+        position: absolute;
+        left: 300px;
+        box-shadow: 0 0 4px;
+        transition: all .3s;
+      }
+
+      .resizer-ghost {
+        border: 2px dashed black;
+        background-color: transparent;
+        box-shadow: none;
+        transition:none;
+        z-index: 9;
+      }
+
+      .dragger {
+        width: 100px;
+        height: 100px;
+        position: absolute;
+        background-color: coral;
+        text-align: center;
+        z-index: 9;
+      }
+      .dragging {
+        border: 5px solid red;
+      }
+      .moving {
+      }
+
+      .blank {
+        margin-top: 1rem;
+      }
+
+      .drag-targets {
+        position: absolute;
+        left: 0px;
+        top: 150px;
+      }
+
+      #draggerCon {
+        position: absolute;
+        left: 400px;
+        top: 150px;
+      }
+
+      .drag-targets div {
+        display: inline-block;
+        margin-left: 2rem;
+        width: 150px;
+        height: 150px;
+        border: 1px solid #000;
+        transition: all 0.3s;
+      }
+
+      .drag-targets .active {
+        border: 1px dashed coral;
+      }
+      .drag-targets .enter {
+        box-shadow: 0 0 10px coral inset;
+        border-color: coral;
+      }
+
+      .drag-targets .drop {
+        box-shadow: 0 0 200px coral inset;
+        border-color: coral;
+      }
+
+      .ghost {
+        border: 2px dashed black;
+        background-color: transparent;
+        box-shadow: none;
+        z-index: 9;
+      }
+      .snappable {
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        background: rgba(100, 100, 100, 0.5);
+      }
+      .guides {
+        position: absolute;
+        overflow: hidden;
+        z-index: 9;
+      }
+      .guides.h {
+        border-top: 1px dashed rgb(18, 152, 255);
+        height: 0;
+      }
+      .guides.v {
+        border-left: 1px dashed rgb(18, 152, 255);
+        width: 0;
+      }
+
+      .splitter-container-h-3 {
+        width: 600px;
+        overflow: hidden;
+        height: 100px;
+      }
+
+      .splitter_1 {
+        width: 0;
+        float: left;
+        height: 100%;
+      }
+
+      .box2_2 {
+      }
+
+      .box_1 {
+        width: 200px;
+        float: left;
+        height: 100%;
+        text-align: center;
+        color: #fff;
+        transition: all 0.3s;
+      }
+
+      .bg1 {
+        background-color: tomato;
+      }
+
+      .bg2 {
+        background-color: navy;
+      }
+
+      .bg3 {
+        background-color: #e9cf00;
+      }
+
+      .rotator-wrapper {
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        border: 1px dashed red;
+        top: 50px;
+        left: 100px;
+      }
+
+      .rotator {
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        background-color: whitesmoke;
+      }
+
+      .rotator-center {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border: 1px solid red;
+        border-radius: 8px;
+      }
+
+      .rotator-center::before {
+        position: absolute;
+        top: calc(50% - 1px);
+        left: calc(50% - 1px);
+        content: "";
+        width: 2px;
+        height: 2px;
+        background-color: red;
+      }
+
+      .selector-con {
+        border: 20px solid #000;
+        padding: 5px;
+        overflow: auto;
+        margin-bottom: 10rem;
+      }
+
+      .selector-con .block {
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        background-color: #dadada;
+        border: 5px solid #000;
+        padding: 10px;
+      }
+      .selector-con .block.active {
+        border: 2px dashed red !important;
+      }
+
+      .selector-con::before {
+        content: "点击并拖动鼠标";
+        text-align: center;
+        width: 150%;
+        height: 100%;
+        position: absolute;
+        font-size: 3rem;
+        color: #dadada;
+        line-height: 5;
+      }
+      .selector-custom {
+        border: 1px solid rgb(47, 172, 255);
+        background: rgba(20, 161, 255, 0.356);
+      }
+
+      .split-ghost {
+        background: rgba(0, 255, 102, 0.5);
+        /* width: 0px !important; */
+        /* border: 1px dashed black; */
+        opacity: 1 !important;
+      }
+      
+      .sortable-con{
+        border: 1px solid #dadada;
+        list-style: none;
+        padding: 0;
+        width: 200px;
+      }
+      .sortable-con .gray{
+        background-color: #dadada;
+      }
+      .sortable-con.active {
+        border: 1px dashed coral;
+      }
+      .sortable-con li{
+        /* transition: transform .3s; */
+        border: 1px solid #999;
+        /* margin: .5rem .1rem; */
+        cursor: move;
+
+      }
+      .uii-sortable-active{
+        opacity: .3;
+      }
+      .uii-sortable-ghost{
+        background-color: cornflowerblue !important;
+      }
+
+      .rotate-handler{
+        position:absolute;
+      width:12px;
+      height:12px;
+      border-radius:50%;
+      left: calc(50% - 6px);
+      top: -24px;
+      background-color: #999;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2 class="logo">uii</h2>
+    <main>
+      <h3>splitter</h3>
+      <section class="splitter-container-h" id="splitter1">
+        <div class="box" id="box" style="width: 50%"></div>
+        <div class="box2" id="box2"></div>
+      </section>
+      <br />
+      <section class="splitter-container-h splitter-container-h-3" id="splitter2">
+        <div class="box_1 bg1"></div>
+        <div class="box_1 bg2"></div>
+        <div class="box_1 bg3"></div>
+      </section>
+      <p id="dragbox"></p>
+      <p>&nbsp;</p>
+      <section class="splitter-container-v" id="splitter3">
+        <div class="box" style="height: 50%"></div>
+        <!-- <div id="splitter2" class="splitter"></div> -->
+        <div class="box2" style="height: 50%"></div>
+      </section>
+      <p>&nbsp;</p>
+      <section class="splitter-container-h-strip" id="splitter4">
+        <div class="box" id="box3"></div>
+        <div class="splitter">
+          <i
+            onmousedown="arguments[0].stopPropagation()"
+            style="
+              cursor: not-allowed;
+              display: block;
+              height: 20px;
+              background: gray;
+              top: 40%;
+              position: relative;
+            "
+          ></i>
+        </div>
+        <div class="box2" id="box4"></div>
+      </section>
+      <p>&nbsp;</p>
+      嵌入式sensor
+      <section class="splitter-container-h-container" id="splitter5">
+        <div class="box"></div>
+        <div class="box2">
+          <div class="splitter"></div>
+        </div>
+      </section>
+      <br />
+      <section class="splitter-container-h-3" id="splitter6">
+        <div class="box_1 bg1" id="box_1"></div>
+        <div class="box_1 bg2" id="box_2">
+          <div class="splitter" id="splitter1_1_1"></div>
+        </div>
+        <div class="box_1 bg3" id="box_3">
+          <div class="splitter" id="splitter1_2_1"></div>
+        </div>
+      </section>
+      sticky
+      <section class="splitter-container-h" id="splitter7">
+        <div class="box" style="width: 50%"></div>
+        <!-- <div id="splitter6" class="splitter"></div> -->
+        <div class="box2"></div>
+      </section>
+
+      <h3>resizer</h3>
+      <div style="position: relative; height: 800px">
+        <section class="resizer" id="resizer1" style="width: 284px">
+          8方向resize
+          <p id="dragresizer"></p>
+          <div class="handle uii-resizable-handle-s" style="left:50%;bottom:-5px;"></div>
+          <div class="handle uii-resizable-handle-e" style="top:50%;right:-5px;"></div>
+          <div class="handle uii-resizable-handle-n" style="left:50%;top:-5px;"></div>
+          <div class="handle uii-resizable-handle-w" style="top:50%;left:-5px;"></div>
+          <div class="handle uii-resizable-handle-se" style="bottom:-5px;right:-5px;"></div>
+          <div class="handle uii-resizable-handle-sw" style="bottom:-5px;left:-5px;"></div>
+          <div class="handle uii-resizable-handle-ne" style="top:-5px;right:-5px;"></div>
+          <div class="handle uii-resizable-handle-nw" style="top:-5px;left:-5px;"></div>
+        </section>
+
+        <section class="resizer" id="resizer2" style="margin-top: 300px">
+          1方向resize
+          <div class="handle uii-resizable-handle-se" style="bottom:5px;right:5px;"></div>
+        </section>
+      </div>
+
+      <h3>dragger</h3>
+      <div
+        style="
+          position: relative;
+          height: 400px;
+          border: 1px solid rebeccapurple;
+          overflow: auto;
+          left: 20px;
+        "
+      >
+        <section class="dragger" id="dragger1" style="cursor: move;left: 10px;">
+          直接元素拖动
+          <div class="rotate-handler"></div>
+          <div class="resize-handle uii-resizable-handle-se" style="bottom:5px;right:5px;"></div>
+        </section>
+
+        <section
+          class="dragger"
+          id="dragger2"
+          style="left: 150px; width: 150px"
+        >
+          <div
+            style="
+              position: relative;
+              display: flex;
+              background-color: cornflowerblue;
+              height: 20px;
+            "
+          >
+            <div
+              class="sensor"
+              style="
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                cursor: move;
+              "
+            ></div>
+            <div style="width: 30px; z-index: 1; background-color: cornsilk">
+              title
+            </div>
+            <div style="flex: 1"></div>
+            <div style="width: 60px; z-index: 1; background-color: ghostwhite">
+              actions
+            </div>
+          </div>
+          嵌套元素拖动
+        </section>
+
+        <section
+          class="dragger"
+          id="dragger3"
+          style="cursor: move; left: 350px"
+        >
+          拖动阈值20px
+        </section>
+
+        <section
+          class="dragger"
+          id="dragger4"
+          style="cursor: move; left: 500px"
+        >
+          拖放交互
+        </section>
+
+        <section
+          class="dragger"
+          id="dragger5"
+          style="cursor: move; left: 650px"
+        >
+          拖放副本交互
+        </section>
+
+        <section class="drag-targets">
+          <div></div>
+          <div></div>
+          <div style="margin-left: 80vw; position: absolute"></div>
+        </section>
+      </div>
+      <div
+        style="
+          position: relative;
+          height: 400px;
+          margin-top: 1rem;
+          border: 1px solid rebeccapurple;
+        "
+      >
+        <section class="dragger" id="dragger6" style="left:40px;top:50px;cursor: move;box-sizing: border-box;">
+          ghost模式
+        </section>
+        <section
+          class="dragger"
+          id="dragger7"
+          style="left: 200px; cursor: move"
+        >
+          垂直拖动
+        </section>
+        <div class="snappable" style="left: 400px; top: 100px"></div>
+        <div class="snappable" style="left: 600px; top: 40px"></div>
+        <div class="snappable" style="left: 500px; top: 250px"></div>
+        <div class="snappable" style="left: 700px; top: 160px"></div>
+        <div class="snappable" style="left: 80px; top: 300px"></div>
+
+        <div class="guides h" id="gh"></div>
+        <div class="guides v" id="gv"></div>
+      </div>
+      <p class="blank">&nbsp;</p>
+
+      <h3>rotator <button onclick="scale()">放大</button></h3>
+      <div style="position: relative; height: 300px">
+        <section class="rotator-wrapper">
+          <div class="rotator" id="rotator1">
+            <div class="rotate-handler"></div>
+          </div>
+          <div
+            class="rotator-center"
+            style="left: calc(50% - 4px); top: calc(50% - 4px)"
+          ></div>
+        </section>
+
+        <section class="rotator-wrapper" style="left: 300px">
+          <div
+            class="rotator"
+            id="rotator2"
+            style="transform-origin: 20% 20%"
+          >
+          <div class="rotate-handler"></div>
+        </div>
+          <div
+            class="rotator-center"
+            style="left: calc(20% - 4px); top: calc(20% - 4px)"
+          ></div>
+        </section>
+      </div>
+
+      <h3>selector</h3>
+      <div>
+        mode:
+        <select id="selectMode">
+          <option value="overlap">Overlap</option>
+          <option value="inclusion">Inclusion</option>
+        </select>
+      </div>
+      <div
+        style="position: relative; height: 300px"
+        class="selector-con"
+        id="selector-con"
+      >
+        <!-- <div class="block" style="left: 100%; top: 100px"></div> -->
+        <div
+          class="block"
+          style="
+            border: 10px solid #666;
+            padding: 10px;
+            left: 300px;
+            top: 150px;
+          "
+        >
+          <div
+            style="
+              position: absolute;
+              border: 20px solid #000;
+              width: 100px;
+              height: 100px;
+              left: 10px;
+              top: 10px;
+            "
+          ></div>
+        </div>
+
+        <!-- <div class="block" style="left: 300px; top: 20px"></div> -->
+        <div
+          class="block"
+          name="dragger"
+          style="
+            left: 80%;
+            top: 150px;
+            cursor: move;
+            background-color: yellowgreen;
+          "
+          id="selector-dragger"
+        ></div>
+      </div>
+
+      <h3>sortable</h3>
+      <div style="display: flex;">
+        <ul class="sortable-con" id="s1">
+          <li>item 1</li>
+          <li>item 2</li>
+          <li>item 3</li>
+          <li>item 4</li>
+          <li>item 5</li>
+        </ul>
+        <ul class="sortable-con" id="s2" style="margin-left: 2rem;">
+          <li class="gray">item 1</li>
+          <li class="gray">item 2</li>
+          <li class="gray">item 3</li>
+          <li class="gray">item 4</li>
+          <li class="gray">item 5</li>
+        </ul>
+      </div>
+
+      <div style="display: flex;">
+        <ul class="sortable-con" id="s3">
+          <li>item 1</li>
+          <li>item 2</li>
+          <li>item 3</li>
+          <li>item 4</li>
+          <li>item 5</li>
+        </ul>
+        <ul class="sortable-con" id="s4" style="display: flex;margin-left: 2rem;">
+          <li class="gray">item 1</li>
+          <li class="gray">item 2</li>
+          <li class="gray">item 3</li>
+          <li class="gray">item 4</li>
+          <li class="gray">item 5</li>
+        </ul>
+      </div>
+      
+    </main>
+    <script>
+      function addIframe() {
+        const draggerCon = document.getElementById("draggerCon");
+        const iframe = document.createElement("iframe");
+        iframe.src = "./iframe.html";
+        iframe.style.cssText =
+          "border:1px solid #aaa;width:200px;height:200px;left: 800px;top:40%;z-index: 4;";
+        draggerCon.appendChild(iframe);
+      }
+
+      function scale() {
+        const el = document.getElementById("rotator1");
+        const s = 0.8 + Math.random() * 2;
+        el.style.transform =
+          el.style.transform.replace(/scale\(.*?\)/, "") + " scale(" + s + ")";
+      }
+    </script>
+    <script type="module">
+      import uii,{ getTranslate } from "./uiik.js";
+
+      const box = document.getElementById("box");
+      const box2 = document.getElementById("box2");
+      uii.newSplittable("#splitter1", {
+        handleSize: 8,
+        minSize: 20,
+        ghost: true,
+        ghostClass: "split-ghost",
+        onStart: function () {
+          document.getElementById("dragbox").innerText = "drag start";
+        },
+        onSplit: function ({ size1, size2 }) {
+          box.innerText = size1;
+          box2.innerText = size2;
+        },
+        onEnd: function () {
+          document.getElementById("dragbox").innerText = "drag end";
+        },
+      });
+
+      uii.newSplittable("#splitter2", {
+        handleSize: 8,
+        minSize: [20, 100, 50],
+        ghost: true,
+        ghostClass: "split-ghost",
+        onStart: function () {
+          document.getElementById("dragbox").innerText = "drag start";
+        },
+        onEnd: function () {
+          document.getElementById("dragbox").innerText = "drag end";
+        },
+      });
+
+      uii.newSplittable("#splitter3", {});
+      uii.newSplittable("#splitter4", {
+        handle: ".splitter",
+      });
+      uii.newSplittable("#splitter5", {
+        handle: ".splitter",
+      });
+      uii.newSplittable("#splitter6", {
+        handle: ".splitter",
+      });
+      uii.newSplittable("#splitter7", {
+        sticky: true,
+        minSize: [100, 80],
+      });
+
+      const dragresizer = document.getElementById("dragresizer");
+      uii.newResizable("#resizer1", {
+        handle:'#resizer1 .handle',
+        offset: 10,
+        ghost: (dom)=>{
+          const copy = dom.cloneNode(false)
+          copy.style.border = '1px solid green'
+          copy.style.transition = 'none'
+          copy.style.boxShadow = 'none'
+          return copy
+        },
+        // minSize: [50, 100],
+        maxSize: [400, 300],
+        onStart: function () {
+          dragresizer.innerText = "drag start";
+        },
+        onResize: function ({ w, h }) {
+          dragresizer.innerText = w + ":" + h;
+        },
+        onEnd: function () {
+          dragresizer.innerText = "drag end";
+        },
+        aspectRatio: 16 / 9,
+      });
+      uii.newResizable("#dragger1", {
+        handle:'#dragger1 .resize-handle',
+        offset: 10,
+        ghost: true,
+        ghostClass: "resizer-ghost",
+        dir: ["se"],
+      });
+      
+      uii.newResizable("#resizer2", {
+        handle:'#resizer2 .handle',
+        offset: 10,
+        ghost: true,
+        ghostClass: "resizer-ghost",
+        dir: ["se"],
+      });
+
+      uii.newDroppable(".drag-targets div", {
+        accepts: "yyy",
+        hoverClass: "enter",
+        activeClass: "active",
+        onActive({ draggable, droppables }) {
+          droppables.forEach((el) => {
+            el.classList.toggle("drop", false);
+          });
+        },
+        onDrop: function ({ draggable, droppable }) {
+          droppable.classList.toggle("drop", true);
+        },
+      });
+
+      const d1 = uii.newDraggable("#dragger1", {
+        cursor: {
+          default: "grab",
+          active: "not-allowed",
+          over: "copy",
+        },
+        group: "xx",
+        zIndex: 999,
+      });
+      uii.newDraggable("#dragger2", {
+        group: "xx",
+        container: true,
+        handle: ".sensor",
+        classes: "dragging moving",
+      });
+      uii.newResizable("#dragger6", { dir: ["se"] });
+      uii.newDraggable("#dragger3", {
+        group: "xx",
+        threshold: 20,
+        container: true,
+      });
+      uii.newDraggable("#dragger4", {
+        group: "xx",
+        threshold: 50,
+        type:'yyy',
+        onStart: function ({ draggable }) {
+          // draggable.style["pointer-events"] = "none";
+        },
+        onEnd: function ({ draggable }) {
+          // draggable.style["pointer-events"] = "";
+        },
+      });
+      let copy;
+      uii.newDraggable("#dragger5", {
+        cursor: {
+          default: "grab",
+          active: "not-allowed",
+          over: "alias",
+        },
+        type: "yyy",
+        threshold: 30,
+        onStart: function ({draggable}) {
+          console.log("onDragStart");
+          copy = draggable.cloneNode(true);
+          copy.style.opacity = 0.3;
+          draggable.parentNode.appendChild(copy);
+          // copy.style['pointer-events'] = 'none'
+          // document.body.style.cursor = 'grabbing'
+
+          draggable.style["pointer-events"] = "none";
+        },
+        onDrag: function ({ x, y }) {
+          copy.style.left = x + "px";
+          copy.style.top = y + "px";
+
+          return false;
+        },
+        onEnd: function ({draggable}) {
+          draggable.style["pointer-events"] = "";
+          draggable.parentNode.removeChild(copy);
+          // document.body.style.cursor = ''
+        },
+      });
+      const gh = document.getElementById("gh");
+      const gv = document.getElementById("gv");
+      uii.newDraggable("#dragger6", {
+        grid: 20,
+        ghost: true,
+        container: true,
+        ghostClass: "ghost",
+        snap: ".snappable",
+        onDrag() {
+          gh.style.top = "-999px";
+          gv.style.left = "-999px";
+        },
+        onEnd() {
+          gh.style.top = "-999px";
+          gv.style.left = "-999px";
+        },
+        onSnap({el,dirH,dirV,targetH,targetV}) {
+          const xy = getTranslate(el)
+          if (targetV) {
+            const w = targetV.offsetLeft - xy.x;
+            if (w < 0) {
+              gh.style.left = targetV.offsetLeft - 10 + "px";
+              gh.style.width = Math.abs(w) + el.offsetWidth + 20 + "px";
+            } else {
+              gh.style.left = xy.x - 10 + "px";
+              gh.style.width = Math.abs(w) + targetV.offsetWidth + 20 + "px";
+            }
+            if (dirV == "t2t") {
+              gh.style.top = xy.y + "px";
+            } else if (dirV == "b2t") {
+              gh.style.top = xy.y + el.offsetHeight + "px";
+            } else if (dirV == "t2b") {
+              gh.style.top = xy.y + "px";
+            }
+          }
+          if (targetH) {
+            const h = targetH.offsetTop - xy.y;
+            if (h < 0) {
+              gv.style.top = targetH.offsetTop - 10 + "px";
+              gv.style.height = Math.abs(h) + el.offsetHeight + 20 + "px";
+            } else {
+              gv.style.top = xy.y - 10 + "px";
+              gv.style.height = Math.abs(h) + targetH.offsetHeight + 20 + "px";
+            }
+            if (dirH == "l2l") {
+              gv.style.left = xy.x + "px";
+            } else if (dirH == "r2l") {
+              gv.style.left = xy.x + el.offsetWidth + "px";
+            } else if (dirH == "l2r") {
+              gv.style.left = xy.x + "px";
+            }
+          }
+        },
+      });
+
+      uii.newDraggable("#dragger7", {
+        direction: "v",
+        container: true,
+        snap: ".snappable",
+        ghost: (dom) => {
+          const d = document.createElement("div");
+          d.style.width = d.style.height = '100px'
+          d.style.border = '1px solid red'
+          d.style.transform = dom.style.transform
+          d.style.position = "absolute";
+          d.innerHTML = "自定义ghost";
+          return d;
+        },
+        onDrag() {
+          gh.style.top = "-999px";
+        },
+        onEnd() {
+          gh.style.top = "-999px";
+        },
+        onSnap({el,dirH,dirV,targetH,targetV}) {
+          const xy = getTranslate(el)
+          const w = targetV.offsetLeft - xy.x;
+          if (w < 0) {
+            gh.style.left = targetV.offsetLeft - 10 + "px";
+            gh.style.width = Math.abs(w) + el.offsetWidth + 20 + "px";
+          } else {
+            gh.style.left = xy.x - 10 + "px";
+            gh.style.width = Math.abs(w) + targetV.offsetWidth + 20 + "px";
+          }
+          
+          if (dirV == "t2t") {
+            gh.style.top = xy.y + "px";
+          } else if (dirV == "b2t") {
+            gh.style.top = xy.y + el.offsetHeight + "px";
+          } else if (dirV == "t2b") {
+            gh.style.top = xy.y + "px";
+          }
+        },
+      });
+
+      uii.newRotatable("#dragger1",{
+        handle:'#dragger1 .rotate-handler',
+        onStart(){
+          d1.disable()
+        },
+        onEnd(){
+          d1.enable()
+        }
+      });
+      uii.newRotatable("#rotator1", {
+        handle:'#rotator1 .rotate-handler',
+        cursor: {
+          default: "move",
+          active: "cell",
+        },
+      });
+      uii.newRotatable("#rotator2", {
+        handle:'#rotator2 .rotate-handler',
+        cursor: {
+          default: "move",
+          active: "cell",
+        },
+      });
+
+      document.getElementById("selectMode").onchange = function (ev) {
+        selector.setOptions({
+          mode: ev.target.value,
+        });
+      };
+
+      const selector = uii.newSelectable("#selector-con", {
+        class: "selector-custom",
+        selectingClass: "active",
+        targets: ".selector-con .block",
+        mode: "overlap",
+        filter(t) {
+          if (t.getAttribute("name") === "dragger") return true;
+        },
+        onSelect(overlaps) {
+          console.log(overlaps);
+        },
+        // onSelect(overlaps) {
+        //   const blocks = document.querySelectorAll('.selector-con .block')
+        //   for (let b of blocks) {
+        //     b.className = b.className.replace(/ active/, '')
+        //   }
+        //   overlaps.forEach((el) => {
+        //     el.className = el.className.replace(/ active/, '') + ' active'
+        //   })
+        // },
+        // onSelectEnd(overlaps) {
+        //   overlaps.forEach((el) => {
+        //     el.className = el.className.replace(/ active/, '')
+        //   })
+        // },
+      });
+      uii.newDraggable("#selector-dragger", {
+        grid: 50,
+        onEnd: function (t) {
+          selector.updateTargets();
+        },
+      });
+
+      uii.newSortable('#s1',{
+        group:'g1',
+        spill:'revert',
+        // move:{
+        //   to:'copy'
+        // },
+        // sort:false
+      })
+      uii.newSortable('#s2,#s3,#s4',{
+        group: 'g1',
+        activeClass:'active'
+      })
+    </script>
+  </body>
+</html>

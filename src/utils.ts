@@ -5,26 +5,55 @@
  */
 
 import { find } from "myfx/collection"
+import { Uii } from "./types"
+import { get } from "myfx/object"
+import { isEmpty } from "myfx/is"
+import { closest } from "myfx/tree"
 
 /**
- * 获取child相对于parent的offset信息。含border宽度
- * @returns
+ * 获取child相对于parent的位置信息。含border宽度
+ * 
+ * todo
+ * @returns {x,y,w,h}
  */
-export function getOffset(child:HTMLElement,parent?:HTMLElement):{x:number,y:number}{
-  const rs = {x:0,y:0}
+export function getBox(child: Element, parent?: Element): { x: number, y: number, w: number, h: number } {
+  const rect = child.getBoundingClientRect()
+  const rs = {x:0,y:0,w:rect.width,h:rect.height}
+  parent = parent || (child as HTMLElement).offsetParent || (child as SVGElement).ownerSVGElement || child.parentElement || document.body
+  const parentRect = parent.getBoundingClientRect()//bcr包含padding，不包含borderWidth
+  const parentStyle = window.getComputedStyle(parent)
+  const parentBorderLeft = parseFloat(parentStyle.borderLeftWidth)
+  const parentBorderTop = parseFloat(parentStyle.borderTopWidth)
 
-  let op = child.offsetParent as HTMLElement
+  rs.x = rect.x - parentRect.x + parent.scrollLeft
+  rs.y = rect.y - parentRect.y + parent.scrollTop
 
-  while(op && parent && op !== parent){
-    const style = window.getComputedStyle(op)
-    rs.x += op.offsetLeft + parseFloat(style.borderLeftWidth)
-    rs.y += op.offsetTop + parseFloat(style.borderTopWidth)
-    op = op.offsetParent as HTMLElement
+  if(child instanceof SVGElement){
+  }else{
+    rs.x -= parentBorderLeft
+    rs.y -= parentBorderTop
   }
-  rs.x += child.offsetLeft
-  rs.y += child.offsetTop
 
   return rs;
+}
+
+/**
+ * 获取事件目标与点击点之间的偏移
+ * @param e 
+ * @returns [offx,offy]
+ */
+export function getPointOffset(e:MouseEvent,pos:{x:number,y:number}){
+  let ox = e.offsetX || 0,
+    oy = e.offsetY || 0;
+  if (e.target instanceof SVGElement){
+    ox -= pos.x
+    oy -= pos.y
+  }
+  return [ox,oy ]
+}
+
+export function isSVGEl(el:Element):el is SVGElement{
+  return el instanceof SVGElement
 }
 
 /**
@@ -68,4 +97,21 @@ export function setCursor(cursor:string){
 export function restoreCursor(){
   document.body.style.cursor = cursor.body
   document.documentElement.style.cursor = cursor.html
+}
+
+/**
+ * 获取元素样式/属性中的x/y
+ * @param el 
+ */
+export function getStyleXy(el: HTMLElement | SVGGraphicsElement) {
+  const style:any = window.getComputedStyle(el)
+  let x = 0,y = 0
+  if (el instanceof SVGGraphicsElement) {
+    x = parseFloat(style.x || style.cx) || 0
+    y = parseFloat(style.y || style.cy) || 0
+  } else {
+    x = parseFloat(style.left)||0
+    y = parseFloat(style.top) || 0
+  }
+  return {x,y}
 }

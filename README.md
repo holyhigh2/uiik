@@ -12,6 +12,7 @@ A UI interaction kit includes draggable, splittable, rotatable, selectable, etc.
 - Draggable/Droppable/Splittable/rotatable/selectable/Resizable
 - Customizable CSS interfaces like 'uii-draggable-handle', 'uii-splittable-handle'...
 - Rich options
+- SVG support
 
 ## Quick start
 1. install

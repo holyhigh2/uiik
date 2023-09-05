@@ -169,13 +169,10 @@ export class Splittable extends Uii{
     const updateStart = !oneSideMode || oneSideMode === 'start'
     const updateEnd = !oneSideMode || oneSideMode === 'end'
 
-    handle.onmousedown = function (e: MouseEvent) {
-
+    this.addPointerDown(handle, ({currentTarget, onPointerStart, onPointerMove, onPointerEnd }) => {
       // 1. 获取原始高度/宽度;设置宽度/高度
       let originSize = 0
       let originSize1 = 0
-      const originPosX = e.clientX
-      const originPosY = e.clientY
 
       let splitterSize = 1
       let blockSize = 0 // 分割区size
@@ -183,12 +180,12 @@ export class Splittable extends Uii{
         case 'v':
           originSize = dom1.offsetHeight
           originSize1 = dom2.offsetHeight
-          splitterSize = handle!.offsetHeight
+          splitterSize = currentTarget.offsetHeight
           break
         case 'h':
           originSize = dom1.offsetWidth
           originSize1 = dom2.offsetWidth
-          splitterSize = handle!.offsetWidth
+          splitterSize = currentTarget.offsetWidth
           break
       }
       blockSize = splitterSize + originSize + originSize1
@@ -202,56 +199,43 @@ export class Splittable extends Uii{
       let ghostNode: HTMLElement | null = null
 
       // 初始化sticked位置
-      let sticked:'start' | 'end' | 'none' = 'none'
+      let sticked: 'start' | 'end' | 'none' = 'none'
       if (originSize < minSize1 / 2) {
         sticked = 'start'
       } else if (blockSize - originSize - splitterSize < minSize2 / 2) {
         sticked = 'end'
       }
-      let dragging = false;
-      saveCursor()
+      
       let startPos = dir === 'v' ? dom1.offsetTop : dom1.offsetLeft
-      let ds1:number, anotherSize:number
+      let ds1: number, anotherSize: number
 
-      const dragListener = (ev: MouseEvent) => {
-        const offsetx = ev.clientX - originPosX
-        const offsety = ev.clientY - originPosY
+      //bind events
+      onPointerStart(function (args: Record<string, any>) {
+        const { ev } = args
+        currentTarget.classList.add(CLASS_SPLITTABLE_HANDLE_ACTIVE)
+        if (ghost) {
+          ghostNode = currentTarget.cloneNode(true) as HTMLElement
+          ghostNode.style.opacity = '0.3'
+          ghostNode.style.pointerEvents = 'none'
+          ghostNode.classList.add(CLASS_SPLITTABLE_HANDLE_GHOST)
 
-        if (!dragging) {
-          if (Math.abs(offsetx) > THRESHOLD || Math.abs(offsety) > THRESHOLD) {
-            dragging = true;
-
-            handle?.classList.add(CLASS_SPLITTABLE_HANDLE_ACTIVE)
-
-            if (ghost) {
-              ghostNode = handle!.cloneNode(true) as HTMLElement
-              ghostNode.style.opacity = '0.3'
-              ghostNode.style.pointerEvents = 'none'
-              ghostNode.classList.add(CLASS_SPLITTABLE_HANDLE_GHOST)
-
-              if (ghostNode) {
-                if (ghostClass) {
-                  ghostNode.className =
-                    ghostNode.className.replace(ghostClass, '') + ' ' + ghostClass
-                }
-                handle?.parentNode?.appendChild(ghostNode)
-
-                onClone && onClone({clone:ghostNode}, e)
-              }
+          if (ghostNode) {
+            if (ghostClass) {
+              ghostNode.className =
+                ghostNode.className.replace(ghostClass, '') + ' ' + ghostClass
             }
+            currentTarget.parentNode.appendChild(ghostNode)
 
-            lockPage()
-            setCursor(handle?.dataset.cursor || '')
-
-            onStart && onStart({size1:originSize,size2:originSize1},ev)
-          } else {
-            ev.preventDefault();
-            return false;
+            onClone && onClone({ clone: ghostNode }, ev)
           }
         }
+        onStart && onStart({ size1: originSize, size2: originSize1 }, ev)
+      })
+      onPointerMove((args: Record<string, any>) => {
+        const { ev, offX, offY, currentStyle } = args
 
         let doSticky = false
-        ds1 = dir === 'v' ? originSize + offsety : originSize + offsetx
+        ds1 = dir === 'v' ? originSize + offY : originSize + offX
 
         if (ds1 < minSize1 / 2 && sticky1 && minSize1 > 0) {
           if (sticked == 'none') {
@@ -286,13 +270,14 @@ export class Splittable extends Uii{
 
         anotherSize = blockSize - ds1 - splitterSize
 
-        if (ghostNode){
+        if (ghostNode) {
           if (dir === 'v') {
             ghostNode.style.top = startPos + ds1 - handleSize / 2 + 'px'
           } else {
             ghostNode.style.left = startPos + ds1 - handleSize / 2 + 'px'
+            console.log(ghostNode.style.left)
           }
-        }else{
+        } else {
           const updateProp = dir === 'v' ? 'height' : 'width'
           if (updateStart) {
             dom1Style.setProperty(updateProp, ds1 + 'px', 'important')
@@ -306,76 +291,62 @@ export class Splittable extends Uii{
           }
 
           if (doSticky) {
-            onSticky && onSticky({size1:ds1, size2:anotherSize,position: sticked},ev)
+            onSticky && onSticky({ size1: ds1, size2: anotherSize, position: sticked }, ev)
           }
 
           //update handle
           if (dir === 'v') {
-            handle!.style.top = dom2.offsetTop - handleSize / 2 + 'px'
+            currentStyle.top = dom2.offsetTop - handleSize / 2 + 'px'
           } else {
-            handle!.style.left = dom2.offsetLeft - handleSize / 2 + 'px'
+            currentStyle.left = dom2.offsetLeft - handleSize / 2 + 'px'
           }
         }
 
-        onSplit && onSplit( {size1:ds1, size2:anotherSize},ev)
-
-        ev.preventDefault()
-        return false
-      }
-      const dragEndListener = (ev: MouseEvent) => {
-        document.removeEventListener('mousemove', dragListener, false)
-        document.removeEventListener('mouseup', dragEndListener, false)
-        window.removeEventListener('blur', dragEndListener, false)
-
-        if (dragging) {
-          switch (dir) {
-            case 'v':
-              originSize = dom1?.offsetHeight || -1
-              originSize1 = dom2?.offsetHeight || -1
-              break
-            case 'h':
-              originSize = dom1?.offsetWidth || -1
-              originSize1 = dom2?.offsetWidth || -1
-              break
-          }
-
-          handle?.classList.remove(CLASS_SPLITTABLE_HANDLE_ACTIVE)
-
-          if (ghostNode){
-            const updateProp = dir === 'v' ? 'height' : 'width'
-            if (updateStart) {
-              dom1Style.setProperty(updateProp, ds1 + 'px', 'important')
-            }
-            if (updateEnd) {
-              dom2Style.setProperty(
-                updateProp,
-                anotherSize + 'px',
-                'important'
-              )
-            }
-            //update handle
-            if (dir === 'v') {
-              handle!.style.top = startPos + ds1 - handleSize / 2 + 'px'
-            } else {
-              handle!.style.left = startPos + ds1 - handleSize / 2 + 'px'
-            }
-
-            ghostNode.parentNode?.contains(ghostNode) && ghostNode.parentNode?.removeChild(ghostNode)
-          }
-
-          unlockPage()
-          restoreCursor()
-
-          onEnd && onEnd({size1:originSize, size2:originSize1},ev)
+        onSplit && onSplit({ size1: ds1, size2: anotherSize }, ev)
+      })
+      onPointerEnd((args: Record<string, any>) => {
+        const { ev, currentStyle } = args
+        switch (dir) {
+          case 'v':
+            originSize = dom1?.offsetHeight || -1
+            originSize1 = dom2?.offsetHeight || -1
+            break
+          case 'h':
+            originSize = dom1?.offsetWidth || -1
+            originSize1 = dom2?.offsetWidth || -1
+            break
         }
-      }
-      document.addEventListener('mousemove', dragListener, false)
-      document.addEventListener('mouseup', dragEndListener, false)
-      window.addEventListener('blur', dragEndListener, false)
 
-      e.preventDefault()
-      return false
-    }
+        handle?.classList.remove(CLASS_SPLITTABLE_HANDLE_ACTIVE)
+
+        if (ghostNode) {
+          const updateProp = dir === 'v' ? 'height' : 'width'
+          if (updateStart) {
+            dom1Style.setProperty(updateProp, ds1 + 'px', 'important')
+          }
+          if (updateEnd) {
+            dom2Style.setProperty(
+              updateProp,
+              anotherSize + 'px',
+              'important'
+            )
+          }
+          //update handle
+          if (dir === 'v') {
+            currentStyle.top = startPos + ds1 - handleSize / 2 + 'px'
+          } else {
+            currentStyle.left = startPos + ds1 - handleSize / 2 + 'px'
+          }
+
+          ghostNode.parentNode?.contains(ghostNode) && ghostNode.parentNode?.removeChild(ghostNode)
+        }
+        onEnd && onEnd({ size1: originSize, size2: originSize1 }, ev)
+      })
+    }, {
+      threshold: THRESHOLD,
+      lockPage: true
+    })
+
   }
 }
 

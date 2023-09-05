@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>uii tests</title>
+    <style>
+      body {
+        padding: 0 5vh;
+      }
+
+      .logo {
+        font-size: 5vh;
+      }
+
+      #splitter {
+        width: 0px;
+      }
+
+      .splitter[dragging] .uii-splitter-sensor {
+        background: rgba(0, 255, 102, 0.5);
+      }
+
+      .uii-splittable-handle {
+        transition: background 0.5s 0.3s;
+      }
+
+      .uii-splittable-handle:hover {
+        background: rgba(0, 255, 102, 0.5);
+      }
+
+      .splitter-container-h {
+        display: flex;
+        height: 100px;
+        width: 400px;
+        /* grid-template-columns: auto 0px auto; */
+      }
+
+      .splitter-container-v {
+        /* display: grid; */
+        height: 300px;
+        width: 100px;
+        /* grid-template-rows: auto 0px auto; */
+      }
+
+      .splitter-container-h-strip {
+        display: grid;
+        height: 100px;
+        width: 400px;
+        grid-template-columns: auto 20px auto;
+      }
+
+      .splitter-container-v-strip {
+        /* display: grid; */
+        width: 100px;
+        height: 400px;
+        grid-template-rows: auto 20px auto;
+      }
+
+      .splitter-container-h-container {
+        display: grid;
+        height: 100px;
+        width: 400px;
+        grid-template-columns: auto auto;
+      }
+
+      .splitter-container-h-container .splitter {
+        height: 100%;
+        width: 20px;
+        background-color: rgb(210, 224, 12);
+      }
+
+      #splitter3 {
+        /* background-color: teal; */
+        /* width: 20px; */
+      }
+
+      #splitter4 {
+        background-color: teal;
+        /* height: 20px; */
+      }
+
+      .box {
+        background-color: tomato;
+        text-align: center;
+        color: #fff;
+        /* transition: all 0.3s; */
+      }
+
+      .box2 {
+        background-color: navy;
+        text-align: center;
+        color: #fff;
+        flex: 1;
+      }
+
+      .uii-resizable-handle,
+      .uii-rotatable-handle {
+        background: rgba(100, 100, 100, 0.5);
+      }
+
+      .resizer {
+        width: 160px;
+        height: 160px;
+        position: absolute;
+        left: 300px;
+        box-shadow: 0 0 4px;
+        /* transition: all .3s; */
+      }
+
+      .resizer-ghost {
+        border: 2px dashed black;
+        background-color: transparent;
+        box-shadow: none;
+        z-index: 9;
+      }
+
+      .dragger {
+        width: 100px;
+        height: 100px;
+        position: absolute;
+        background-color: coral;
+        text-align: center;
+        z-index: 9;
+      }
+      .dragging {
+        border: 5px solid red;
+      }
+      .moving {
+      }
+
+      .blank {
+        margin-top: 1rem;
+      }
+
+      .drag-targets {
+        position: absolute;
+        left: 0px;
+        top: 150px;
+      }
+
+      #draggerCon {
+        position: absolute;
+        left: 400px;
+        top: 150px;
+      }
+
+      .drag-targets div {
+        display: inline-block;
+        margin-left: 2rem;
+        width: 150px;
+        height: 150px;
+        border: 1px solid #000;
+        transition: all 0.3s;
+      }
+
+      .drag-targets .active {
+        border: 1px dashed coral;
+      }
+      .drag-targets .enter {
+        box-shadow: 0 0 10px coral inset;
+        border-color: coral;
+      }
+
+      .drag-targets .drop {
+        box-shadow: 0 0 200px coral inset;
+        border-color: coral;
+      }
+
+      .ghost {
+        border: 2px dashed black;
+        background-color: transparent;
+        box-shadow: none;
+        z-index: 9;
+      }
+      .snappable {
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        background: rgba(100, 100, 100, 0.5);
+      }
+      .guides {
+        position: absolute;
+        overflow: hidden;
+        z-index: 9;
+      }
+      .guides.h {
+        border-top: 1px dashed rgb(18, 152, 255);
+        height: 0;
+      }
+      .guides.v {
+        border-left: 1px dashed rgb(18, 152, 255);
+        width: 0;
+      }
+
+      .splitter-container-h-3 {
+        width: 600px;
+        overflow: hidden;
+        height: 100px;
+      }
+
+      .splitter_1 {
+        width: 0;
+        float: left;
+        height: 100%;
+      }
+
+      .box2_2 {
+      }
+
+      .box_1 {
+        width: 200px;
+        float: left;
+        height: 100%;
+        text-align: center;
+        color: #fff;
+        transition: all 0.3s;
+      }
+
+      .bg1 {
+        background-color: tomato;
+      }
+
+      .bg2 {
+        background-color: navy;
+      }
+
+      .bg3 {
+        background-color: #e9cf00;
+      }
+
+      .rotator-wrapper {
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        border: 1px dashed red;
+        top: 50px;
+        left: 100px;
+      }
+
+      .rotator {
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        background-color: whitesmoke;
+      }
+
+      .rotator-center {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border: 1px solid red;
+        border-radius: 8px;
+      }
+
+      .rotator-center::before {
+        position: absolute;
+        top: calc(50% - 1px);
+        left: calc(50% - 1px);
+        content: "";
+        width: 2px;
+        height: 2px;
+        background-color: red;
+      }
+
+      .selector-con {
+        border: 20px solid #000;
+        overflow: auto;
+        margin-bottom: 10rem;
+      }
+
+      .selector-con .block {
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        background-color: #dadada;
+        border: 5px solid #000;
+        padding: 10px;
+      }
+      .selector-con rect.active {
+        stroke: red !important;
+        stroke-width: 2px;
+        stroke-dashoffset: 5px;
+      }
+
+      .selector-con::before {
+        content: "点击并拖动鼠标";
+        text-align: center;
+        width: 150%;
+        height: 100%;
+        position: absolute;
+        font-size: 3rem;
+        color: #dadada;
+        line-height: 5;
+      }
+      .selector-custom {
+        stroke: rgb(47, 172, 255);
+        fill: rgba(20, 161, 255, 0.356);
+
+        border: 1px solid rgb(47, 172, 255);
+        background: rgba(20, 161, 255, 0.356);
+      }
+
+      .split-ghost {
+        background: rgba(0, 255, 102, 0.5);
+        /* width: 0px !important; */
+        /* border: 1px dashed black; */
+        opacity: 1 !important;
+      }
+      
+      .sortable-con{
+        border: 1px solid #dadada;
+        list-style: none;
+        padding: 0;
+        width: 200px;
+      }
+      .sortable-con .gray{
+        background-color: #dadada;
+      }
+      .sortable-con.active {
+        border: 1px dashed coral;
+      }
+      .sortable-con li{
+        /* transition: transform .3s; */
+        border: 1px solid #999;
+        /* margin: .5rem .1rem; */
+        cursor: move;
+
+      }
+      .uii-sortable-active{
+        opacity: .3;
+      }
+      .uii-sortable-ghost{
+        background-color: cornflowerblue !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2 class="logo">uii</h2>
+    <main style="position: relative;">
+      <div id="dd1" style="width: 100px;height: 100px;background-color: #000;">sdf</div>
+      <svg style="border: 1px solid;" id="selector-con" class="selector-con" width="800" height="600">
+        <g>
+          <circle r="5" cx="70" cy="20" id="handle"></circle>
+          <rect width="100" height="100" x="20" y="40" id="resizer1" fill="blue" ></rect>
+          <rect class="handle uii-resizable-handle-se" width="10" height="10" x="115" y="135" fill="rgba(100, 100, 100, 0.5)" ></rect>
+        </g>
+      </svg>
+    </main>
+    <script type="module">
+      import uii,{moveTo,getTranslate,rotateTo} from "./uiik.js";
+
+      const resizeHandle = document.querySelector('#resizer1~.handle')
+
+      uii.newResizable("#resizer1", {
+        handle:'#resizer1~.handle',
+        offset: 10,
+        ghost: true,
+        // minSize: [50, 100],
+        maxSize: [400, 300],
+        // aspectRatio: 16 / 9,
+        onStart(){
+          this.hst2 = getTranslate(resizeHandle)
+        },
+        onResize({ow,oh}){
+          moveTo(resizeHandle, this.hst2.x+ ow, this.hst2.y+oh)
+        }
+      });
+
+      uii.newRotatable("#resizer1", {
+        handle:'#handle',
+        cursor: {
+          default: "move",
+          active: "cell",
+        },
+        onRotate({deg,cx,cy}){
+          rotateTo(document.getElementById('handle'),deg,0,70)
+          rotateTo(resizeHandle,deg,-45,-45)
+        }
+      });
+
+      //先把拖动兼容svg
+      let hst,hst2
+      uii.newDraggable("#resizer1", {
+          cursor: {
+            default: "grab",
+            active: "not-allowed",
+            over: "copy",
+          },
+          group: "xx",
+          zIndex: 999,
+          onStart(){
+            //记录handle初始位置
+            hst = getTranslate(document.getElementById('handle'))
+            hst2 = getTranslate(resizeHandle)
+          },
+          onDrag({x,y,ox,oy},ev){
+            moveTo(document.getElementById('handle'), (hst.x||0) + ox, (hst.y||0)+oy)
+            moveTo(resizeHandle, (hst2.x||0) + ox, (hst2.y||0) +oy)
+          }
+        });
+      
+        uii.newDraggable("#dd1")
+
+        const selector = uii.newSelectable("#selector-con", {
+            class: "selector-custom",
+            selectingClass: "active",
+            targets: "#selector-con rect,#dd1",
+            mode: "overlap",
+            filter(t) {
+              if (t.ownerSVGElement) return true;
+            },
+            onSelect(overlaps) {
+              console.log(overlaps);
+            },
+            // onSelect(overlaps) {
+            //   const blocks = document.querySelectorAll('.selector-con .block')
+            //   for (let b of blocks) {
+            //     b.className = b.className.replace(/ active/, '')
+            //   }
+            //   overlaps.forEach((el) => {
+            //     el.className = el.className.replace(/ active/, '') + ' active'
+            //   })
+            // },
+            // onSelectEnd(overlaps) {
+            //   overlaps.forEach((el) => {
+            //     el.className = el.className.replace(/ active/, '')
+            //   })
+            // },
+          });
+    </script>
+  </body>
+</html>
