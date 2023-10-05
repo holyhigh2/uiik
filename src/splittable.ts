@@ -7,7 +7,6 @@ import { isArray, isEmpty} from 'myfx/is'
 import { each, includes, map, reject } from 'myfx/collection'
 import { assign } from 'myfx/object'
 import { SplittableOptions, Uii } from './types'
-import { lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from './utils';
 
 const THRESHOLD = 1;
 const CLASS_SPLITTABLE = "uii-splittable";

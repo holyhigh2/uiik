@@ -40,6 +40,7 @@ export * from './sortable'
 export * from './detector'
 export * from './types'
 export * from './transform'
+export * from './utils'
 
 export const VERSION = packageInfo.version
 

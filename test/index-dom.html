@@ -105,9 +105,9 @@
         width: 160px;
         height: 160px;
         position: absolute;
-        left: 300px;
+        /* left: 300px; */
         box-shadow: 0 0 4px;
-        transition: all .3s;
+        /* transition: all .3s; */
       }
 
       .resizer-ghost {
@@ -271,6 +271,8 @@
         padding: 5px;
         overflow: auto;
         margin-bottom: 10rem;
+
+        transform: scale(0.7);
       }
 
       .selector-con .block {
@@ -410,8 +412,8 @@
       </section>
 
       <h3>resizer</h3>
-      <div style="position: relative; height: 800px">
-        <section class="resizer" id="resizer1" style="width: 284px">
+      <div style="position: relative; height: 800px;transform: scale(.8);">
+        <section class="resizer" id="resizer1" style="width: 284px;transform: rotate(45deg);">
           8方向resize
           <p id="dragresizer"></p>
           <div class="handle uii-resizable-handle-s" style="left:50%;bottom:-5px;"></div>
@@ -422,11 +424,15 @@
           <div class="handle uii-resizable-handle-sw" style="bottom:-5px;left:-5px;"></div>
           <div class="handle uii-resizable-handle-ne" style="top:-5px;right:-5px;"></div>
           <div class="handle uii-resizable-handle-nw" style="top:-5px;left:-5px;"></div>
+
+          <div class="rotate-handler"></div>
         </section>
 
-        <section class="resizer" id="resizer2" style="margin-top: 300px">
+        <section class="resizer" id="resizer2" style="margin-top: 300px;">
           1方向resize
           <div class="handle uii-resizable-handle-se" style="bottom:5px;right:5px;"></div>
+          <div class="handle uii-resizable-handle-s" style="left:50%;bottom:-5px;"></div>
+          <div class="handle uii-resizable-handle-e" style="top:50%;right:-5px;"></div>
         </section>
       </div>
 
@@ -580,6 +586,7 @@
       >
         <!-- <div class="block" style="left: 100%; top: 100px"></div> -->
         <div
+          id="block1"
           class="block"
           style="
             border: 10px solid #666;
@@ -719,17 +726,20 @@
 
       const dragresizer = document.getElementById("dragresizer");
       uii.newResizable("#resizer1", {
-        handle:'#resizer1 .handle',
-        offset: 10,
-        ghost: (dom)=>{
-          const copy = dom.cloneNode(false)
-          copy.style.border = '1px solid green'
-          copy.style.transition = 'none'
-          copy.style.boxShadow = 'none'
-          return copy
+        // handle:'#resizer1 .handle',
+        handle(target){
+          return target.querySelectorAll('.handle')
         },
+        offset: 10,
+        // ghost: (dom)=>{
+        //   const copy = dom.cloneNode(false)
+        //   copy.style.border = '1px solid green'
+        //   copy.style.transition = 'none'
+        //   copy.style.boxShadow = 'none'
+        //   return copy
+        // },
         // minSize: [50, 100],
-        maxSize: [400, 300],
+        // maxSize: [400, 300],
         onStart: function () {
           dragresizer.innerText = "drag start";
         },
@@ -739,12 +749,12 @@
         onEnd: function () {
           dragresizer.innerText = "drag end";
         },
-        aspectRatio: 16 / 9,
+        // aspectRatio: 16 / 9,
       });
       uii.newResizable("#dragger1", {
         handle:'#dragger1 .resize-handle',
         offset: 10,
-        ghost: true,
+        // ghost: true,
         ghostClass: "resizer-ghost",
         dir: ["se"],
       });
@@ -752,7 +762,7 @@
       uii.newResizable("#resizer2", {
         handle:'#resizer2 .handle',
         offset: 10,
-        ghost: true,
+        // ghost: true,
         ghostClass: "resizer-ghost",
         dir: ["se"],
       });
@@ -777,12 +787,13 @@
           active: "not-allowed",
           over: "copy",
         },
+        filter:'.resize-handle,.rotate-handler',
         group: "xx",
         zIndex: 999,
       });
       uii.newDraggable("#dragger2", {
         group: "xx",
-        container: true,
+        containment: true,
         handle: ".sensor",
         classes: "dragging moving",
       });
@@ -790,7 +801,7 @@
       uii.newDraggable("#dragger3", {
         group: "xx",
         threshold: 20,
-        container: true,
+        containment: true,
       });
       uii.newDraggable("#dragger4", {
         group: "xx",
@@ -823,8 +834,7 @@
           draggable.style["pointer-events"] = "none";
         },
         onDrag: function ({ x, y }) {
-          copy.style.left = x + "px";
-          copy.style.top = y + "px";
+          copy.style.transform = `translate(${x}px,${y}px)`
 
           return false;
         },
@@ -839,7 +849,6 @@
       uii.newDraggable("#dragger6", {
         grid: 20,
         ghost: true,
-        container: true,
         ghostClass: "ghost",
         snap: ".snappable",
         onDrag() {
@@ -891,12 +900,13 @@
 
       uii.newDraggable("#dragger7", {
         direction: "v",
-        container: true,
+        containment: true,
         snap: ".snappable",
         ghost: (dom) => {
           const d = document.createElement("div");
           d.style.width = d.style.height = '100px'
           d.style.border = '1px solid red'
+          d.style.left = dom.style.left
           d.style.transform = dom.style.transform
           d.style.position = "absolute";
           d.innerHTML = "自定义ghost";
@@ -953,6 +963,14 @@
         },
       });
 
+      uii.newRotatable("#resizer1", {
+        handle:'#resizer1 .rotate-handler',
+        cursor: {
+          default: "move",
+          active: "cell",
+        },
+      });
+
       document.getElementById("selectMode").onchange = function (ev) {
         selector.setOptions({
           mode: ev.target.value,
@@ -987,6 +1005,7 @@
       });
       uii.newDraggable("#selector-dragger", {
         grid: 50,
+        containment:true,
         onEnd: function (t) {
           selector.updateTargets();
         },

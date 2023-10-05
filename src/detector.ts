@@ -7,7 +7,7 @@ import { isElement, isFunction, isString } from "myfx/is"
 import { flatMap, reject} from "myfx/collection"
 import { assign} from "myfx/object"
 import { CollisionData, CollisionDetectorOptions } from "./types"
-import { getBox } from "./utils"
+import { getBox, getRectInContainer } from "./utils"
 
 export class CollisionDetector {
   #_targets: (() => Array<HTMLElement>) | string | HTMLElement | Array<HTMLElement> | NodeList | HTMLCollection
@@ -64,15 +64,13 @@ export class CollisionDetector {
     this.targetsData = flatMap<HTMLElement, any, CollisionData>(targets, t => {
       if (!t) return []
 
-      const offset = getBox(t,this.opts.container)
-
-      const rect = { x: offset.x, y: offset.y, width: offset.w, height: offset.h}
+      const rect = getRectInContainer(t,this.opts.container)
 
       return {
         x1: rect.x,
         y1: rect.y,
-        x2: rect.x + rect.width,
-        y2: rect.y + rect.height,
+        x2: rect.x + rect.w,
+        y2: rect.y + rect.h,
         el:t
       }
     })

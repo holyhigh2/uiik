@@ -6,59 +6,91 @@
  */
 
 import { isDefined } from "myfx/is";
-import { getStyleXy } from "./utils";
 
-const EXP_MATRIX = /matrix\((?<a>[\d-.]+)\s*,\s*(?<b>[\d-.]+)\s*,\s*(?<c>[\d-.]+)\s*,\s*(?<d>[\d-.]+)\s*,\s*(?<x>[\d-.]+)\s*,\s*(?<y>[\d-.]+)\)/gim;
+const UtMap = new WeakMap();
 
-export class UiiTransformer{
-  x:number
-  y:number
-  angle:number = 0
-  el: HTMLElement | SVGGraphicsElement
-  constructor(el: HTMLElement | SVGGraphicsElement){
-    this.el = el
+const EXP_MATRIX =
+  /matrix\((?<a>[\d-.]+)\s*,\s*(?<b>[\d-.]+)\s*,\s*(?<c>[\d-.]+)\s*,\s*(?<d>[\d-.]+)\s*,\s*(?<x>[\d-.]+)\s*,\s*(?<y>[\d-.]+)\)/gim;
 
-    //1. 转换样式坐标到transform
-    const styleXy:any = getStyleXy(el)
-    el.style.left = el.style.top = ''
-    el.removeAttribute('x')
-    el.removeAttribute('y')
-    el.removeAttribute('cx')
-    el.removeAttribute('cy')
-    this. x= styleXy.x
-    this. y= styleXy.y 
-    //2. 叠加transform
-    EXP_MATRIX.lastIndex = 0
-    const rs = EXP_MATRIX.exec(window.getComputedStyle(el).transform)
-    if(rs && rs.groups){
-      this.x += parseFloat(rs.groups.x) || 0
-      this.y += parseFloat(rs.groups.y) || 0
-    }
+export class UiiTransformer {
+  x: number;
+  y: number;
+  angle: number = 0;
+  el: HTMLElement | SVGGraphicsElement;
+  constructor(el: HTMLElement | SVGGraphicsElement) {
+    this.el = el;
 
-    moveTo(el, this.x, this.y)
+    this.normalize(el);
+
+    UtMap.set(el, this);
   }
 
-  moveTo(x: number,y: number){
-    this.x = x
-    this.y = y
-    moveTo(this.el, this.x, this.y)
+  normalize(el: HTMLElement | SVGGraphicsElement) {
+    let { x, y } = normalize(el);
+    this.x = x;
+    this.y = y;
+    return this;
+  }
+
+  moveTo(x: number, y: number) {
+    this.x = x;
+    this.y = y;
+    moveTo(this.el, this.x, this.y);
   }
   moveToX(x: number) {
-    this.x = x
-    moveTo(this.el, this.x, this.y)
+    this.x = x;
+    moveTo(this.el, this.x, this.y);
   }
   moveToY(y: number) {
-    this.y = y
-    moveTo(this.el, this.x, this.y)
+    this.y = y;
+    moveTo(this.el, this.x, this.y);
   }
 }
 
 /**
+ * 统一化处理，所有外边距都处理为translate
+ * @param el
+ */
+function normalize(el: HTMLElement | SVGGraphicsElement) {
+  const style: any = window.getComputedStyle(el);
+  let x = 0,
+    y = 0;
+  //1. convert left/top (include margins)
+  if (el instanceof HTMLElement) {
+    x = (parseFloat(style.left) || 0) + (parseFloat(style.marginLeft) || 0);
+    y = (parseFloat(style.top) || 0) + (parseFloat(style.marginTop) || 0);
+    el.style.setProperty("left", "0", "important");
+    el.style.setProperty("top", "0", "important");
+    el.style.setProperty("margin", "0", "important");
+  } else {
+    x = parseFloat(style.x || style.cx) || 0;
+    y = parseFloat(style.y || style.cy) || 0;
+    el.removeAttribute("x");
+    el.removeAttribute("y");
+    el.removeAttribute("cx");
+    el.removeAttribute("cy");
+  }
+
+  //2. merge transform
+  EXP_MATRIX.lastIndex = 0;
+  const rs = EXP_MATRIX.exec(window.getComputedStyle(el).transform);
+  if (rs && rs.groups) {
+    x += parseFloat(rs.groups.x) || 0;
+    y += parseFloat(rs.groups.y) || 0;
+  }
+
+  moveTo(el, x, y);
+  return { x, y };
+}
+
+/**
  * 返回一个包装后的变形对象，可执行变形操作
- * @param el 
+ * @param el
  */
 export function wrapper(el: HTMLElement | SVGGraphicsElement): UiiTransformer {
-  return new UiiTransformer(el)
+  let ut = UtMap.get(el);
+  if (ut) return ut.normalize(el);
+  return new UiiTransformer(el);
 }
 
 function transformMove(
@@ -92,22 +124,21 @@ export function getTranslate(el: HTMLElement | SVGGraphicsElement) {
   }
 
   EXP_GET_TRANSLATE.lastIndex = 0;
-  const xy = EXP_GET_TRANSLATE.exec(transformStr)
+  const xy = EXP_GET_TRANSLATE.exec(transformStr);
   if (xy && xy.groups) {
     xVal = parseFloat(xy.groups.x);
     yVal = parseFloat(xy.groups.y);
-  }else{
+  } else {
     EXP_GET_TRANSLATE_XY.lastIndex = 0;
-    const xy = EXP_GET_TRANSLATE_XY.exec(transformStr)
-    if(xy && xy.groups){
-      if(xy.groups.dir == 'X'){
+    const xy = EXP_GET_TRANSLATE_XY.exec(transformStr);
+    if (xy && xy.groups) {
+      if (xy.groups.dir == "X") {
         xVal = parseFloat(xy.groups.v);
-      }else{
+      } else {
         yVal = parseFloat(xy.groups.v);
       }
     }
   }
-  
 
   return { x: xVal, y: yVal };
 }
@@ -160,7 +191,7 @@ export function moveBy(
   } else {
     let style = (el as HTMLElement).style;
     style.transform = transformMove(
-      el.getAttribute("transform") || "",
+      style.transform || "",
       xy.x + x,
       xy.y + y,
       true
@@ -198,7 +229,7 @@ export function rotateTo(
   } else {
     let style = (el as HTMLElement).style;
     style.transform =
-      style.transform.replace(/rotateZ\([^)]+?\)/, "") +
+      style.transform.replace(/rotate\([^)]+?\)/, "").replace(/rotateZ\([^)]+?\)/, "") +
       " rotateZ(" +
       deg +
       "deg)";

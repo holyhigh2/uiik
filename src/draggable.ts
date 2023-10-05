@@ -6,6 +6,7 @@
  */
 import {
   each,
+  find,
   map,
   some,
 } from "myfx/collection"
@@ -21,11 +22,13 @@ import {
   isArray,
   isNumber,
   isDefined,
+  isBoolean,
+  isEmpty,
 } from 'myfx/is'
 
 import { DraggableOptions, Uii } from "./types";
-import { EDGE_THRESHOLD, getStyleXy } from "./utils";
-import { UiiTransformer, getTranslate, moveTo, wrapper } from "./transform"
+import { EDGE_THRESHOLD, getMatrixInfo, getPointInContainer, getRectInContainer } from "./utils";
+import { UiiTransformer, wrapper } from "./transform"
 
 const DRAGGER_GROUPS:Record<string, Array<HTMLElement>> = {}
 const CLASS_DRAGGABLE = "uii-draggable";
@@ -36,6 +39,7 @@ const CLASS_DRAGGABLE_GHOST = "uii-draggable-ghost";
 
 /**
  * 用于表示一个或多个可拖动元素的定义
+ * 每个拖动元素可以有独立handle，也可以公用一个handle
  * 可拖动元素拖动时自动剔除left/top/x/y/cx/cy属性，而使用transform:translate替代
  * > 可用CSS接口
  * - .uii-draggable
@@ -46,6 +50,7 @@ const CLASS_DRAGGABLE_GHOST = "uii-draggable-ghost";
  */
 export class Draggable extends Uii {
   #handleMap = new WeakMap();
+  #container: HTMLElement | null = null
 
   constructor(
     els: string | HTMLElement | Array<string | HTMLElement>,
@@ -55,7 +60,8 @@ export class Draggable extends Uii {
       els,
       assign(
         {
-          container: false,
+          containment: false,
+          watch:true,
           threshold: 0,
           ghost: false,
           direction: "",
@@ -89,17 +95,47 @@ export class Draggable extends Uii {
       DRAGGER_GROUPS[this.opts.group].push(...this.ele)
     }
 
-    each(this.ele, (el) => {
-      this.bindEvent(this.registerEvent.bind(this),el, this.opts, this.#handleMap);
+    this.#initStyle(this.ele)
+
+    //containment
+    if (this.opts.containment){
+      if (isBoolean(this.opts.containment)){
+        this.#container = isEmpty(this.ele)?null:this.ele[0].parentElement
+      } else if (isString(this.opts.containment)) {
+        this.#container = document.querySelector(this.opts.containment)
+      } else if (isElement(this.opts.containment)) {
+        this.#container = this.opts.containment as HTMLElement
+      }
+    }
+    
+    if (this.opts.watch && this.eleString){
+      let con
+      if (isString(this.opts.watch)){
+        con = document.querySelector(this.opts.watch)
+      }else{
+        con = isEmpty(this.ele) ? null : this.ele[0].parentElement
+      }
+
+      this.bindEvent(con || document.body, this.opts, this.#handleMap);
+    }else{
+      each(this.ele, (el) => {
+        this.bindEvent(el, this.opts, this.#handleMap);
+      })
+    }
+  }
+
+  //初始化样式
+  #initStyle(draggableList: HTMLElement[]){
+    each(draggableList, (el) => {
       if (isDefined(this.opts.type))
         el.dataset.dropType = this.opts.type
-      el.classList.toggle(CLASS_DRAGGABLE,true)
+      el.classList.toggle(CLASS_DRAGGABLE, true)
       const ee = this.#handleMap.get(el) || el
-      ee.classList.toggle(CLASS_DRAGGABLE_HANDLE,true)
+      ee.classList.toggle(CLASS_DRAGGABLE_HANDLE, true)
 
-      if (isDefined(this.opts.cursor)){
+      if (isDefined(this.opts.cursor)) {
         el.style.cursor = this.opts.cursor.default || 'move'
-        if(isDefined(this.opts.cursor.over)){
+        if (isDefined(this.opts.cursor.over)) {
           el.dataset.cursorOver = this.opts.cursor.over
           el.dataset.cursorActive = this.opts.cursor.active || 'move'
         }
@@ -108,42 +144,63 @@ export class Draggable extends Uii {
   }
 
   bindEvent(
-    registerEvent: Function,
-    el: HTMLElement,
+    bindTarget:Element,
     opts: DraggableOptions,
-    handleMap: WeakMap<HTMLElement, HTMLElement>
+    handleMap: WeakMap<Element, Element>
   ) {
-    this.addPointerDown(el, ({ev, currentTarget, currentStyle, currentCStyle, pointX, pointY, onPointerStart, onPointerMove, onPointerEnd }) => {
-      // get options
-      let dragDom = currentTarget as HTMLElement;
+    const container = this.#container
+    let draggableList:any = this.ele
+    const eleString = this.eleString
+    const initStyle = this.#initStyle.bind(this)
+    this.addPointerDown(bindTarget, ({ev, currentTarget, currentStyle, currentCStyle, pointX, pointY, onPointerStart, onPointerMove, onPointerEnd }) => {
       let t = ev.target as HTMLElement
       if (!t) return;
+
+      //refresh draggableList
+      if (opts.watch && eleString){
+        draggableList = bindTarget.querySelectorAll(eleString)
+        initStyle(draggableList)
+      }
+
+      //find drag dom & handle
+      let findRs = find<HTMLElement | SVGGraphicsElement>(draggableList,el=>el.contains(t))
+      if (!findRs)return
+      const dragDom: HTMLElement | SVGGraphicsElement = findRs
 
       let handle = handleMap.get(dragDom)
       if (handle && !handle.contains(t as Node)) {
         return
       }
 
+      //检测
+      const onPointerDown = opts.onPointerDown;
+      if (onPointerDown && onPointerDown({ draggable: dragDom },ev) === false) return;
+
       const filter = opts.filter
 
       //check filter
       if (filter) {
-        if (some(el.querySelectorAll(filter), ele => ele.contains(t))) return
+        if (some(dragDom.querySelectorAll(filter), ele => ele.contains(t))) return
       }
 
-      //transform
-      if (dragDom.style.left || dragDom.style.top) {
-        const styleXy = getStyleXy(dragDom)
-        dragDom.style.left = dragDom.style.top = ''
-        moveTo(dragDom, styleXy.x, styleXy.y)
+      //用于计算鼠标移动时当前位置
+      const offsetParent = dragDom instanceof HTMLElement ? dragDom.offsetParent || document.body : dragDom.ownerSVGElement!
+      
+      const offsetParentRect = offsetParent.getBoundingClientRect()
+      const offsetParentCStyle = window.getComputedStyle(offsetParent)
+
+      const offsetXy = getPointInContainer(ev,dragDom)
+      let offsetPointX = offsetXy.x
+      let offsetPointY = offsetXy.y
+
+      const matrixInfo = getMatrixInfo(dragDom)
+      const currentXy = getPointInContainer(ev, offsetParent as any, offsetParentRect, offsetParentCStyle)
+      if (matrixInfo.angle != 0) {
+        offsetPointX = currentXy.x - matrixInfo.x
+        offsetPointY = currentXy.y - matrixInfo.y
       }      
 
-      const container = dragDom instanceof SVGElement ? dragDom.ownerSVGElement! : (dragDom.offsetParent || document.body);
-
-      //start point
-      const containerRect = container.getBoundingClientRect();
-
-      const inContainer = opts.container;
+      const inContainer = !!container;
       const ghost = opts.ghost;
       const ghostClass = opts.ghostClass;
       const direction = opts.direction;
@@ -188,34 +245,32 @@ export class Draggable extends Uii {
       let lastSnapping = "";
       if (snapOn) {
         //获取拖动元素所在容器内的可吸附对象
-        snappable = map(container.querySelectorAll(snapOn), (el) => {
+        snappable = map((container||document).querySelectorAll(snapOn), (el) => {
           //计算相对容器xy
-          const bcr = el.getBoundingClientRect()
+          const {x,y,w,h} = getRectInContainer(el,offsetParent as any)
 
-          const x1 = bcr.x - containerRect.x
-          const y1 = bcr.y - containerRect.y
           return {
-            x1 ,
-            y1,
-            x2: x1 + bcr.width,
-            y2: y1 + bcr.height,
+            x1:x,
+            y1:y,
+            x2: x + w,
+            y2: y + h,
             el: el,
           };
         });
       }
 
-      const originW = dragDom.getBoundingClientRect().width + parseFloat(currentCStyle.borderLeftWidth) + parseFloat(currentCStyle.borderRightWidth);
-      const originH = dragDom.getBoundingClientRect().height + parseFloat(currentCStyle.borderTopWidth) + parseFloat(currentCStyle.borderBottomWidth);
+      const dragDomRect = dragDom.getBoundingClientRect()
 
-      let originTranslate = getTranslate(dragDom)
+      const originW = dragDomRect.width + parseFloat(currentCStyle.borderLeftWidth) + parseFloat(currentCStyle.borderRightWidth);
+      const originH = dragDomRect.height + parseFloat(currentCStyle.borderTopWidth) + parseFloat(currentCStyle.borderBottomWidth);
 
       // boundary
       let minX: number = 0;
       let minY: number = 0;
       let maxX: number = 0;
       let maxY: number = 0;
-      let originOffX = dragDom.offsetLeft + (originTranslate.x||0)
-      let originOffY = dragDom.offsetTop + (originTranslate.y||0)
+      let originOffX = 0
+      let originOffY = 0
 
       if (inContainer) {
         maxX = container.scrollWidth - originW
@@ -224,9 +279,8 @@ export class Draggable extends Uii {
       if (maxX < 0) maxX = 0
       if (maxY < 0) maxY = 0
 
-
       let copyNode: HTMLElement;
-      let copyNodeTrans: UiiTransformer;
+      let transformer: UiiTransformer;
 
       let timer: any = null;
       let toLeft = false
@@ -234,18 +288,15 @@ export class Draggable extends Uii {
       let toRight = false
       let toBottom = false
 
-      //origin pos
-      const otx = originTranslate.x || 0,
-            oty = originTranslate.y || 0;
-      let originX = pointX + container.scrollLeft;
-      let originY = pointY + container.scrollTop;
+      let endX = 0,endY = 0
 
       //bind events
       onPointerStart(function (args: Record<string, any>) {
         const { ev } = args
+
         if (ghost) {
           if (isFunction(ghost)) {
-            copyNode = ghost(dragDom);
+            copyNode = ghost(dragDom as any);
           } else {
             copyNode = dragDom.cloneNode(true) as HTMLElement;
             copyNode.style.opacity = "0.3";
@@ -253,7 +304,6 @@ export class Draggable extends Uii {
             copyNode.style.position = "absolute";
           }
 
-          // copyNode.style.transform = copyNode.style.transform.replace(/translate\(.*?\)/,'')
           copyNode.style.zIndex = zIndex + ''
 
           if (ghostClass) {
@@ -263,9 +313,11 @@ export class Draggable extends Uii {
           copyNode.classList.toggle(CLASS_DRAGGABLE_GHOST, true)
           dragDom.parentNode?.appendChild(copyNode);
 
-          copyNodeTrans = wrapper(copyNode)
+          transformer = wrapper(copyNode)
 
           onClone && onClone({ clone: copyNode }, ev);
+        }else{
+          transformer = wrapper(dragDom)
         }
         //apply classes
         dragDom.classList.add(...compact(split(classes, ' ')))
@@ -274,7 +326,7 @@ export class Draggable extends Uii {
 
         dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE, true)
 
-        onStart && onStart({ draggable: dragDom }, ev)
+        onStart && onStart({ draggable: dragDom, x: currentXy.x, y: currentXy.y }, ev)
 
         //notify
         const customEv = new Event("uii-dragactive", { "bubbles": true, "cancelable": false });
@@ -282,19 +334,22 @@ export class Draggable extends Uii {
       })
       onPointerMove((args: Record<string, any>) => {
         const { ev, pointX, pointY, offX, offY } = args
-        const newX = pointX - originX + container.scrollLeft;
-        const newY = pointY - originY + container.scrollTop;
+
+        const currentXy = getPointInContainer(ev, offsetParent as any, offsetParentRect, offsetParentCStyle)
+        let newX = currentXy.x
+        let newY = currentXy.y
+
         //edge detect
         if (scroll) {
-          const ltX = pointX - containerRect.x;
-          const ltY = pointY - containerRect.y;
-          const rbX = containerRect.x + containerRect.width - pointX;
-          const rbY = containerRect.y + containerRect.height - pointY;
+          const lX = pointX - offsetParentRect.x;
+          const lY = pointY - offsetParentRect.y;
+          const rX = offsetParentRect.x + offsetParentRect.width - pointX;
+          const rY = offsetParentRect.y + offsetParentRect.height - pointY;
 
-          toLeft = ltX < EDGE_THRESHOLD
-          toTop = ltY < EDGE_THRESHOLD
-          toRight = rbX < EDGE_THRESHOLD
-          toBottom = rbY < EDGE_THRESHOLD
+          toLeft = lX < EDGE_THRESHOLD
+          toTop = lY < EDGE_THRESHOLD
+          toRight = rX < EDGE_THRESHOLD
+          toBottom = rY < EDGE_THRESHOLD
 
           if (
             toLeft || toTop
@@ -304,14 +359,14 @@ export class Draggable extends Uii {
             if (!timer) {
               timer = setInterval(() => {
                 if (toLeft) {
-                  container.scrollLeft -= scrollSpeed;
+                  offsetParent.scrollLeft -= scrollSpeed;
                 } else if (toRight) {
-                  container.scrollLeft += scrollSpeed;
+                  offsetParent.scrollLeft += scrollSpeed;
                 }
                 if (toTop) {
-                  container.scrollTop -= scrollSpeed;
+                  offsetParent.scrollTop -= scrollSpeed;
                 } else if (toBottom) {
-                  container.scrollTop += scrollSpeed;
+                  offsetParent.scrollTop += scrollSpeed;
                 }
               }, 20);
             }
@@ -323,8 +378,8 @@ export class Draggable extends Uii {
           }
         }
 
-        let x = newX
-        let y = newY
+        let x = newX - offsetPointX + 0
+        let y = newY - offsetPointY + 0
 
         //grid
         if (isNumber(gridX) && isNumber(gridY)) {
@@ -334,10 +389,10 @@ export class Draggable extends Uii {
 
         if (inContainer) {
           if (originOffX + x < minX){
-            x = -otx;
+            x = -0;
           }
           if (originOffY + y < minY) {            
-            y = -oty;
+            y = -0;
           }
           if (originOffX + x > maxX) {
             x = maxX - originOffX;
@@ -350,8 +405,8 @@ export class Draggable extends Uii {
         let emitSnap = false;
 
         if (snapOn) {
-          const currPageX1 = otx + x;
-          const currPageY1 = oty + y;
+          const currPageX1 = x;
+          const currPageY1 = y;
           const currPageX2 = currPageX1 + originW;
           const currPageY2 = currPageY1 + originH;
           //check snappable
@@ -428,10 +483,10 @@ export class Draggable extends Uii {
 
           if (snapX || snapY) {
             if (snapX) {
-              x = snapX - otx;
+              x = snapX;
             }
             if (snapY) {
-              y = snapY - oty;
+              y = snapY;
             }
             if (onSnap && lastSnapping !== lastSnapDirX + "" + lastSnapDirY) {
               setTimeout(() => {
@@ -465,20 +520,20 @@ export class Draggable extends Uii {
             y: y
           }, ev) === false) {
             canDrag = false;
+            endX = x
+            endY = y
           }
         }
         if (canDrag) {
-          if (copyNode) {
-            if (direction === "v") {
-              copyNodeTrans.moveToY(oty + y)
-            } else if (direction === "h") {
-              copyNodeTrans.moveToX(otx + x)
-            } else {
-              copyNodeTrans.moveTo(otx + x, oty + y)
-            }
+          if (direction === "v") {
+            transformer.moveToY(y)
+          } else if (direction === "h") {
+            transformer.moveToX(x)
           } else {
-            moveTo(dragDom,otx + x,oty + y)
+            transformer.moveTo(x, y)
           }
+          endX = x
+          endY = y
         }
       })
       onPointerEnd((args: Record<string, any>) => {
@@ -498,7 +553,7 @@ export class Draggable extends Uii {
 
         let moveToGhost = true;
         if (onEnd) {
-          moveToGhost = onEnd({ draggable: dragDom }, ev) === false ? false : true;
+          moveToGhost = onEnd({ draggable: dragDom, x: endX, y: endY }, ev) === false ? false : true;
         }
         //notify
         const customEv = new Event("uii-dragdeactive", { "bubbles": true, "cancelable": false });
@@ -507,8 +562,7 @@ export class Draggable extends Uii {
         if (ghost) {
           dragDom.parentNode?.contains(copyNode) && dragDom.parentNode?.removeChild(copyNode);
           if (moveToGhost !== false) {
-            const xy = getTranslate(copyNode)
-            moveTo(dragDom,xy.x||0,xy.y||0)
+            wrapper(dragDom).moveTo(transformer.x,transformer.y)
           }
         }
 

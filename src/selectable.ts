@@ -10,7 +10,7 @@ import { compact } from 'myfx/array'
 import { isFunction } from 'myfx/is'
 import { CollisionDetector, newCollisionDetector } from "./detector";
 import { SelectableOptions, Uii } from "./types";
-import { EDGE_THRESHOLD, getBox, getPointOffset } from "./utils";
+import { EDGE_THRESHOLD, getMatrixInfo, getPointInContainer } from "./utils";
 
 const CLASS_SELECTOR = "uii-selector";
 const CLASS_SELECTING = "uii-selecting";
@@ -51,13 +51,14 @@ export class Selectable extends Uii {
     selector.setAttribute('class', CLASS_SELECTOR)
     selector.style.cssText = `
       position:absolute;
-      left:-9999px;
+      left:0;top:0;
     `;
     if (this.opts.class) {
       selector.setAttribute('class', selector.getAttribute('class') + " " + this.opts.class)
     } else {
       selector.style.cssText += "border:1px dashed #000;stroke:#000;";
     }
+    selector.style.display = 'none'
     domEl.appendChild(selector);
     
     //create detector
@@ -82,9 +83,7 @@ export class Selectable extends Uii {
     const that = this;
     const opts:SelectableOptions = this.opts
 
-    this.registerEvent(con, "mousedown", (e: MouseEvent) => {
-      const t = e.target as HTMLElement;
-
+    this.addPointerDown(con, ({ ev,target,currentRect,currentCStyle, currentTarget, onPointerStart, onPointerMove, onPointerEnd }) => {
       const onStart = opts.onStart;
       const onSelect = opts.onSelect;
       const onEnd = opts.onEnd;
@@ -95,88 +94,76 @@ export class Selectable extends Uii {
       const selectingClassAry = compact(split(opts.selectingClass, " "));
       const selectedClassAry = compact(split(opts.selectedClass, " "));
 
-      //reset pos
-      selector.style.left = selector.style.top = '0'
-
       //check filter
       if (filter) {
         if (isFunction(filter)) {
-          if (filter(t)) return;
-        } else if (some(con.querySelectorAll(filter), (el) => el.contains(t)))
+          if (filter(target)) return;
+        } else if (some(con.querySelectorAll(filter), (el) => el.contains(target)))
           return;
       }
 
+      //检测
+      const onPointerDown = opts.onPointerDown;
+      if (onPointerDown && onPointerDown(ev) === false)return;
+
       let originPos = "";
 
-      //offset
-      const rect = con.getBoundingClientRect();
-      const conStyle = window.getComputedStyle(con)
-      const blw = parseFloat(conStyle.borderLeftWidth)
-      const btw = parseFloat(conStyle.borderTopWidth)
-
-      const [ox, oy] = getPointOffset(e, getBox(t, con))
-      console.log(ox,oy)
-
-      let hitPosX = ox + con.scrollLeft,
-        hitPosY = oy + con.scrollTop;
-      if (t !== con) {
-        const offset = getBox(t, con);
-        const style = window.getComputedStyle(t)
-        hitPosX = offset.x + ox + parseFloat(style.borderLeftWidth);
-        hitPosY = offset.y + oy + parseFloat(style.borderTopWidth);
-      }
+      let matrixInfo = getMatrixInfo(currentCStyle)
+      const startxy = getPointInContainer(ev, con, currentRect, currentCStyle, matrixInfo)
+      let hitPosX = startxy.x
+      let hitPosY = startxy.y
 
       const style = selector.style;
 
       let selection: HTMLElement[] = [];
       let lastSelection: HTMLElement[] = [];
-      let x1 = hitPosX,
-        y1 = hitPosY;
-
-      let dragging = false;
+      let x1 = hitPosX,y1 = hitPosY;
+      
       let timer: any = null;
       let toLeft = false;
       let toTop = false;
       let toRight = false;
       let toBottom = false;
-      const dragListener = (ev: MouseEvent) => {
-        const newX = ev.clientX - rect.x + con.scrollLeft - blw;
-        const newY = ev.clientY - rect.y + con.scrollTop -btw;
 
-        const offsetx = newX - hitPosX;
-        const offsety = newY - hitPosY;
+      //bind events
+      onPointerStart(function (args: Record<string, any>) {
+        const { ev } = args
+        //update targets count & positions
+        that.#_detector.update();
 
-        if (!dragging) {
-          if (Math.abs(offsetx) > THRESHOLD || Math.abs(offsety) > THRESHOLD) {
-            dragging = true;
-            //update targets count & positions
-            this.#_detector.update();
+        //detect container position
+        const pos = currentCStyle.position;
 
-            //detect container position
-            const pos = window.getComputedStyle(con).position;
-            
-            if (pos === "static") {
-              originPos = con.style.position;
-              con.style.position = "relative";
-            }
-            //clear _lastSelected
-            each(this.#_lastSelected,t=>{
-              t.classList.toggle(CLASS_SELECTED, false);
-            })
-
-            onStart && onStart({selection:this.#_lastSelected,selectable:con},ev);
-          } else {
-            ev.preventDefault();
-            return false;
-          }
+        if (pos === "static") {
+          originPos = con.style.position;
+          con.style.position = "relative";
         }
+        //clear _lastSelected
+        each(that.#_lastSelected, t => {
+          target.classList.toggle(CLASS_SELECTED, false);
+        })
+
+        style.display = 'block'
+
+        onStart && onStart({ selection: that.#_lastSelected, selectable: con }, ev);
+      })
+      onPointerMove((args: Record<string, any>) => {
+        const { ev } = args
+
+        //获取当前位置坐标
+        const currentXy = getPointInContainer(ev, currentTarget, currentRect, currentCStyle, matrixInfo)
+
+        let pointX = currentXy.x
+        let pointY = currentXy.y
+        let offX = pointX - hitPosX
+        let offY = pointY - hitPosY
 
         //edge detect
         if (scroll) {
-          const ltX = ev.clientX - rect.x;
-          const ltY = ev.clientY - rect.y;
-          const rbX = rect.x + rect.width - ev.clientX;
-          const rbY = rect.y + rect.height - ev.clientY;
+          const ltX = ev.clientX - currentRect.x;
+          const ltY = ev.clientY - currentRect.y;
+          const rbX = currentRect.x + currentRect.width - ev.clientX;
+          const rbY = currentRect.y + currentRect.height - ev.clientY;
 
           toLeft = ltX < EDGE_THRESHOLD;
           toTop = ltY < EDGE_THRESHOLD;
@@ -208,18 +195,18 @@ export class Selectable extends Uii {
 
         let x = hitPosX,
           y = hitPosY,
-          w = Math.abs(offsetx),
-          h = Math.abs(offsety);
-        if (offsetx > 0 && offsety > 0) {
+          w = Math.abs(offX),
+          h = Math.abs(offY);
+        if (offX > 0 && offY > 0) {
           x1 = hitPosX;
           y1 = hitPosY;
-        } else if (offsetx < 0 && offsety < 0) {
-          x = x1 = newX;
-          y = y1 = newY;
-        } else if (offsetx < 0) {
-          x = x1 = newX;
-        } else if (offsety < 0) {
-          y = y1 = newY;
+        } else if (offX < 0 && offY < 0) {
+          x = x1 = pointX;
+          y = y1 = pointY;
+        } else if (offX < 0) {
+          x = x1 = pointX;
+        } else if (offY < 0) {
+          y = y1 = pointY;
         }
 
         style.width = w + "px";
@@ -254,19 +241,13 @@ export class Selectable extends Uii {
 
         lastSelection = selection;
 
-        if (changed && onSelect) onSelect({selection,selectable:con},ev);
+        if (changed && onSelect) onSelect({ selection, selectable: con }, ev);
+      })
+      onPointerEnd((args: Record<string, any>) => {
+        const { ev, currentStyle } = args
 
-        ev.preventDefault();
-        return false;
-      };
-
-      const dragEndListener = (ev: MouseEvent) => {
-        style.left = "-9999px";
-        style.width = style.height = "0px";
-        document.removeEventListener("mousemove", dragListener, false);
-        document.removeEventListener("mouseup", dragEndListener, false);
-        window.removeEventListener("blur", dragEndListener, false);
-
+        style.display = 'none'
+        
         if (scroll) {
           if (timer) {
             clearInterval(timer);
@@ -289,18 +270,14 @@ export class Selectable extends Uii {
           t.classList.toggle(CLASS_SELECTED, true);
         });
 
-        this.#_lastSelected = selection;
+        that.#_lastSelected = selection;
 
-        if (dragging && onEnd) onEnd({selection,selectable:con},ev);
-      };
-
-      document.addEventListener("mousemove", dragListener, false);
-      document.addEventListener("mouseup", dragEndListener, false);
-      window.addEventListener("blur", dragEndListener, false);
-
-      e.preventDefault();
-      return false;
-    });
+        if (onEnd) onEnd({ selection, selectable: con }, ev);
+      })
+    }, {
+      threshold: THRESHOLD,
+      lockPage: true
+    })
   }
 
   /**
