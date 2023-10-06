@@ -8,6 +8,11 @@ import typescript from "rollup-plugin-typescript2";
 import clear from "rollup-plugin-clear";
 import terser from '@rollup/plugin-terser'
 const pkg = require("./package.json");
+const fs = require("fs");
+
+process.on("exit", () => {
+  fs.rmSync('./dist/src', { recursive: true });
+});
 
 export default {
   input: "src/index.ts",
@@ -20,7 +25,6 @@ export default {
     typescript({
       tsconfigOverride: {
         compilerOptions: {
-          declaration: false,
           removeComments: true,
         },
       },
