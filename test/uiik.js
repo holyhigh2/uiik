@@ -1,4 +1,4 @@
-/* uiik 1.3.0 @holyhigh2 https://github.com/holyhigh2/uiik */
+/* uiik 1.3.0-alpha @holyhigh2 https://github.com/holyhigh2/uiik */
 (function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -1892,16 +1892,6 @@ function getRectInContainer(el, container) {
  */
 function getCenterXy(el) {
     const cStyle = window.getComputedStyle(el);
-    //origin w & h
-    if (el instanceof HTMLElement) {
-        el.clientWidth;
-        el.clientHeight;
-    }
-    else {
-        //rect
-        get$2(el, 'width.animVal.value', 0);
-        get$2(el, 'height.animVal.value', 0);
-    }
     //origin
     const center = cStyle.transformOrigin;
     const centerPair = center.split(" ");
@@ -1967,14 +1957,10 @@ class Uii {
         const threshold = opts.threshold || 0;
         const toLockPage = opts.lockPage || false;
         const uiiOptions = this.opts;
-        // let draggableList: any = this.ele
         this.registerEvent(el, 'mousedown', (e) => {
             let t = e.target;
             if (!t)
                 return;
-            //targets check
-            // let findRs = find<HTMLElement | SVGGraphicsElement>(draggableList, el => el.contains(t))
-            // if (!findRs) return
             //uiik options
             const hasCursor = !isEmpty$1(get$2(uiiOptions, 'cursor.active'));
             //提取通用信息
@@ -3756,7 +3742,6 @@ class Draggable extends Uii {
             const offsetParent = dragDom instanceof HTMLElement ? dragDom.offsetParent || document.body : dragDom.ownerSVGElement;
             const offsetParentRect = offsetParent.getBoundingClientRect();
             const offsetParentCStyle = window.getComputedStyle(offsetParent);
-            //鼠标相对于元素偏移
             const offsetXy = getPointInContainer(ev, dragDom);
             let offsetPointX = offsetXy.x;
             let offsetPointY = offsetXy.y;
@@ -3883,7 +3868,6 @@ class Draggable extends Uii {
             });
             onPointerMove((args) => {
                 const { ev, pointX, pointY, offX, offY } = args;
-                //获取当前位置坐标
                 const currentXy = getPointInContainer(ev, offsetParent, offsetParentRect, offsetParentCStyle);
                 let newX = currentXy.x;
                 let newY = currentXy.y;
@@ -11731,7 +11715,7 @@ function newSortable(container, opts) {
     return new Sortable(container, opts);
 }
 
-var version = "1.2.1";
+var version = "1.3.0-alpha";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

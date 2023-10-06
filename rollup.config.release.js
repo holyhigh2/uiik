@@ -1,31 +1,13 @@
 /* eslint-disable max-len */
+import { nodeResolve } from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import banner2 from "rollup-plugin-banner2";
 import json from "@rollup/plugin-json";
 import copy from "rollup-plugin-copy";
 import typescript from "rollup-plugin-typescript2";
 import clear from "rollup-plugin-clear";
+import terser from '@rollup/plugin-terser'
 const pkg = require("./package.json");
-const fs = require("fs");
-const path = require("path");
-
-process.on("exit", () => {
-  const files = fs.readdirSync("./dist");
-
-  // 扁平化
-  files.forEach((item, index) => {
-    const fullpath = path.join("dist", item);
-    const stat = fs.statSync(fullpath);
-    if (!stat.isDirectory()) {
-      return;
-    }
-
-    fs.readdirSync(fullpath).forEach((fileName) => {
-      fs.copyFileSync(path.join(fullpath, fileName), "./dist/" + fileName);
-    });
-    fs.rmSync(fullpath, { recursive: true });
-  });
-});
 
 export default {
   input: "src/index.ts",
@@ -38,11 +20,13 @@ export default {
     typescript({
       tsconfigOverride: {
         compilerOptions: {
-          declaration: true
+          declaration: false,
+          removeComments: true,
         },
       },
     }),
     commonjs(),
+    nodeResolve(),
     banner2(
       () => `/**
  * ${pkg.name} v${pkg.version}
@@ -62,8 +46,6 @@ export default {
             "CHANGELOG.md",
             "LICENSE",
             "README.md",
-            "package.json",
-            ".npmignore",
           ],
           dest: "dist",
         },
@@ -72,13 +54,15 @@ export default {
   ],
   output: [
     {
-      file: "dist/index.esm.js",
-      format: "esm",
+      file: "dist/uiik.js",
+      format: "umd",
+      name: "uiik",
     },
     {
-      file: "dist/index.js",
+      file: "dist/uiik.min.js",
       format: "umd",
-      name: "uiik"
+      name: "uiik",
+      plugins: [terser()],
     },
   ],
 };

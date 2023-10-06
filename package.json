@@ -28,6 +28,7 @@
   "scripts": {
     "build": "rollup --config",
     "test": "rollup --config rollup.config.test.js --watch",
+    "release": "rollup --config rollup.config.release.js",
     "doc": "npx typedoc"
   },
   "dependencies": {
