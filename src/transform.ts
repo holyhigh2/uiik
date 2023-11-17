@@ -6,11 +6,9 @@
  */
 
 import { isDefined } from "myfx/is";
+import { get } from "myfx/object";
 
 const UtMap = new WeakMap();
-
-const EXP_MATRIX =
-  /matrix\((?<a>[\d-.]+)\s*,\s*(?<b>[\d-.]+)\s*,\s*(?<c>[\d-.]+)\s*,\s*(?<d>[\d-.]+)\s*,\s*(?<x>[\d-.]+)\s*,\s*(?<y>[\d-.]+)\)/gim;
 
 export class UiiTransformer {
   x: number;
@@ -25,8 +23,8 @@ export class UiiTransformer {
     UtMap.set(el, this);
   }
 
-  normalize(el: HTMLElement | SVGGraphicsElement) {
-    let { x, y } = normalize(el);
+  normalize(el?: HTMLElement | SVGGraphicsElement) {
+    let { x, y } = normalize(el||this.el);
     this.x = x;
     this.y = y;
     return this;
@@ -44,6 +42,10 @@ export class UiiTransformer {
   moveToY(y: number) {
     this.y = y;
     moveTo(this.el, this.x, this.y);
+  }
+  rotateTo(deg: number, cx?: number, cy?: number) {
+    this.angle = deg;
+    rotateTo(this.el, deg, cx, cy);
   }
 }
 
@@ -63,8 +65,12 @@ function normalize(el: HTMLElement | SVGGraphicsElement) {
     el.style.setProperty("top", "0", "important");
     el.style.setProperty("margin", "0", "important");
   } else {
-    x = parseFloat(style.x || style.cx) || 0;
-    y = parseFloat(style.y || style.cy) || 0;
+    x =
+      parseFloat(get(el, "x.baseVal.value") || get(el, "cx.baseVal.value")) ||
+      0;
+    y =
+      parseFloat(get(el, "y.baseVal.value") || get(el, "cy.baseVal.value")) ||
+      0;
     el.removeAttribute("x");
     el.removeAttribute("y");
     el.removeAttribute("cx");
@@ -72,12 +78,9 @@ function normalize(el: HTMLElement | SVGGraphicsElement) {
   }
 
   //2. merge transform
-  EXP_MATRIX.lastIndex = 0;
-  const rs = EXP_MATRIX.exec(window.getComputedStyle(el).transform);
-  if (rs && rs.groups) {
-    x += parseFloat(rs.groups.x) || 0;
-    y += parseFloat(rs.groups.y) || 0;
-  }
+  const { x: tx, y: ty } = getTranslate(el);
+  x += tx || 0;
+  y += ty || 0;
 
   moveTo(el, x, y);
   return { x, y };
@@ -100,8 +103,8 @@ function transformMove(
   unit = false
 ) {
   return (
-    `translate(${x}${unit ? "px" : ""},${y}${unit ? "px" : ""})` +
-    transofrmStr.replace(/translate\([^)]+?\)/, "")
+    `translate(${x}${unit ? "px" : ""},${y}${unit ? "px" : ""}) ` +
+    transofrmStr.replace(/translate\([^)]+?\)/, "").trim()
   );
 }
 
@@ -229,7 +232,9 @@ export function rotateTo(
   } else {
     let style = (el as HTMLElement).style;
     style.transform =
-      style.transform.replace(/rotate\([^)]+?\)/, "").replace(/rotateZ\([^)]+?\)/, "") +
+      style.transform
+        .replace(/rotate\([^)]+?\)/, "")
+        .replace(/rotateZ\([^)]+?\)/, "") +
       " rotateZ(" +
       deg +
       "deg)";

@@ -5,17 +5,31 @@
  */
 import { each, map } from "myfx/collection";
 import { assign } from "myfx/object";
-import { isArray, isArrayLike, isFunction, isNumber, isString } from "myfx/is";
+import {
+  isArray,
+  isArrayLike,
+  isDefined,
+  isFunction,
+  isNumber,
+  isString,
+  isUndefined,
+} from "myfx/is";
 import { ResizableOptions, Uii } from "./types";
 import {
   ONE_ANG,
   ONE_RAD,
+  calcVertex,
   getCenterXy,
+  getCenterXySVG,
   getMatrixInfo,
   getPointInContainer,
   getRectInContainer,
+  getStyleSize,
+  parseOxy,
 } from "./utils";
-import { UiiTransformer, moveTo, wrapper } from "./transform";
+import { UiiTransformer, moveTo, rotateTo, wrapper } from "./transform";
+import { closest } from "myfx/tree";
+import { lowerCase } from "myfx/string";
 
 const THRESHOLD = 2;
 const CLASS_RESIZABLE_HANDLE = "uii-resizable-handle";
@@ -73,18 +87,27 @@ export class Resizable extends Uii {
         const onPointerDown = opts.onPointerDown;
         if (onPointerDown && onPointerDown(ev) === false) return;
 
+        let container: HTMLElement | SVGGraphicsElement =
+          panel instanceof SVGGraphicsElement
+            ? closest(
+                panel,
+                (ele) => lowerCase(ele.tagName) === "svg",
+                "parentNode"
+              )
+            : (panel.parentElement as any);
+
+        let setOrigin = !(panel instanceof SVGGraphicsElement);
+
         // 获取panel当前信息
-
         let matrixInfo = getMatrixInfo(panel);
-        const offset = getRectInContainer(panel, panel.parentElement!);
-        const offsetParentRect = panel.parentElement!.getBoundingClientRect();
-        const offsetParentCStyle = window.getComputedStyle(
-          panel.parentElement!
-        );
-        const panelCStyle = window.getComputedStyle(panel);
+        const offset = getRectInContainer(panel, container);
+        const offsetParentRect = container.getBoundingClientRect();
+        const offsetParentCStyle = window.getComputedStyle(container);
 
-        const originW = parseFloat(panelCStyle.width);
-        const originH = parseFloat(panelCStyle.height);
+        const { w, h } = getStyleSize(panel);
+        const originW = w;
+        const originH = h;
+
         const originX = offset.x;
         const originY = offset.y;
         let changeW = false;
@@ -171,10 +194,17 @@ export class Resizable extends Uii {
         let originVertex: Array<any>;
         let vertexBeforeTransform: Array<any>;
         let currentVertex: Array<any>;
+        let movingVertex: Array<any>;
 
         let refPoint: { x: number; y: number };
-        //slope 
+        //slope
         let k1: number, k2: number;
+
+        let startOx = 0;
+        let startOy = 0;
+
+        let sX = 0,
+          sY = 0;
 
         //bind events
         onPointerStart(function (args: Record<string, any>) {
@@ -206,7 +236,18 @@ export class Resizable extends Uii {
             transformer = wrapper(panel);
           }
 
-          const { x, y, sx, sy } = getCenterXy(panel);
+          const cStyle = window.getComputedStyle(panel);
+          const w = parseFloat(cStyle.width);
+          const h = parseFloat(cStyle.height);
+
+          const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h);
+          startOx = originX;
+          startOy = originY;
+
+          const { x, y, sx, sy } =
+            panel instanceof SVGGraphicsElement
+              ? getCenterXySVG(panel, startOx, startOy)
+              : getCenterXy(panel);
           let centerX = x,
             centerY = y;
 
@@ -218,18 +259,10 @@ export class Resizable extends Uii {
             { x: originW, y: originH },
           ];
 
-          currentVertex = vertexBeforeTransform = map(
-            originVertex,
-            ({ x, y }) => {
-              const nx =
-                (x - centerX + sx) * Math.cos(deg) -
-                (y - centerY + sy) * Math.sin(deg);
-              const ny =
-                (x - centerX + sx) * Math.sin(deg) +
-                (y - centerY + sy) * Math.cos(deg);
-              return { x: centerX + nx, y: centerY + ny };
-            }
-          );
+          movingVertex =
+            currentVertex =
+            vertexBeforeTransform =
+              calcVertex(originW, originH, centerX, centerY, sx, sy, deg);
 
           //计算参考点及斜率
           switch (dir) {
@@ -260,12 +293,19 @@ export class Resizable extends Uii {
           style.transition = "none";
           originalTransformOrigin = style.transformOrigin;
 
-          if (toTransformOrigin) {
-            style.transformOrigin = toTransformOrigin;
-          } else {
-            style.transformOrigin = `${centerX - transformer.x}px ${
-              centerY - transformer.y
-            }px`;
+          if (setOrigin) {
+            if (toTransformOrigin) {
+              style.transformOrigin = toTransformOrigin;
+            } else {
+              style.transformOrigin = `${centerX - transformer.x}px ${
+                centerY - transformer.y
+              }px`;
+            }
+          }
+
+          if (panel instanceof SVGGraphicsElement) {
+            sX = matrixInfo.x - currentVertex[0].x;
+            sY = matrixInfo.y - currentVertex[0].y;
           }
 
           onStart && onStart.call(uiik, { w: originW, h: originH }, ev);
@@ -276,7 +316,7 @@ export class Resizable extends Uii {
           //获取当前位置坐标
           const currentXy = getPointInContainer(
             ev,
-            panel.parentElement as any,
+            container,
             offsetParentRect,
             offsetParentCStyle
           );
@@ -374,6 +414,8 @@ export class Resizable extends Uii {
             case "nw":
               w = pl1;
               h = pl2;
+
+              //获取顺时针旋转后的直角坐标
               x = newX;
               y = newY;
 
@@ -385,7 +427,7 @@ export class Resizable extends Uii {
             case "sw":
               w = pl1;
               h = pl2;
-              
+
               angl =
                 Math.atan2(
                   currentVertex[0].y - currentVertex[1].y,
@@ -461,18 +503,17 @@ export class Resizable extends Uii {
             }
           } else {
             if (changeW) {
-              style.width = w + "px";
+              resize(transformer, style, w);
             }
             if (changeH) {
-              style.height = h + "px";
+              resize(transformer, style, undefined, h);
             }
           }
-
           if (changeY) {
-            transformer.moveToY(y);
+            transformer.moveToY(y + sY);
           }
           if (changeX) {
-            transformer.moveToX(x);
+            transformer.moveToX(x + sX);
           }
 
           lastX = x;
@@ -481,8 +522,28 @@ export class Resizable extends Uii {
           currentW = w;
           currentH = h;
 
-          onResize &&
-            onResize.call(uiik, { w, h, ow: w - originW, oh: h - originH }, ev);
+          if (onResize && onResize.call) {
+            const { x, y, sx, sy } =
+              panel instanceof SVGGraphicsElement
+                ? getCenterXySVG(panel, startOx, startOy)
+                : getCenterXy(panel);
+            onResize.call(
+              uiik,
+              {
+                w,
+                h,
+                ow: w - originW,
+                oh: h - originH,
+                target: panel,
+                cx: x,
+                cy: y,
+                sx: sx,
+                sy: sy,
+                deg: matrixInfo.angle,
+              },
+              ev
+            );
+          }
         });
         onPointerEnd((args: Record<string, any>) => {
           const { ev } = args;
@@ -492,37 +553,82 @@ export class Resizable extends Uii {
             panelStyle.left = ghostNode.style.left;
             panelStyle.top = ghostNode.style.top;
             moveTo(panel, lastX / matrixInfo.scale, lastY / matrixInfo.scale);
-            panelStyle.width = ghostNode.style.width;
-            panelStyle.height = ghostNode.style.height;
+
+            resize(
+              transformer,
+              panelStyle,
+              parseFloat(ghostNode.style.width),
+              parseFloat(ghostNode.style.height)
+            );
+            // panelStyle.width = ghostNode.style.width;
+            // panelStyle.height = ghostNode.style.height;
           }
 
           panel.style.transformOrigin = originalTransformOrigin;
 
-          const { x, y, sx, sy } = getCenterXy(panel);
+          const { x, y, sx, sy, ox, oy } =
+            panel instanceof SVGGraphicsElement
+              ? getCenterXySVG(panel, startOx, startOy)
+              : getCenterXy(panel);
           let centerX = x,
             centerY = y;
           const deg = matrixInfo.angle * ONE_ANG;
-          const currentVertex = map(originVertex, ({ x, y }) => {
-            const nx =
-              (x - centerX + sx) * Math.cos(deg) -
-              (y - centerY + sy) * Math.sin(deg);
-            const ny =
-              (x - centerX + sx) * Math.sin(deg) +
-              (y - centerY + sy) * Math.cos(deg);
-            return { x: centerX + nx, y: centerY + ny };
-          });
+
+          const currentVertex = calcVertex(
+            currentW,
+            currentH,
+            centerX,
+            centerY,
+            sx,
+            sy,
+            deg
+          );
 
           //修正偏移
-          if (changeX || changeY) {
-            transformer.moveTo(
-              transformer.x - (currentVertex[0].x - lastX),
-              transformer.y - (currentVertex[0].y - lastY)
-            );
+          if (panel instanceof SVGGraphicsElement) {
+            //更新rotate圆心
+
+            if (matrixInfo.angle != 0) {
+              const { originX, originY } = parseOxy(
+                opts.ox,
+                opts.oy,
+                currentW,
+                currentH
+              );
+
+              rotateTo(transformer.el, matrixInfo.angle, originX, originY);
+
+              let { x, y, sx, sy } = getCenterXySVG(panel, originX, originY);
+
+              let currentVertex2 = calcVertex(
+                currentW,
+                currentH,
+                x,
+                y,
+                sx,
+                sy,
+                deg
+              );
+              //复原translate
+              transformer.moveTo(
+                transformer.x - (currentVertex2[0].x - currentVertex[0].x),
+                transformer.y - (currentVertex2[0].y - currentVertex[0].y)
+              );
+            }
           } else {
-            transformer.moveTo(
-              transformer.x - (currentVertex[0].x - vertexBeforeTransform[0].x),
-              transformer.y - (currentVertex[0].y - vertexBeforeTransform[0].y)
-            );
+            if (changeX || changeY) {
+              transformer.moveTo(
+                transformer.x - (currentVertex[0].x - lastX),
+                transformer.y - (currentVertex[0].y - lastY)
+              );
+            } else {
+              transformer.moveTo(
+                transformer.x -
+                  (currentVertex[0].x - vertexBeforeTransform[0].x),
+                transformer.y -
+                  (currentVertex[0].y - vertexBeforeTransform[0].y)
+              );
+            }
           }
 
           handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
@@ -569,6 +675,22 @@ export class Resizable extends Uii {
       h.dataset.cursor = `${dir}-resize`;
       h.setAttribute("name", "handle");
     });
+  }
+}
+
+function resize(
+  transformer: UiiTransformer,
+  style: CSSStyleDeclaration,
+  w?: number,
+  h?: number
+) {
+  //svg
+  if (transformer.el instanceof SVGGraphicsElement) {
+    if (isDefined(w)) transformer.el.setAttribute("width", w + "");
+    if (isDefined(h)) transformer.el.setAttribute("height", h + "");
+  } else {
+    if (isDefined(w)) style.width = w + "px";
+    if (isDefined(h)) style.height = h + "px";
   }
 }
 

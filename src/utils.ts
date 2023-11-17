@@ -4,8 +4,9 @@
  * @author holyhigh2
  */
 
-import { find } from "myfx/collection";
-import { rotateTo } from "./transform";
+import { find, map } from "myfx/collection";
+import { getTranslate, rotateTo } from "./transform";
+import { isNumber, isString } from "myfx/is";
 
 /**
  * 一角度对应的弧度
@@ -117,7 +118,7 @@ export function restoreCursor() {
  * 获取元素样式/属性中的x/y
  * @param el
  */
-export function getStyleXy(el: HTMLElement | SVGGraphicsElement) {
+export function getStyleXy(el: HTMLElement | SVGGraphicsElement):{x:number,y:number} {
   const style: any = window.getComputedStyle(el);
   let x = 0,
     y = 0;
@@ -129,6 +130,19 @@ export function getStyleXy(el: HTMLElement | SVGGraphicsElement) {
     y = parseFloat(style.top) || 0;
   }
   return { x, y };
+}
+
+/**
+ * 获取元素样式/属性中的w/h
+ * @param el
+ */
+export function getStyleSize(el: HTMLElement | SVGGraphicsElement,cStyle?:CSSStyleDeclaration):{w:number,h:number}{
+  if(!cStyle)
+    cStyle = window.getComputedStyle(el)
+  const w = parseFloat(cStyle.width)
+  const h = parseFloat(cStyle.height)
+
+  return {w,h}
 }
 
 const EXP_MATRIX =
@@ -269,14 +283,14 @@ export function getRectInContainer(
  * @param top
  * @returns
  */
-export function getCenterXy(el: HTMLElement | SVGGraphicsElement) {
+export function getCenterXy(el: HTMLElement,ox?:number,oy?:number) {
   const cStyle = window.getComputedStyle(el);
   
   //origin
   const center = cStyle.transformOrigin;
   const centerPair = center.split(" ");
-  const ox = parseFloat(centerPair[0]);
-  const oy = parseFloat(centerPair[1]);
+  ox = ox || parseFloat(centerPair[0]);
+  oy = oy || parseFloat(centerPair[1]);
 
   //left & top
   const shadowDom = el.cloneNode() as HTMLElement | SVGGraphicsElement;
@@ -293,4 +307,86 @@ export function getCenterXy(el: HTMLElement | SVGGraphicsElement) {
   }
 
   return {sx:startX,sy:startY, x: startX + ox, y: startY + oy, ox, oy };
+}
+export function getCenterXySVG(el: SVGGraphicsElement,ox:number,oy:number) {
+  const {x,y} = getTranslate(el)
+
+  return {sx:x,sy:y, x: x + ox, y: y + oy, ox, oy };
+}
+
+
+/**
+ * 获取元素当前顶点
+ * @param el 
+ * @param ox 相对于图形左上角的圆心偏移，支持数字/百分比，仅对SVG元素有效，对于非SVG元素使用transform-origin属性
+ * @param oy
+ */
+export function getVertex(el: HTMLElement | SVGGraphicsElement,ox:number|string,oy:number|string):Array<{x:number,y:number}>{
+  const cStyle = window.getComputedStyle(el)
+  const w = parseFloat(cStyle.width)
+  const h = parseFloat(cStyle.height)
+
+  const {originX,originY} = parseOxy(ox,oy,w,h)
+
+  const { x, y, sx, sy } = el instanceof SVGGraphicsElement?getCenterXySVG(el,originX,originY):getCenterXy(el);
+  const {angle} = getMatrixInfo(cStyle)
+
+  return calcVertex(w,h,x,y,sx,sy,angle * ONE_ANG)
+}
+/**
+ * 计算指定矩形旋转后的顶点坐标
+ * @param w 宽
+ * @param h 高
+ * @param cx 圆心
+ * @param cy 
+ * @param sx 
+ * @param sy 
+ * @param radian 旋转角 弧度值
+ * @returns 
+ */
+export function calcVertex(w:number,h:number,cx:number,cy:number,sx:number,sy:number,radian:number):Array<{x:number,y:number}>{
+  let originVertex = [
+    { x: 0, y: 0 },
+    { x: w, y: 0 },
+    { x: 0, y: h },
+    { x: w, y: h },
+  ];
+
+  return map(
+    originVertex,
+    ({ x, y }) => {
+      const nx =
+        (x - cx + sx) * Math.cos(radian) -
+        (y - cy + sy) * Math.sin(radian);
+      const ny =
+        (x - cx + sx) * Math.sin(radian) +
+        (y - cy + sy) * Math.cos(radian);
+      return { x: cx + nx, y: cy + ny };
+    }
+  );
+}
+
+/**
+ * 解析ox/y
+ * @param ox 如果不是number或string，originX为0
+ * @param oy 如果不是number或string，originY为0
+ * @param w 
+ * @param h 
+ * @returns {originX,originY}
+ */
+export function parseOxy(ox:any,oy:any,w:number,h:number):{originX:number,originY:number}{
+  let originX = 0,originY = 0;
+  if (isString(ox)) {
+    //percent
+    originX = (parseFloat(ox) / 100) * w;
+  } else if(isNumber(ox)) {
+    originX = ox;
+  }
+  if (isString(oy)) {
+    //percent
+    originY = (parseFloat(oy) / 100) * h;
+  } else if(isNumber(oy)){
+    originY = oy;
+  }
+  return {originX,originY}
 }

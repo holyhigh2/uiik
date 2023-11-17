@@ -133,7 +133,7 @@ export class Draggable extends Uii {
       const ee = this.#handleMap.get(el) || el
       ee.classList.toggle(CLASS_DRAGGABLE_HANDLE, true)
 
-      if (isDefined(this.opts.cursor)) {
+      if (!isUndefined(this.opts.cursor)) {
         el.style.cursor = this.opts.cursor.default || 'move'
         if (isDefined(this.opts.cursor.over)) {
           el.dataset.cursorOver = this.opts.cursor.over
@@ -378,8 +378,8 @@ export class Draggable extends Uii {
           }
         }
 
-        let x = newX - offsetPointX + 0
-        let y = newY - offsetPointY + 0
+        let x = newX - offsetPointX 
+        let y = newY - offsetPointY 
 
         //grid
         if (isNumber(gridX) && isNumber(gridY)) {

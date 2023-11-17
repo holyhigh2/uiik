@@ -348,7 +348,7 @@
   </head>
 
   <body>
-    <h2 class="logo">uii</h2>
+    <h2 class="logo">uii DOM</h2>
     <main>
       <h3>splitter</h3>
       <section class="splitter-container-h" id="splitter1">
@@ -751,6 +751,7 @@
         },
         // aspectRatio: 16 / 9,
       });
+      
       uii.newResizable("#dragger1", {
         handle:'#dragger1 .resize-handle',
         offset: 10,
@@ -787,6 +788,7 @@
           active: "not-allowed",
           over: "copy",
         },
+        scroll:false,
         filter:'.resize-handle,.rotate-handler',
         group: "xx",
         zIndex: 999,

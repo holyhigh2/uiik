@@ -306,128 +306,235 @@
         /* border: 1px dashed black; */
         opacity: 1 !important;
       }
-      
-      .sortable-con{
+
+      .sortable-con {
         border: 1px solid #dadada;
         list-style: none;
         padding: 0;
         width: 200px;
       }
-      .sortable-con .gray{
+      .sortable-con .gray {
         background-color: #dadada;
       }
       .sortable-con.active {
         border: 1px dashed coral;
       }
-      .sortable-con li{
+      .sortable-con li {
         /* transition: transform .3s; */
         border: 1px solid #999;
         /* margin: .5rem .1rem; */
         cursor: move;
-
       }
-      .uii-sortable-active{
-        opacity: .3;
+      .uii-sortable-active {
+        opacity: 0.3;
       }
-      .uii-sortable-ghost{
+      .uii-sortable-ghost {
         background-color: cornflowerblue !important;
       }
     </style>
   </head>
 
   <body>
-    <h2 class="logo">uii</h2>
-    <main style="position: relative;">
-      <div id="dd1" style="width: 100px;height: 100px;background-color: #000;">sdf</div>
-      <svg style="border: 1px solid;" id="selector-con" class="selector-con" width="800" height="600">
+    <h2 class="logo">uii SVG</h2>
+    <main style="position: relative">
+      <div id="dd1" style="width: 100px; height: 100px; background-color: #000">
+        sdf
+      </div>
+      <svg
+        style="border: 1px solid"
+        id="selector-con"
+        class="selector-con"
+        width="800"
+        height="600"
+      >
         <g>
           <circle r="5" cx="70" cy="20" id="handle"></circle>
-          <rect width="100" height="100" x="20" y="40" id="resizer1" fill="blue" ></rect>
-          <rect class="handle uii-resizable-handle-se" width="10" height="10" x="115" y="135" fill="rgba(100, 100, 100, 0.5)" ></rect>
+          <rect
+            width="100"
+            height="100"
+            x="20"
+            y="40"
+            id="resizer1"
+            fill="blue"
+          ></rect>
+          <rect
+            class="handle uii-resizable-handle-se"
+            width="10"
+            height="10"
+            x="115"
+            y="135"
+            fill="rgba(100, 100, 100, 0.5)"
+          ></rect>
+          <rect
+            class="handle uii-resizable-handle-nw"
+            width="10"
+            height="10"
+            x="15"
+            y="35"
+            fill="rgba(100, 100, 100, 0.5)"
+          ></rect>
         </g>
       </svg>
     </main>
     <script type="module">
-      import uii,{moveTo,getTranslate,rotateTo} from "./uiik.js";
+      import uii, {
+        moveTo,
+        getTranslate,
+        rotateTo,
+        getVertex,
+        calcVertex,
+        wrapper,
+        ONE_ANG,
+      } from "./uiik.js";
 
-      const resizeHandle = document.querySelector('#resizer1~.handle')
+      const resizeHandle = document.querySelector("#resizer1~.handle");
+      const resizeHandle2 = document.querySelector(
+        "#selector-con .uii-resizable-handle-nw"
+      );
+      let rotateHandle = document.getElementById("handle");
+      let rotateHandleTransformer = wrapper(rotateHandle);
 
       uii.newResizable("#resizer1", {
-        handle:'#resizer1~.handle',
+        handle: "#resizer1~.handle",
         offset: 10,
-        ghost: true,
+        // ghost: true,
         // minSize: [50, 100],
         maxSize: [400, 300],
+        ox: "50%",
+        oy: "50%",
         // aspectRatio: 16 / 9,
-        onStart(){
-          this.hst2 = getTranslate(resizeHandle)
+        onStart() {
+          this.hst2 = getTranslate(resizeHandle);
         },
-        onResize({ow,oh}){
-          moveTo(resizeHandle, this.hst2.x+ ow, this.hst2.y+oh)
-        }
+        onResize({ ow, oh, target, w, h, cx, cy, sx, sy, deg }) {
+          let theta = (deg % 360) * ONE_ANG;
+          const vertex = calcVertex(w, h, cx, cy, sx, sy, theta);
+          console.log(cx, cy, "2222");
+
+          resizeHandle.setAttribute("x", -5);
+          resizeHandle.setAttribute("y", -5);
+          moveTo(resizeHandle, vertex[3].x, vertex[3].y);
+
+          resizeHandle2.setAttribute("x", -5);
+          resizeHandle2.setAttribute("y", -5);
+          moveTo(resizeHandle2, vertex[0].x, vertex[0].y);
+
+          // 计算拖动点handle坐标
+          //1. 计算中间点(top，bottom)
+          let tcx = (vertex[0].x + vertex[1].x) / 2,
+            tcy = (vertex[0].y + vertex[1].y) / 2;
+          let bcx = (vertex[2].x + vertex[3].x) / 2,
+            bcy = (vertex[2].y + vertex[3].y) / 2;
+
+          //2. 计算向量
+          let vx = tcx - bcx,
+            vy = tcy - bcy
+          //3. 标准化向量
+          let vLen = Math.sqrt(vx*vx+vy*vy)
+          vx = vx / vLen
+          vy = vy / vLen
+
+          let nx = tcx + vx*20,
+            ny = tcy + vy*20
+
+          rotateHandleTransformer.moveTo(nx, ny);
+        },
       });
 
       uii.newRotatable("#resizer1", {
-        handle:'#handle',
+        handle: "#handle",
+        ox: "50%",
+        oy: "50%",
         cursor: {
           default: "move",
           active: "cell",
         },
-        onRotate({deg,cx,cy}){
-          rotateTo(document.getElementById('handle'),deg,0,70)
-          rotateTo(resizeHandle,deg,-45,-45)
-        }
+        onRotate({ deg, ox, oy, target }) {
+          
+          const vertex = getVertex(target, "50%", "50%");
+          
+          //1. 计算中间点(top，bottom)
+          let tcx = (vertex[0].x + vertex[1].x) / 2,
+            tcy = (vertex[0].y + vertex[1].y) / 2;
+          let bcx = (vertex[2].x + vertex[3].x) / 2,
+            bcy = (vertex[2].y + vertex[3].y) / 2;
+
+          //2. 计算向量
+          let vx = tcx - bcx,
+            vy = tcy - bcy
+          //3. 标准化向量
+          let vLen = Math.sqrt(vx*vx+vy*vy)
+          vx = vx / vLen
+          vy = vy / vLen
+
+          let nx = tcx + vx*20,
+            ny = tcy + vy*20
+
+          rotateHandleTransformer.moveTo(nx, ny);
+
+
+          resizeHandle.setAttribute("x", -5);
+          resizeHandle.setAttribute("y", -5);
+          moveTo(resizeHandle, vertex[3].x, vertex[3].y);
+
+          resizeHandle2.setAttribute("x", -5);
+          resizeHandle2.setAttribute("y", -5);
+          moveTo(resizeHandle2, vertex[0].x, vertex[0].y);
+        },
       });
 
       //先把拖动兼容svg
-      let hst,hst2
+      let hst, hst2, hst3;
       uii.newDraggable("#resizer1", {
-          cursor: {
-            default: "grab",
-            active: "not-allowed",
-            over: "copy",
-          },
-          group: "xx",
-          zIndex: 999,
-          onStart(){
-            //记录handle初始位置
-            hst = getTranslate(document.getElementById('handle'))
-            hst2 = getTranslate(resizeHandle)
-          },
-          onDrag({x,y,ox,oy},ev){
-            moveTo(document.getElementById('handle'), (hst.x||0) + ox, (hst.y||0)+oy)
-            moveTo(resizeHandle, (hst2.x||0) + ox, (hst2.y||0) +oy)
-          }
-        });
-      
-        uii.newDraggable("#dd1")
+        cursor: {
+          default: "grab",
+          active: "not-allowed",
+          over: "copy",
+        },
+        group: "xx",
+        zIndex: 999,
+        onStart() {
+          //记录handle初始位置
+          hst = getTranslate(document.getElementById("handle"));
+          hst2 = getTranslate(resizeHandle);
+          hst3 = getTranslate(resizeHandle2);
+        },
+        onDrag({ x, y, ox, oy }, ev) {
+          rotateHandleTransformer.moveTo((hst.x || 0) + ox, (hst.y || 0) + oy);
+          // moveTo(rotateHandle, (hst.x||0) + ox, (hst.y||0)+oy)
+          moveTo(resizeHandle, (hst2.x || 0) + ox, (hst2.y || 0) + oy);
+          moveTo(resizeHandle2, (hst3.x || 0) + ox, (hst3.y || 0) + oy);
+        },
+      });
 
-        const selector = uii.newSelectable("#selector-con", {
-            class: "selector-custom",
-            selectingClass: "active",
-            targets: "#selector-con rect,#dd1",
-            mode: "overlap",
-            filter(t) {
-              if (t.ownerSVGElement) return true;
-            },
-            onSelect(overlaps) {
-              console.log(overlaps);
-            },
-            // onSelect(overlaps) {
-            //   const blocks = document.querySelectorAll('.selector-con .block')
-            //   for (let b of blocks) {
-            //     b.className = b.className.replace(/ active/, '')
-            //   }
-            //   overlaps.forEach((el) => {
-            //     el.className = el.className.replace(/ active/, '') + ' active'
-            //   })
-            // },
-            // onSelectEnd(overlaps) {
-            //   overlaps.forEach((el) => {
-            //     el.className = el.className.replace(/ active/, '')
-            //   })
-            // },
-          });
+      uii.newDraggable("#dd1");
+
+      const selector = uii.newSelectable("#selector-con", {
+        class: "selector-custom",
+        selectingClass: "active",
+        targets: "#selector-con rect,#dd1",
+        mode: "overlap",
+        filter(t) {
+          if (t.ownerSVGElement) return true;
+        },
+        onSelect(overlaps) {
+          console.log(overlaps);
+        },
+        // onSelect(overlaps) {
+        //   const blocks = document.querySelectorAll('.selector-con .block')
+        //   for (let b of blocks) {
+        //     b.className = b.className.replace(/ active/, '')
+        //   }
+        //   overlaps.forEach((el) => {
+        //     el.className = el.className.replace(/ active/, '') + ' active'
+        //   })
+        // },
+        // onSelectEnd(overlaps) {
+        //   overlaps.forEach((el) => {
+        //     el.className = el.className.replace(/ active/, '')
+        //   })
+        // },
+      });
     </script>
   </body>
 </html>

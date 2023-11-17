@@ -274,7 +274,6 @@ export class Splittable extends Uii{
             ghostNode.style.top = startPos + ds1 - handleSize / 2 + 'px'
           } else {
             ghostNode.style.left = startPos + ds1 - handleSize / 2 + 'px'
-            console.log(ghostNode.style.left)
           }
         } else {
           const updateProp = dir === 'v' ? 'height' : 'width'

@@ -5,10 +5,19 @@
  */
 import { each } from "myfx/collection";
 import { RotatableOptions, Uii } from "./types";
-import { rotateTo } from "./transform";
+import { UiiTransformer, rotateTo, wrapper } from "./transform";
 import { isFunction, isString } from "myfx/is";
-import { ONE_RAD, getCenterXy, getMatrixInfo, getPointInContainer } from "./utils";
-import 'myfx'
+import { closest } from "myfx/tree";
+import {
+  ONE_RAD,
+  getCenterXy,
+  getCenterXySVG,
+  getMatrixInfo,
+  getPointInContainer,
+  getStyleSize,
+  parseOxy,
+} from "./utils";
+import { lowerCase } from "myfx/string";
 
 const THRESHOLD = 2;
 const CLASS_ROTATABLE = "uii-rotatable";
@@ -74,40 +83,82 @@ function bindHandle(
   uiik.addPointerDown(
     handle,
     ({ onPointerStart, onPointerMove, onPointerEnd }) => {
-      const { x, y, ox, oy } = getCenterXy(el);
-      let centerX = x,
-        centerY = y;
-      let startDeg = 0
+      let centerX = 0,
+        centerY = 0;
+
+      let startOx = 0;
+      let startOy = 0;
+      let startDeg = 0;
+      let container: HTMLElement | SVGGraphicsElement;
+      let transformer: UiiTransformer;
 
       //bind events
       onPointerStart(function (args: Record<string, any>) {
         const { ev } = args;
 
-        const currentXy = getPointInContainer(ev, el.parentElement as any);
+        transformer = wrapper(el);
+
+        const { w, h } = getStyleSize(el);
+
+        const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h);
+        startOx = originX;
+        startOy = originY;
+
+        const { x, y, ox, oy } =
+          el instanceof SVGGraphicsElement
+            ? getCenterXySVG(el, startOx, startOy)
+            : getCenterXy(el, startOx, startOy);
+        (centerX = x), (centerY = y);
+        (startOx = ox), (startOy = oy);
+
+        container =
+          el instanceof SVGGraphicsElement
+            ? closest(
+                el,
+                (ele) => lowerCase(ele.tagName) === "svg",
+                "parentNode"
+              )
+            : (el.parentElement as any);
+
+        const currentXy = getPointInContainer(ev, container);
         startDeg =
-          Math.atan2(currentXy.y - centerY, currentXy.x - centerX) * ONE_RAD + 90;
+          Math.atan2(currentXy.y - centerY, currentXy.x - centerX) * ONE_RAD +
+          90;
+
         if (startDeg < 0) startDeg = 360 + startDeg;
 
-        let matrixInfo = getMatrixInfo(el)
+        let matrixInfo = getMatrixInfo(el);
 
-        startDeg -= matrixInfo.angle
+        startDeg -= matrixInfo.angle;
 
         //apply classes
         el.classList.toggle(CLASS_ROTATABLE_ACTIVE, true);
         onStart && onStart({ deg, cx: centerX, cy: centerY }, ev);
       });
       onPointerMove((args: Record<string, any>) => {
-        const { ev} = args;
+        const { ev } = args;
 
-        const currentXy = getPointInContainer(ev, el.parentElement as any);
+        const currentXy = getPointInContainer(ev, container);
 
         deg =
           Math.atan2(currentXy.y - centerY, currentXy.x - centerX) * ONE_RAD +
-          90 - startDeg
+          90 -
+          startDeg;
 
-        onRotate && onRotate({ deg, cx: centerX, cy: centerY }, ev);
+        onRotate &&
+          onRotate(
+            {
+              deg,
+              cx: centerX,
+              cy: centerY,
+              target: el,
+              ox: startOx,
+              oy: startOy,
+            },
+            ev
+          );
 
-        rotateTo(el, deg, ox, oy);
+        rotateTo(el, deg, startOx, startOy);
       });
       onPointerEnd((args: Record<string, any>) => {
         const { ev } = args;

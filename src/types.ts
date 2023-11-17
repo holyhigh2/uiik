@@ -260,6 +260,10 @@ export type ResizableOptions = {
    */
   ghost?: boolean | Function;
   ghostClass?: string;
+  //相对于图形左上角的圆心偏移，支持数字/百分比
+  //仅对SVG元素有效，对于非SVG元素使用transform-origin属性
+  ox?:number|string;
+  oy?:number|string;
   /**
    * 指针点击时触发，可用于阻止后续逻辑
    * @param event 
@@ -267,7 +271,7 @@ export type ResizableOptions = {
    */
   onPointerDown?: (event: MouseEvent) => boolean;
   onStart?: (data: { w: number; h: number }, event: MouseEvent) => void;
-  onResize?: (data: { w: number; h: number, ow: number, oh: number }, event: MouseEvent) => void;
+  onResize?: (data: { w: number; h: number, ow: number, oh: number,target: HTMLElement | SVGGraphicsElement,vertex:Array<{x:number,y:number}> }, event: MouseEvent) => void;
   onEnd?: (data: { w: number; h: number }, event: MouseEvent) => void;
   onClone?: (data: { clone: HTMLElement }, event: MouseEvent) => void;
 };
@@ -496,6 +500,10 @@ export type RotatableOptions = {
     default?: string;
     active?: string;
   };
+  //相对于图形左上角的圆心偏移，支持数字/百分比
+  //仅对SVG元素有效，对于非SVG元素使用transform-origin属性
+  ox?:number|string;
+  oy?:number|string;
   /**
    * 控制器元素选择器(1-n个元素)，如果为空表示点击任意元素即可触发
    */
@@ -507,7 +515,7 @@ export type RotatableOptions = {
    */
   onPointerDown?: (event: MouseEvent) => boolean;
   onStart?: (data: { deg: number, cx: number, cy: number }, event: MouseEvent) => {};
-  onRotate?: (data: { deg: number, cx: number, cy: number }, event: MouseEvent) => {};
+  onRotate?: (data: { deg: number, cx: number, cy: number,ox: number, oy: number,target: HTMLElement | SVGGraphicsElement}, event: MouseEvent) => {};
   onEnd?: (data: { deg: number }, event: MouseEvent) => {};
 };
 
