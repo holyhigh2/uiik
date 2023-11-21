@@ -37,6 +37,15 @@ export class Rotatable extends Uii {
     super(els, opts);
 
     each(this.ele, (el) => {
+      let tmp = el as any
+      if(tmp._uiik_rotatable){
+        tmp._uiik_rotatable.destroy()
+        return false  
+      }      
+    })
+
+    each(this.ele, (el) => {
+      (el as any)._uiik_rotatable = this
       initHandle(this, el, this.opts);
     });
   }
@@ -90,13 +99,10 @@ function bindHandle(
       let startOy = 0;
       let startDeg = 0;
       let container: HTMLElement | SVGGraphicsElement;
-      let transformer: UiiTransformer;
 
       //bind events
       onPointerStart(function (args: Record<string, any>) {
         const { ev } = args;
-
-        transformer = wrapper(el);
 
         const { w, h } = getStyleSize(el);
 

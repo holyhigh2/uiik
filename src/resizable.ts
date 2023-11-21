@@ -63,6 +63,16 @@ export class Resizable extends Uii {
     );
 
     each(this.ele, (el) => {
+      let tmp = el as any
+      if(tmp._uiik_resizable){
+        tmp._uiik_resizable.destroy()
+        return false  
+      }      
+    })
+
+    each(this.ele, (el) => {
+      (el as any)._uiik_resizable = this
+
       this.initHandle(el);
     });
   }
@@ -85,7 +95,7 @@ export class Resizable extends Uii {
       ({ ev, onPointerStart, onPointerMove, onPointerEnd }) => {
         //检测
         const onPointerDown = opts.onPointerDown;
-        if (onPointerDown && onPointerDown(ev) === false) return;
+        if (onPointerDown && onPointerDown(ev) === false) return true;
 
         let container: HTMLElement | SVGGraphicsElement =
           panel instanceof SVGGraphicsElement
@@ -191,10 +201,8 @@ export class Resizable extends Uii {
         let lastX = 0,
           lastY = 0;
         let originalTransformOrigin = "";
-        let originVertex: Array<any>;
         let vertexBeforeTransform: Array<any>;
         let currentVertex: Array<any>;
-        let movingVertex: Array<any>;
 
         let refPoint: { x: number; y: number };
         //slope
@@ -252,14 +260,7 @@ export class Resizable extends Uii {
             centerY = y;
 
           const deg = matrixInfo.angle * ONE_ANG;
-          originVertex = [
-            { x: 0, y: 0 },
-            { x: originW, y: 0 },
-            { x: 0, y: originH },
-            { x: originW, y: originH },
-          ];
 
-          movingVertex =
             currentVertex =
             vertexBeforeTransform =
               calcVertex(originW, originH, centerX, centerY, sx, sy, deg);

@@ -154,7 +154,7 @@ export class Draggable extends Uii {
     const initStyle = this.#initStyle.bind(this)
     this.addPointerDown(bindTarget, ({ev, currentTarget, currentStyle, currentCStyle, pointX, pointY, onPointerStart, onPointerMove, onPointerEnd }) => {
       let t = ev.target as HTMLElement
-      if (!t) return;
+      if (!t) return true;
 
       //refresh draggableList
       if (opts.watch && eleString){
@@ -164,23 +164,23 @@ export class Draggable extends Uii {
 
       //find drag dom & handle
       let findRs = find<HTMLElement | SVGGraphicsElement>(draggableList,el=>el.contains(t))
-      if (!findRs)return
+      if (!findRs)return true
       const dragDom: HTMLElement | SVGGraphicsElement = findRs
 
       let handle = handleMap.get(dragDom)
       if (handle && !handle.contains(t as Node)) {
-        return
+        return true
       }
 
       //检测
       const onPointerDown = opts.onPointerDown;
-      if (onPointerDown && onPointerDown({ draggable: dragDom },ev) === false) return;
+      if (onPointerDown && onPointerDown({ draggable: dragDom },ev) === false) return true;
 
       const filter = opts.filter
 
       //check filter
       if (filter) {
-        if (some(dragDom.querySelectorAll(filter), ele => ele.contains(t))) return
+        if (some(dragDom.querySelectorAll(filter), ele => ele.contains(t))) return true
       }
 
       //用于计算鼠标移动时当前位置

@@ -1,4 +1,4 @@
-/* uiik 1.3.0-beta @holyhigh2 https://github.com/holyhigh2/uiik */
+/* uiik 1.3.0-beta.1 @holyhigh2 https://github.com/holyhigh2/uiik */
 (function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -2064,7 +2064,7 @@ class Uii {
             let onPointerStart;
             let onPointerMove;
             let onPointerEnd;
-            onPointerDown({
+            const toBreak = !!onPointerDown({
                 onPointerMove: (pm) => { onPointerMove = pm; },
                 onPointerStart: (ps) => { onPointerStart = ps; },
                 onPointerEnd: (pe) => { onPointerEnd = pe; },
@@ -2072,6 +2072,10 @@ class Uii {
                 pointX: e.clientX, pointY: e.clientY, target: t,
                 currentTarget: el, currentStyle, currentCStyle, currentRect
             });
+            if (toBreak) {
+                e.preventDefault();
+                return false;
+            }
             //函数
             const pointerMove = (ev) => {
                 const offX = ev.clientX - originPosX;
@@ -2085,7 +2089,7 @@ class Uii {
                         if (hasCursor) {
                             setCursor(uiiOptions.cursor.active);
                         }
-                        onPointerMove && onPointerStart({ ev });
+                        onPointerStart && onPointerStart({ ev });
                     }
                     else {
                         ev.preventDefault();
@@ -2112,7 +2116,6 @@ class Uii {
             document.addEventListener("mouseup", pointerEnd);
             window.addEventListener("blur", pointerEnd);
             e.preventDefault();
-            // e.stopPropagation();
             return false;
         }, true);
     }
@@ -2671,6 +2674,14 @@ class Resizable extends Uii {
             offset: 0,
         }, opts));
         each$1(this.ele, (el) => {
+            let tmp = el;
+            if (tmp._uiik_resizable) {
+                tmp._uiik_resizable.destroy();
+                return false;
+            }
+        });
+        each$1(this.ele, (el) => {
+            el._uiik_resizable = this;
             this.initHandle(el);
         });
     }
@@ -2684,7 +2695,7 @@ class Resizable extends Uii {
             //检测
             const onPointerDown = opts.onPointerDown;
             if (onPointerDown && onPointerDown(ev) === false)
-                return;
+                return true;
             let container = panel instanceof SVGGraphicsElement
                 ? closest(panel, (ele) => lowerCase(ele.tagName) === "svg", "parentNode")
                 : panel.parentElement;
@@ -2821,8 +2832,8 @@ class Resizable extends Uii {
                 let centerX = x, centerY = y;
                 const deg = matrixInfo.angle * ONE_ANG;
                 currentVertex =
-                        vertexBeforeTransform =
-                            calcVertex(originW, originH, centerX, centerY, sx, sy, deg);
+                    vertexBeforeTransform =
+                        calcVertex(originW, originH, centerX, centerY, sx, sy, deg);
                 //计算参考点及斜率
                 switch (dir) {
                     case "s":
@@ -3899,7 +3910,7 @@ class Draggable extends Uii {
             var _a;
             let t = ev.target;
             if (!t)
-                return;
+                return true;
             //refresh draggableList
             if (opts.watch && eleString) {
                 draggableList = bindTarget.querySelectorAll(eleString);
@@ -3908,21 +3919,21 @@ class Draggable extends Uii {
             //find drag dom & handle
             let findRs = find(draggableList, el => el.contains(t));
             if (!findRs)
-                return;
+                return true;
             const dragDom = findRs;
             let handle = handleMap.get(dragDom);
             if (handle && !handle.contains(t)) {
-                return;
+                return true;
             }
             //检测
             const onPointerDown = opts.onPointerDown;
             if (onPointerDown && onPointerDown({ draggable: dragDom }, ev) === false)
-                return;
+                return true;
             const filter = opts.filter;
             //check filter
             if (filter) {
                 if (some(dragDom.querySelectorAll(filter), ele => ele.contains(t)))
-                    return;
+                    return true;
             }
             //用于计算鼠标移动时当前位置
             const offsetParent = dragDom instanceof HTMLElement ? dragDom.offsetParent || document.body : dragDom.ownerSVGElement;
@@ -4471,6 +4482,14 @@ class Rotatable extends Uii {
     constructor(els, opts) {
         super(els, opts);
         each$1(this.ele, (el) => {
+            let tmp = el;
+            if (tmp._uiik_rotatable) {
+                tmp._uiik_rotatable.destroy();
+                return false;
+            }
+        });
+        each$1(this.ele, (el) => {
+            el._uiik_rotatable = this;
             initHandle(this, el, this.opts);
         });
     }
@@ -4510,7 +4529,6 @@ function bindHandle(uiik, handle, el, opts) {
         //bind events
         onPointerStart(function (args) {
             const { ev } = args;
-            wrapper(el);
             const { w, h } = getStyleSize(el);
             const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h);
             startOx = originX;
@@ -4758,15 +4776,15 @@ _Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap()
         if (filter) {
             if (isFunction$3(filter)) {
                 if (filter(target))
-                    return;
+                    return true;
             }
             else if (some(con.querySelectorAll(filter), (el) => el.contains(target)))
-                return;
+                return true;
         }
         //检测
         const onPointerDown = opts.onPointerDown;
         if (onPointerDown && onPointerDown(ev) === false)
-            return;
+            return true;
         let originPos = "";
         let matrixInfo = getMatrixInfo(currentCStyle);
         const startxy = getPointInContainer(ev, con, currentRect, currentCStyle, matrixInfo);
@@ -5371,7 +5389,7 @@ function newSortable(container, opts) {
     return new Sortable(container, opts);
 }
 
-var version = "1.3.0-beta";
+var version = "1.3.0-beta.1";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

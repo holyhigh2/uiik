@@ -97,14 +97,14 @@ export class Selectable extends Uii {
       //check filter
       if (filter) {
         if (isFunction(filter)) {
-          if (filter(target)) return;
+          if (filter(target)) return true;
         } else if (some(con.querySelectorAll(filter), (el) => el.contains(target)))
-          return;
+        return true;
       }
 
       //检测
       const onPointerDown = opts.onPointerDown;
-      if (onPointerDown && onPointerDown(ev) === false)return;
+      if (onPointerDown && onPointerDown(ev) === false)return true;
 
       let originPos = "";
 

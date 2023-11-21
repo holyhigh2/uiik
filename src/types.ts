@@ -64,7 +64,7 @@ export abstract class Uii {
 
 
   //通用指针事件处理接口
-  addPointerDown(el: Element, pointerDown: (args: Record<string, any>) => void, opts: {
+  addPointerDown(el: Element, pointerDown: (args: Record<string, any>) => void|boolean, opts: {
     threshold?: number,
     lockPage?: boolean
   }) {
@@ -98,7 +98,7 @@ export abstract class Uii {
       let onPointerMove: Function
       let onPointerEnd: Function
 
-      onPointerDown({
+      const toBreak = !!onPointerDown({
         onPointerMove: (pm: (args: Record<string, any>) => void) => { onPointerMove = pm },
         onPointerStart: (ps: (args: Record<string, any>) => void) => { onPointerStart = ps },
         onPointerEnd: (pe: (args: Record<string, any>) => void) => { onPointerEnd = pe },
@@ -106,6 +106,10 @@ export abstract class Uii {
         pointX: e.clientX, pointY: e.clientY, target: t,
         currentTarget: el, currentStyle, currentCStyle, currentRect
       })
+      if(toBreak){
+        e.preventDefault();
+        return false;
+      }
 
       //函数
       const pointerMove = (ev: MouseEvent) => {
@@ -124,7 +128,7 @@ export abstract class Uii {
               setCursor(uiiOptions.cursor.active)
             }
 
-            onPointerMove && onPointerStart({ ev })
+            onPointerStart && onPointerStart({ ev })
           } else {
             ev.preventDefault();
             return false;
@@ -157,7 +161,6 @@ export abstract class Uii {
       window.addEventListener("blur", pointerEnd);
 
       e.preventDefault();
-      // e.stopPropagation();
       return false;
     }, true)
   }
