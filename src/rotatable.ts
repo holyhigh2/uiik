@@ -5,9 +5,8 @@
  */
 import { each } from "myfx/collection";
 import { RotatableOptions, Uii } from "./types";
-import { UiiTransformer, rotateTo, wrapper } from "./transform";
+import { rotateTo } from "./transform";
 import { isFunction, isString } from "myfx/is";
-import { closest } from "myfx/tree";
 import {
   ONE_RAD,
   getCenterXy,
@@ -17,7 +16,6 @@ import {
   getStyleSize,
   parseOxy,
 } from "./utils";
-import { lowerCase } from "myfx/string";
 
 const THRESHOLD = 2;
 const CLASS_ROTATABLE = "uii-rotatable";
@@ -41,7 +39,7 @@ export class Rotatable extends Uii {
       if(tmp._uiik_rotatable){
         tmp._uiik_rotatable.destroy()
         return false  
-      }      
+      }
     })
 
     each(this.ele, (el) => {
@@ -119,12 +117,7 @@ function bindHandle(
 
         container =
           el instanceof SVGGraphicsElement
-            ? closest(
-                el,
-                (ele) => lowerCase(ele.tagName) === "svg",
-                "parentNode"
-              )
-            : (el.parentElement as any);
+          ? el.ownerSVGElement: (el.parentElement as any);
 
         const currentXy = getPointInContainer(ev, container);
         startDeg =

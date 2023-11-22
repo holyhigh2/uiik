@@ -27,9 +27,7 @@ import {
   getStyleSize,
   parseOxy,
 } from "./utils";
-import { UiiTransformer, moveTo, rotateTo, wrapper } from "./transform";
-import { closest } from "myfx/tree";
-import { lowerCase } from "myfx/string";
+import { UiiTransform, moveTo, rotateTo, wrapper } from "./transform";
 
 const THRESHOLD = 2;
 const CLASS_RESIZABLE_HANDLE = "uii-resizable-handle";
@@ -99,11 +97,7 @@ export class Resizable extends Uii {
 
         let container: HTMLElement | SVGGraphicsElement =
           panel instanceof SVGGraphicsElement
-            ? closest(
-                panel,
-                (ele) => lowerCase(ele.tagName) === "svg",
-                "parentNode"
-              )
+            ? panel.ownerSVGElement
             : (panel.parentElement as any);
 
         let setOrigin = !(panel instanceof SVGGraphicsElement);
@@ -196,7 +190,7 @@ export class Resizable extends Uii {
         let currentW: number = originW;
         let currentH: number = originH;
 
-        let transformer: UiiTransformer;
+        let transform: UiiTransform;
 
         let lastX = 0,
           lastY = 0;
@@ -235,22 +229,22 @@ export class Resizable extends Uii {
                   ghostClass;
               }
               panel.parentNode?.appendChild(ghostNode);
-              transformer = wrapper(ghostNode);
+              transform = wrapper(ghostNode);
 
               onClone && onClone({ clone: ghostNode }, ev);
             }
             style = ghostNode?.style!;
           } else {
-            transformer = wrapper(panel);
+            transform = wrapper(panel);
           }
 
           const cStyle = window.getComputedStyle(panel);
           const w = parseFloat(cStyle.width);
           const h = parseFloat(cStyle.height);
 
-          const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h);
-          startOx = originX;
-          startOy = originY;
+          const oxy = parseOxy(opts.ox, opts.oy, w, h);
+          startOx = oxy.originX;
+          startOy = oxy.originY;
 
           const { x, y, sx, sy } =
             panel instanceof SVGGraphicsElement
@@ -298,8 +292,8 @@ export class Resizable extends Uii {
             if (toTransformOrigin) {
               style.transformOrigin = toTransformOrigin;
             } else {
-              style.transformOrigin = `${centerX - transformer.x}px ${
-                centerY - transformer.y
+              style.transformOrigin = `${centerX - transform.x}px ${
+                centerY - transform.y
               }px`;
             }
           }
@@ -309,7 +303,7 @@ export class Resizable extends Uii {
             sY = matrixInfo.y - currentVertex[0].y;
           }
 
-          onStart && onStart.call(uiik, { w: originW, h: originH }, ev);
+          onStart && onStart.call(uiik, { w: originW, h: originH ,transform }, ev);
         });
         onPointerMove((args: Record<string, any>) => {
           const { ev } = args;
@@ -480,6 +474,7 @@ export class Resizable extends Uii {
           }
 
           if (changeW) {
+            console.log(minWidth,'xxxxxx',w)
             if (minWidth && w < minWidth) w = minWidth;
             if (maxWidth && w > maxWidth) w = maxWidth;
           }
@@ -504,17 +499,17 @@ export class Resizable extends Uii {
             }
           } else {
             if (changeW) {
-              resize(transformer, style, w);
+              resize(transform, style, w);
             }
             if (changeH) {
-              resize(transformer, style, undefined, h);
+              resize(transform, style, undefined, h);
             }
           }
           if (changeY) {
-            transformer.moveToY(y + sY);
+            transform.moveToY(y + sY);
           }
           if (changeX) {
-            transformer.moveToX(x + sX);
+            transform.moveToX(x + sX);
           }
 
           lastX = x;
@@ -541,6 +536,7 @@ export class Resizable extends Uii {
                 sx: sx,
                 sy: sy,
                 deg: matrixInfo.angle,
+                transform
               },
               ev
             );
@@ -556,7 +552,7 @@ export class Resizable extends Uii {
             moveTo(panel, lastX / matrixInfo.scale, lastY / matrixInfo.scale);
 
             resize(
-              transformer,
+              transform,
               panelStyle,
               parseFloat(ghostNode.style.width),
               parseFloat(ghostNode.style.height)
@@ -590,16 +586,16 @@ export class Resizable extends Uii {
             //更新rotate圆心
 
             if (matrixInfo.angle != 0) {
-              const { originX, originY } = parseOxy(
+              const oxy = parseOxy(
                 opts.ox,
                 opts.oy,
                 currentW,
                 currentH
               );
 
-              rotateTo(transformer.el, matrixInfo.angle, originX, originY);
+              rotateTo(transform.el, matrixInfo.angle, oxy.originX, originY);
 
-              let { x, y, sx, sy } = getCenterXySVG(panel, originX, originY);
+              let { x, y, sx, sy } = getCenterXySVG(panel, oxy.originX, originY);
 
               let currentVertex2 = calcVertex(
                 currentW,
@@ -611,29 +607,29 @@ export class Resizable extends Uii {
                 deg
               );
               //复原translate
-              transformer.moveTo(
-                transformer.x - (currentVertex2[0].x - currentVertex[0].x),
-                transformer.y - (currentVertex2[0].y - currentVertex[0].y)
+              transform.moveTo(
+                transform.x - (currentVertex2[0].x - currentVertex[0].x),
+                transform.y - (currentVertex2[0].y - currentVertex[0].y)
               );
             }
           } else {
             if (changeX || changeY) {
-              transformer.moveTo(
-                transformer.x - (currentVertex[0].x - lastX),
-                transformer.y - (currentVertex[0].y - lastY)
+              transform.moveTo(
+                transform.x - (currentVertex[0].x - lastX),
+                transform.y - (currentVertex[0].y - lastY)
               );
             } else {
-              transformer.moveTo(
-                transformer.x -
+              transform.moveTo(
+                transform.x -
                   (currentVertex[0].x - vertexBeforeTransform[0].x),
-                transformer.y -
+                transform.y -
                   (currentVertex[0].y - vertexBeforeTransform[0].y)
               );
             }
           }
 
           handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
-          onEnd && onEnd.call(uiik, { w: currentW, h: currentH }, ev);
+          onEnd && onEnd.call(uiik, { w: currentW, h: currentH,transform }, ev);
         });
       },
       {
@@ -680,15 +676,15 @@ export class Resizable extends Uii {
 }
 
 function resize(
-  transformer: UiiTransformer,
+  transform: UiiTransform,
   style: CSSStyleDeclaration,
   w?: number,
   h?: number
 ) {
   //svg
-  if (transformer.el instanceof SVGGraphicsElement) {
-    if (isDefined(w)) transformer.el.setAttribute("width", w + "");
-    if (isDefined(h)) transformer.el.setAttribute("height", h + "");
+  if (transform.el instanceof SVGGraphicsElement) {
+    if (isDefined(w)) transform.el.setAttribute("width", w + "");
+    if (isDefined(h)) transform.el.setAttribute("height", h + "");
   } else {
     if (isDefined(w)) style.width = w + "px";
     if (isDefined(h)) style.height = h + "px";

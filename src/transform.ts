@@ -10,7 +10,7 @@ import { get } from "myfx/object";
 
 const UtMap = new WeakMap();
 
-export class UiiTransformer {
+export class UiiTransform {
   x: number;
   y: number;
   angle: number = 0;
@@ -90,10 +90,10 @@ function normalize(el: HTMLElement | SVGGraphicsElement) {
  * 返回一个包装后的变形对象，可执行变形操作
  * @param el
  */
-export function wrapper(el: HTMLElement | SVGGraphicsElement): UiiTransformer {
+export function wrapper(el: HTMLElement | SVGGraphicsElement): UiiTransform {
   let ut = UtMap.get(el);
   if (ut) return ut.normalize(el);
-  return new UiiTransformer(el);
+  return new UiiTransform(el);
 }
 
 function transformMove(

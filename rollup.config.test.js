@@ -1,9 +1,9 @@
-import { nodeResolve } from '@rollup/plugin-node-resolve'
-import serve from 'rollup-plugin-serve'
-import livereload from 'rollup-plugin-livereload'
-import json from '@rollup/plugin-json'
-import typescript from 'rollup-plugin-typescript2'
-const pkg = require('./package.json')
+import {nodeResolve} from '@rollup/plugin-node-resolve';
+import serve from 'rollup-plugin-serve';
+import livereload from 'rollup-plugin-livereload';
+import json from '@rollup/plugin-json';
+import typescript from 'rollup-plugin-typescript2';
+const pkg = require('./package.json');
 
 export default {
   input: 'src/index.ts',
@@ -25,6 +25,7 @@ export default {
     }),
     serve({
       open: true,
+      port: 8818,
       openPage: '/test/index.html',
       host: 'localhost',
       headers: {
@@ -34,4 +35,4 @@ export default {
     livereload('test'),
     json(),
   ],
-}
+};

@@ -1,7 +1,8 @@
 import { isElement, isString, isArrayLike, isEmpty } from 'myfx/is'
-import { each, find, map, toArray } from 'myfx/collection'
+import { each, map, toArray } from 'myfx/collection'
 import { assign, get } from 'myfx/object'
 import { lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from './utils';
+import { UiiTransform } from './transform';
 
 /**
  * A Base class for all Uii classes
@@ -273,9 +274,9 @@ export type ResizableOptions = {
    * @returns 返回false则停止后续逻辑
    */
   onPointerDown?: (event: MouseEvent) => boolean;
-  onStart?: (data: { w: number; h: number }, event: MouseEvent) => void;
-  onResize?: (data: { w: number; h: number, ow: number, oh: number,target: HTMLElement | SVGGraphicsElement,vertex:Array<{x:number,y:number}> }, event: MouseEvent) => void;
-  onEnd?: (data: { w: number; h: number }, event: MouseEvent) => void;
+  onStart?: (data: { w: number; h: number,transform:UiiTransform }, event: MouseEvent) => void;
+  onResize?: (data: { w: number; h: number, ow: number, oh: number, target: HTMLElement | SVGGraphicsElement, vertex: Array<{ x: number, y: number }>, transform: UiiTransform }, event: MouseEvent) => void;
+  onEnd?: (data: { w: number; h: number, transform: UiiTransform }, event: MouseEvent) => void;
   onClone?: (data: { clone: HTMLElement }, event: MouseEvent) => void;
 };
 
@@ -414,7 +415,7 @@ export type DraggableOptions = {
    * @returns 返回false则停止后续逻辑
    */
   onPointerDown?: (data: { draggable: HTMLElement | SVGGraphicsElement},event: MouseEvent) => boolean;
-  onStart?: (data: { draggable: HTMLElement | SVGGraphicsElement, x: number, y: number }, event: MouseEvent) => void;
+  onStart?: (data: { draggable: HTMLElement | SVGGraphicsElement, x: number, y: number, transform: UiiTransform }, event: MouseEvent) => void;
   /**
    * 拖动中调用，返回false阻止dom移动
    * @param dragDom
@@ -425,11 +426,11 @@ export type DraggableOptions = {
    */
   onDrag?: (
     data: {
-      draggable: HTMLElement | SVGGraphicsElement;
-      x: number;
-      y: number;
-      ox: number;
-      oy: number;
+      draggable: HTMLElement | SVGGraphicsElement,
+      x: number,
+      y: number,
+      ox: number,
+      oy: number, transform: UiiTransform
     },
     event: MouseEvent
   ) => boolean | void;
@@ -442,8 +443,8 @@ export type DraggableOptions = {
   onEnd?: (
     data: {
       draggable: HTMLElement | SVGGraphicsElement, 
-      x: number;
-      y: number;
+      x: number,
+      y: number, transform: UiiTransform
     },
     event: MouseEvent
   ) => boolean | void;

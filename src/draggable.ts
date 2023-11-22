@@ -28,7 +28,7 @@ import {
 
 import { DraggableOptions, Uii } from "./types";
 import { EDGE_THRESHOLD, getMatrixInfo, getPointInContainer, getRectInContainer } from "./utils";
-import { UiiTransformer, wrapper } from "./transform"
+import { UiiTransform, wrapper } from "./transform"
 
 const DRAGGER_GROUPS:Record<string, Array<HTMLElement>> = {}
 const CLASS_DRAGGABLE = "uii-draggable";
@@ -195,6 +195,11 @@ export class Draggable extends Uii {
 
       const matrixInfo = getMatrixInfo(dragDom)
       const currentXy = getPointInContainer(ev, offsetParent as any, offsetParentRect, offsetParentCStyle)
+
+      const matrixInfoParent = getMatrixInfo(offsetParent as any)
+      offsetPointX = offsetPointX / (matrixInfo.scale*matrixInfoParent.scale)
+      offsetPointY = offsetPointY / (matrixInfo.scale * matrixInfoParent.scale)
+      
       if (matrixInfo.angle != 0) {
         offsetPointX = currentXy.x - matrixInfo.x
         offsetPointY = currentXy.y - matrixInfo.y
@@ -280,7 +285,7 @@ export class Draggable extends Uii {
       if (maxY < 0) maxY = 0
 
       let copyNode: HTMLElement;
-      let transformer: UiiTransformer;
+      let transform: UiiTransform;
 
       let timer: any = null;
       let toLeft = false
@@ -313,11 +318,11 @@ export class Draggable extends Uii {
           copyNode.classList.toggle(CLASS_DRAGGABLE_GHOST, true)
           dragDom.parentNode?.appendChild(copyNode);
 
-          transformer = wrapper(copyNode)
+          transform = wrapper(copyNode)
 
           onClone && onClone({ clone: copyNode }, ev);
         }else{
-          transformer = wrapper(dragDom)
+          transform = wrapper(dragDom)
         }
         //apply classes
         dragDom.classList.add(...compact(split(classes, ' ')))
@@ -326,7 +331,7 @@ export class Draggable extends Uii {
 
         dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE, true)
 
-        onStart && onStart({ draggable: dragDom, x: currentXy.x, y: currentXy.y }, ev)
+        onStart && onStart({ draggable: dragDom, x: currentXy.x, y: currentXy.y,transform }, ev)
 
         //notify
         const customEv = new Event("uii-dragactive", { "bubbles": true, "cancelable": false });
@@ -517,7 +522,8 @@ export class Draggable extends Uii {
             ox: offX,
             oy: offY,
             x: x,
-            y: y
+            y: y,
+            transform
           }, ev) === false) {
             canDrag = false;
             endX = x
@@ -526,11 +532,11 @@ export class Draggable extends Uii {
         }
         if (canDrag) {
           if (direction === "v") {
-            transformer.moveToY(y)
+            transform.moveToY(y)
           } else if (direction === "h") {
-            transformer.moveToX(x)
+            transform.moveToX(x)
           } else {
-            transformer.moveTo(x, y)
+            transform.moveTo(x, y)
           }
           endX = x
           endY = y
@@ -553,7 +559,7 @@ export class Draggable extends Uii {
 
         let moveToGhost = true;
         if (onEnd) {
-          moveToGhost = onEnd({ draggable: dragDom, x: endX, y: endY }, ev) === false ? false : true;
+          moveToGhost = onEnd({ draggable: dragDom, x: endX, y: endY, transform }, ev) === false ? false : true;
         }
         //notify
         const customEv = new Event("uii-dragdeactive", { "bubbles": true, "cancelable": false });
@@ -562,7 +568,7 @@ export class Draggable extends Uii {
         if (ghost) {
           dragDom.parentNode?.contains(copyNode) && dragDom.parentNode?.removeChild(copyNode);
           if (moveToGhost !== false) {
-            wrapper(dragDom).moveTo(transformer.x,transformer.y)
+            wrapper(dragDom).moveTo(transform.x,transform.y)
           }
         }
 

@@ -1,4 +1,4 @@
-/* uiik 1.3.0-beta.1 @holyhigh2 https://github.com/holyhigh2/uiik */
+/* uiik 1.3.0-beta.2 @holyhigh2 https://github.com/holyhigh2/uiik */
 (function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -1505,7 +1505,7 @@ function merge(target, ...sources) {
 
 /* eslint-disable max-len */
 const UtMap = new WeakMap();
-class UiiTransformer {
+class UiiTransform {
     constructor(el) {
         this.angle = 0;
         this.el = el;
@@ -1578,7 +1578,7 @@ function wrapper(el) {
     let ut = UtMap.get(el);
     if (ut)
         return ut.normalize(el);
-    return new UiiTransformer(el);
+    return new UiiTransform(el);
 }
 function transformMove(transofrmStr, x, y, unit = false) {
     return (`translate(${x}${unit ? "px" : ""},${y}${unit ? "px" : ""}) ` +
@@ -2488,168 +2488,6 @@ function newSplittable(container, opts) {
     return new Splittable(container, opts);
 }
 
-/**
-   * myfx/tree v1.1.0
-   * A modular utility library with more utils, higher performance and simpler declarations ...
-   * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
-   */
-
-/**
- * 根据指定的node及parentKey属性，查找最近的祖先节点
- * @param node Element节点或普通对象节点
- * @param predicate (node,times,cancel)断言函数，如果返回true表示节点匹配。或调用cancel中断查找
- * @param parentKey 父节点引用属性名
- * @returns 断言为true的最近一个祖先节点
- * @since 1.0.0
- */
-function closest(node, predicate, parentKey) {
-    let p = node;
-    let t = null;
-    let k = true;
-    let i = 0;
-    while (k && p) {
-        if (predicate(p, i++, () => { k = false; })) {
-            t = p;
-            break;
-        }
-        p = p[parentKey];
-    }
-    return t;
-}
-
-/**
-   * myfx/string v1.1.0
-   * A modular utility library with more utils, higher performance and simpler declarations ...
-   * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
-   */
-
-/**
- * 判断值是否为null或undefined
- *
- * @example
- * //true
- * console.log(_.isNil(undefined))
- * //false
- * console.log(_.isNil(0))
- * //true
- * console.log(_.isNil(null))
- * //false
- * console.log(_.isNil(NaN))
- *
- * @param v
- * @returns
- * @since 1.0.0
- */
-function isNil$1(v) {
-    return v === null || v === undefined;
-}
-
-/**
- * 转换任何对象为字符串。如果对象本身为string类型的值/对象，则返回该对象的字符串形式。否则返回对象的toString()方法的返回值
- *
- * @example
- * //''
- * console.log(_.toString(null))
- * //1
- * console.log(_.toString(1))
- * //3,6,9
- * console.log(_.toString([3,6,9]))
- * //-0
- * console.log(_.toString(-0))
- * //[object Set]
- * console.log(_.toString(new Set([3,6,9])))
- * //{a:1}
- * console.log(_.toString({a:1,toString:()=>'{a:1}'}))
- *
- * @param v 任何值
- * @returns 对于null/undefined会返回空字符串
- */
-function toString(v) {
-    if (isNil$1(v))
-        return '';
-    if (v === 0 && 1 / v < 0)
-        return '-0';
-    return v.toString();
-}
-
-/**
- * 返回所有字母是小写格式的字符串
- *
- * @example
- * //''
- * console.log(_.lowerCase())
- * //'func.js'
- * console.log(_.lowerCase('FUNC.JS'))
- *
- * @param str
- * @returns 返回新字符串
- */
-function lowerCase(str) {
-    return toString(str).toLowerCase();
-}
-
-/**
- * 判断值是不是一个正则对象
- *
- * @example
- * //true
- * console.log(_.isRegExp(new RegExp))
- * //true
- * console.log(_.isRegExp(/1/))
- *
- * @param v
- * @returns
- * @since 0.19.0
- */
-function isRegExp(v) {
-    return typeof v === 'object' && v instanceof RegExp;
-}
-
-/**
- * 使用分隔符将字符串分割为多段数组
- *
- * @example
- * //["func", "js"]
- * console.log(_.split('func.js','.'))
- * //["func"]
- * console.log(_.split('func.js','.',1))
- *
- * @param str 原字符串。如果非字符串则会自动转换成字符串
- * @param separator 分隔符
- * @param [limit] 限制返回的结果数量，为空返回所有结果
- * @returns 分割后的数组
- */
-function split(str, separator, limit) {
-    return toString(str).split(separator, limit);
-}
-
-/**
- * 检测字符串是否与指定的正则匹配
- *
- * @example
- * //true 忽略大小写包含判断
- * console.log(_.test('func.js','Func','i'))
- * //true 忽略大小写相等判断
- * console.log(_.test('func.js',/^FUNC\.js$/i))
- * //false
- * console.log(_.test('func.js',/FUNC/))
- *
- * @param str
- * @param pattern 指定正则。如果非正则类型会自动转换为正则再进行匹配
- * @param [flags] 如果pattern参数不是正则类型，会使用该标记作为正则构造的第二个参数
- * @returns 匹配返回true
- * @since 0.19.0
- */
-function test(str, pattern, flags) {
-    let regExp = pattern;
-    if (!isRegExp(regExp)) {
-        regExp = new RegExp(pattern, flags);
-    }
-    return regExp.test(str);
-}
-
 /* eslint-disable max-len */
 const THRESHOLD$3 = 2;
 const CLASS_RESIZABLE_HANDLE = "uii-resizable-handle";
@@ -2697,7 +2535,7 @@ class Resizable extends Uii {
             if (onPointerDown && onPointerDown(ev) === false)
                 return true;
             let container = panel instanceof SVGGraphicsElement
-                ? closest(panel, (ele) => lowerCase(ele.tagName) === "svg", "parentNode")
+                ? panel.ownerSVGElement
                 : panel.parentElement;
             let setOrigin = !(panel instanceof SVGGraphicsElement);
             // 获取panel当前信息
@@ -2779,7 +2617,7 @@ class Resizable extends Uii {
             let style = panelStyle;
             let currentW = originW;
             let currentH = originH;
-            let transformer;
+            let transform;
             let lastX = 0, lastY = 0;
             let originalTransformOrigin = "";
             let vertexBeforeTransform;
@@ -2812,20 +2650,20 @@ class Resizable extends Uii {
                                     ghostClass;
                         }
                         (_a = panel.parentNode) === null || _a === void 0 ? void 0 : _a.appendChild(ghostNode);
-                        transformer = wrapper(ghostNode);
+                        transform = wrapper(ghostNode);
                         onClone && onClone({ clone: ghostNode }, ev);
                     }
                     style = ghostNode === null || ghostNode === void 0 ? void 0 : ghostNode.style;
                 }
                 else {
-                    transformer = wrapper(panel);
+                    transform = wrapper(panel);
                 }
                 const cStyle = window.getComputedStyle(panel);
                 const w = parseFloat(cStyle.width);
                 const h = parseFloat(cStyle.height);
-                const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h);
-                startOx = originX;
-                startOy = originY;
+                const oxy = parseOxy(opts.ox, opts.oy, w, h);
+                startOx = oxy.originX;
+                startOy = oxy.originY;
                 const { x, y, sx, sy } = panel instanceof SVGGraphicsElement
                     ? getCenterXySVG(panel, startOx, startOy)
                     : getCenterXy(panel);
@@ -2865,14 +2703,14 @@ class Resizable extends Uii {
                         style.transformOrigin = toTransformOrigin;
                     }
                     else {
-                        style.transformOrigin = `${centerX - transformer.x}px ${centerY - transformer.y}px`;
+                        style.transformOrigin = `${centerX - transform.x}px ${centerY - transform.y}px`;
                     }
                 }
                 if (panel instanceof SVGGraphicsElement) {
                     sX = matrixInfo.x - currentVertex[0].x;
                     sY = matrixInfo.y - currentVertex[0].y;
                 }
-                onStart && onStart.call(uiik, { w: originW, h: originH }, ev);
+                onStart && onStart.call(uiik, { w: originW, h: originH, transform }, ev);
             });
             onPointerMove((args) => {
                 const { ev } = args;
@@ -3009,6 +2847,7 @@ class Resizable extends Uii {
                         break;
                 }
                 if (changeW) {
+                    console.log(minWidth, 'xxxxxx', w);
                     if (minWidth && w < minWidth)
                         w = minWidth;
                     if (maxWidth && w > maxWidth)
@@ -3037,17 +2876,17 @@ class Resizable extends Uii {
                 }
                 else {
                     if (changeW) {
-                        resize(transformer, style, w);
+                        resize(transform, style, w);
                     }
                     if (changeH) {
-                        resize(transformer, style, undefined, h);
+                        resize(transform, style, undefined, h);
                     }
                 }
                 if (changeY) {
-                    transformer.moveToY(y + sY);
+                    transform.moveToY(y + sY);
                 }
                 if (changeX) {
-                    transformer.moveToX(x + sX);
+                    transform.moveToX(x + sX);
                 }
                 lastX = x;
                 lastY = y;
@@ -3068,6 +2907,7 @@ class Resizable extends Uii {
                         sx: sx,
                         sy: sy,
                         deg: matrixInfo.angle,
+                        transform
                     }, ev);
                 }
             });
@@ -3080,7 +2920,7 @@ class Resizable extends Uii {
                     panelStyle.left = ghostNode.style.left;
                     panelStyle.top = ghostNode.style.top;
                     moveTo(panel, lastX / matrixInfo.scale, lastY / matrixInfo.scale);
-                    resize(transformer, panelStyle, parseFloat(ghostNode.style.width), parseFloat(ghostNode.style.height));
+                    resize(transform, panelStyle, parseFloat(ghostNode.style.width), parseFloat(ghostNode.style.height));
                     // panelStyle.width = ghostNode.style.width;
                     // panelStyle.height = ghostNode.style.height;
                 }
@@ -3095,26 +2935,26 @@ class Resizable extends Uii {
                 if (panel instanceof SVGGraphicsElement) {
                     //更新rotate圆心
                     if (matrixInfo.angle != 0) {
-                        const { originX, originY } = parseOxy(opts.ox, opts.oy, currentW, currentH);
-                        rotateTo(transformer.el, matrixInfo.angle, originX, originY);
-                        let { x, y, sx, sy } = getCenterXySVG(panel, originX, originY);
+                        const oxy = parseOxy(opts.ox, opts.oy, currentW, currentH);
+                        rotateTo(transform.el, matrixInfo.angle, oxy.originX, originY);
+                        let { x, y, sx, sy } = getCenterXySVG(panel, oxy.originX, originY);
                         let currentVertex2 = calcVertex(currentW, currentH, x, y, sx, sy, deg);
                         //复原translate
-                        transformer.moveTo(transformer.x - (currentVertex2[0].x - currentVertex[0].x), transformer.y - (currentVertex2[0].y - currentVertex[0].y));
+                        transform.moveTo(transform.x - (currentVertex2[0].x - currentVertex[0].x), transform.y - (currentVertex2[0].y - currentVertex[0].y));
                     }
                 }
                 else {
                     if (changeX || changeY) {
-                        transformer.moveTo(transformer.x - (currentVertex[0].x - lastX), transformer.y - (currentVertex[0].y - lastY));
+                        transform.moveTo(transform.x - (currentVertex[0].x - lastX), transform.y - (currentVertex[0].y - lastY));
                     }
                     else {
-                        transformer.moveTo(transformer.x -
-                            (currentVertex[0].x - vertexBeforeTransform[0].x), transformer.y -
+                        transform.moveTo(transform.x -
+                            (currentVertex[0].x - vertexBeforeTransform[0].x), transform.y -
                             (currentVertex[0].y - vertexBeforeTransform[0].y));
                     }
                 }
                 handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
-                onEnd && onEnd.call(uiik, { w: currentW, h: currentH }, ev);
+                onEnd && onEnd.call(uiik, { w: currentW, h: currentH, transform }, ev);
             });
         }, {
             threshold: THRESHOLD$3,
@@ -3152,13 +2992,13 @@ class Resizable extends Uii {
         });
     }
 }
-function resize(transformer, style, w, h) {
+function resize(transform, style, w, h) {
     //svg
-    if (transformer.el instanceof SVGGraphicsElement) {
+    if (transform.el instanceof SVGGraphicsElement) {
         if (isDefined(w))
-            transformer.el.setAttribute("width", w + "");
+            transform.el.setAttribute("width", w + "");
         if (isDefined(h))
-            transformer.el.setAttribute("height", h + "");
+            transform.el.setAttribute("height", h + "");
     }
     else {
         if (isDefined(w))
@@ -3175,6 +3015,122 @@ function resize(transformer, style, w, h) {
  */
 function newResizable(els, opts) {
     return new Resizable(els, opts);
+}
+
+/**
+   * myfx/string v1.1.0
+   * A modular utility library with more utils, higher performance and simpler declarations ...
+   * https://github.com/holyhigh2/myfx
+   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   */
+
+/**
+ * 判断值是否为null或undefined
+ *
+ * @example
+ * //true
+ * console.log(_.isNil(undefined))
+ * //false
+ * console.log(_.isNil(0))
+ * //true
+ * console.log(_.isNil(null))
+ * //false
+ * console.log(_.isNil(NaN))
+ *
+ * @param v
+ * @returns
+ * @since 1.0.0
+ */
+function isNil$1(v) {
+    return v === null || v === undefined;
+}
+
+/**
+ * 转换任何对象为字符串。如果对象本身为string类型的值/对象，则返回该对象的字符串形式。否则返回对象的toString()方法的返回值
+ *
+ * @example
+ * //''
+ * console.log(_.toString(null))
+ * //1
+ * console.log(_.toString(1))
+ * //3,6,9
+ * console.log(_.toString([3,6,9]))
+ * //-0
+ * console.log(_.toString(-0))
+ * //[object Set]
+ * console.log(_.toString(new Set([3,6,9])))
+ * //{a:1}
+ * console.log(_.toString({a:1,toString:()=>'{a:1}'}))
+ *
+ * @param v 任何值
+ * @returns 对于null/undefined会返回空字符串
+ */
+function toString(v) {
+    if (isNil$1(v))
+        return '';
+    if (v === 0 && 1 / v < 0)
+        return '-0';
+    return v.toString();
+}
+
+/**
+ * 判断值是不是一个正则对象
+ *
+ * @example
+ * //true
+ * console.log(_.isRegExp(new RegExp))
+ * //true
+ * console.log(_.isRegExp(/1/))
+ *
+ * @param v
+ * @returns
+ * @since 0.19.0
+ */
+function isRegExp(v) {
+    return typeof v === 'object' && v instanceof RegExp;
+}
+
+/**
+ * 使用分隔符将字符串分割为多段数组
+ *
+ * @example
+ * //["func", "js"]
+ * console.log(_.split('func.js','.'))
+ * //["func"]
+ * console.log(_.split('func.js','.',1))
+ *
+ * @param str 原字符串。如果非字符串则会自动转换成字符串
+ * @param separator 分隔符
+ * @param [limit] 限制返回的结果数量，为空返回所有结果
+ * @returns 分割后的数组
+ */
+function split(str, separator, limit) {
+    return toString(str).split(separator, limit);
+}
+
+/**
+ * 检测字符串是否与指定的正则匹配
+ *
+ * @example
+ * //true 忽略大小写包含判断
+ * console.log(_.test('func.js','Func','i'))
+ * //true 忽略大小写相等判断
+ * console.log(_.test('func.js',/^FUNC\.js$/i))
+ * //false
+ * console.log(_.test('func.js',/FUNC/))
+ *
+ * @param str
+ * @param pattern 指定正则。如果非正则类型会自动转换为正则再进行匹配
+ * @param [flags] 如果pattern参数不是正则类型，会使用该标记作为正则构造的第二个参数
+ * @returns 匹配返回true
+ * @since 0.19.0
+ */
+function test(str, pattern, flags) {
+    let regExp = pattern;
+    if (!isRegExp(regExp)) {
+        regExp = new RegExp(pattern, flags);
+    }
+    return regExp.test(str);
 }
 
 /**
@@ -3944,6 +3900,9 @@ class Draggable extends Uii {
             let offsetPointY = offsetXy.y;
             const matrixInfo = getMatrixInfo(dragDom);
             const currentXy = getPointInContainer(ev, offsetParent, offsetParentRect, offsetParentCStyle);
+            const matrixInfoParent = getMatrixInfo(offsetParent);
+            offsetPointX = offsetPointX / (matrixInfo.scale * matrixInfoParent.scale);
+            offsetPointY = offsetPointY / (matrixInfo.scale * matrixInfoParent.scale);
             if (matrixInfo.angle != 0) {
                 offsetPointX = currentXy.x - matrixInfo.x;
                 offsetPointY = currentXy.y - matrixInfo.y;
@@ -4019,7 +3978,7 @@ class Draggable extends Uii {
             if (maxY < 0)
                 maxY = 0;
             let copyNode;
-            let transformer;
+            let transform;
             let timer = null;
             let toLeft = false;
             let toTop = false;
@@ -4047,18 +4006,18 @@ class Draggable extends Uii {
                     copyNode.classList.add(...compact(split(classes, ' ')));
                     copyNode.classList.toggle(CLASS_DRAGGABLE_GHOST, true);
                     (_a = dragDom.parentNode) === null || _a === void 0 ? void 0 : _a.appendChild(copyNode);
-                    transformer = wrapper(copyNode);
+                    transform = wrapper(copyNode);
                     onClone && onClone({ clone: copyNode }, ev);
                 }
                 else {
-                    transformer = wrapper(dragDom);
+                    transform = wrapper(dragDom);
                 }
                 //apply classes
                 dragDom.classList.add(...compact(split(classes, ' ')));
                 if (!copyNode)
                     dragDom.style.zIndex = zIndex + '';
                 dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE, true);
-                onStart && onStart({ draggable: dragDom, x: currentXy.x, y: currentXy.y }, ev);
+                onStart && onStart({ draggable: dragDom, x: currentXy.x, y: currentXy.y, transform }, ev);
                 //notify
                 const customEv = new Event("uii-dragactive", { "bubbles": true, "cancelable": false });
                 dragDom.dispatchEvent(customEv);
@@ -4227,7 +4186,8 @@ class Draggable extends Uii {
                         ox: offX,
                         oy: offY,
                         x: x,
-                        y: y
+                        y: y,
+                        transform
                     }, ev) === false) {
                         canDrag = false;
                         endX = x;
@@ -4236,13 +4196,13 @@ class Draggable extends Uii {
                 }
                 if (canDrag) {
                     if (direction === "v") {
-                        transformer.moveToY(y);
+                        transform.moveToY(y);
                     }
                     else if (direction === "h") {
-                        transformer.moveToX(x);
+                        transform.moveToX(x);
                     }
                     else {
-                        transformer.moveTo(x, y);
+                        transform.moveTo(x, y);
                     }
                     endX = x;
                     endY = y;
@@ -4263,7 +4223,7 @@ class Draggable extends Uii {
                 dragDom.classList.remove(CLASS_DRAGGABLE_ACTIVE);
                 let moveToGhost = true;
                 if (onEnd) {
-                    moveToGhost = onEnd({ draggable: dragDom, x: endX, y: endY }, ev) === false ? false : true;
+                    moveToGhost = onEnd({ draggable: dragDom, x: endX, y: endY, transform }, ev) === false ? false : true;
                 }
                 //notify
                 const customEv = new Event("uii-dragdeactive", { "bubbles": true, "cancelable": false });
@@ -4271,7 +4231,7 @@ class Draggable extends Uii {
                 if (ghost) {
                     ((_a = dragDom.parentNode) === null || _a === void 0 ? void 0 : _a.contains(copyNode)) && ((_b = dragDom.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(copyNode));
                     if (moveToGhost !== false) {
-                        wrapper(dragDom).moveTo(transformer.x, transformer.y);
+                        wrapper(dragDom).moveTo(transform.x, transform.y);
                     }
                 }
             });
@@ -4540,8 +4500,7 @@ function bindHandle(uiik, handle, el, opts) {
             (startOx = ox), (startOy = oy);
             container =
                 el instanceof SVGGraphicsElement
-                    ? closest(el, (ele) => lowerCase(ele.tagName) === "svg", "parentNode")
-                    : el.parentElement;
+                    ? el.ownerSVGElement : el.parentElement;
             const currentXy = getPointInContainer(ev, container);
             startDeg =
                 Math.atan2(currentXy.y - centerY, currentXy.x - centerX) * ONE_RAD +
@@ -5389,7 +5348,7 @@ function newSortable(container, opts) {
     return new Sortable(container, opts);
 }
 
-var version = "1.3.0-beta.1";
+var version = "1.3.0-beta.2";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"
@@ -5423,4 +5382,4 @@ var index = {
     newSortable
 };
 
-export { CollisionDetector, DRAGGING_RULE, Draggable, Droppable, EDGE_THRESHOLD, ONE_ANG, ONE_RAD, Resizable, Rotatable, Selectable, Sortable, Splittable, Uii, UiiTransformer, VERSION, calcVertex, index as default, getBox, getCenterXy, getCenterXySVG, getMatrixInfo, getPointInContainer, getPointOffset, getRectInContainer, getStyleSize, getStyleXy, getTranslate, getVertex, isSVGEl, lockPage, moveBy, moveTo, newCollisionDetector, newDraggable, newDroppable, newResizable, newRotatable, newSelectable, newSortable, newSplittable, parseOxy, restoreCursor, rotateTo, saveCursor, setCursor, unlockPage, wrapper };
+export { CollisionDetector, DRAGGING_RULE, Draggable, Droppable, EDGE_THRESHOLD, ONE_ANG, ONE_RAD, Resizable, Rotatable, Selectable, Sortable, Splittable, Uii, UiiTransform, VERSION, calcVertex, index as default, getBox, getCenterXy, getCenterXySVG, getMatrixInfo, getPointInContainer, getPointOffset, getRectInContainer, getStyleSize, getStyleXy, getTranslate, getVertex, isSVGEl, lockPage, moveBy, moveTo, newCollisionDetector, newDraggable, newDroppable, newResizable, newRotatable, newSelectable, newSortable, newSplittable, parseOxy, restoreCursor, rotateTo, saveCursor, setCursor, unlockPage, wrapper };

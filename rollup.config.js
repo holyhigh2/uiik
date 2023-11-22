@@ -38,6 +38,7 @@ export default {
     typescript({
       tsconfigOverride: {
         compilerOptions: {
+          removeComments:true,
           declaration: true
         },
       },
