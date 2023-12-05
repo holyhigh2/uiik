@@ -5,7 +5,7 @@
  * @author holyhigh2
  */
 import {
-  each
+  each, toArray
 } from "myfx/collection"
 import {assign} from 'myfx/object'
 import {split,test} from 'myfx/string'
@@ -36,6 +36,7 @@ export class Droppable extends Uii {
       el,
       assign(
         {
+          watch:true
         },
         opts
       )
@@ -54,6 +55,7 @@ export class Droppable extends Uii {
     //dragenter
     this.registerEvent(droppable, "mouseenter", (e: MouseEvent) => {
       if(!this.#active)return
+      if(e.target === droppable)return
 
       if(opts.hoverClass){
         each(split(opts.hoverClass,' '),cls=>{
@@ -70,6 +72,7 @@ export class Droppable extends Uii {
     //dragleave
     this.registerEvent(droppable, "mouseleave", (e: MouseEvent) => {
       if(!this.#active)return
+      if(e.target === droppable)return
 
       if(opts.hoverClass){
         each(split(opts.hoverClass,' '),cls=>{
@@ -86,11 +89,14 @@ export class Droppable extends Uii {
     //dragover
     this.registerEvent(droppable, "mousemove", (e: MouseEvent) => {
       if(!this.#active)return
+      if(e.target === droppable)return
+
       opts.onOver && opts.onOver({draggable:this.#active,droppable},e)
     })
     //drop
     this.registerEvent(droppable, "mouseup", (e: MouseEvent) => {
       if(!this.#active)return
+      if(e.target === droppable)return
 
       if(opts.hoverClass){
         each(split(opts.hoverClass,' '),cls=>{
@@ -108,6 +114,12 @@ export class Droppable extends Uii {
   active(target:HTMLElement){
     let valid = true
     const opts:DroppableOptions = this.opts
+
+    if(opts.watch && this.eleString){
+      let nodes = document.querySelectorAll(this.eleString)
+      this.ele = toArray<HTMLElement>(nodes)
+    }
+
     //check accepts
     if(isString(opts.accepts)){
       valid = !!target.dataset.dropType && test(opts.accepts,target.dataset.dropType)
@@ -125,7 +137,6 @@ export class Droppable extends Uii {
         })
       })
     }
-
 
     opts.onActive && opts.onActive({draggable:target,droppables:this.ele})
 

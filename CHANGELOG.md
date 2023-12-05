@@ -7,7 +7,12 @@
 ### 新增
 - handle 属性变更，支持更多类型
 - onPointerDown 事件，可用于阻止后续逻辑
-- draggable watch参数，可用于dom变动自动检测 
+- Draggable watch参数，可用于dom变动自动检测
+- Draggable self参数，仅自身元素响应时触发
+- Droppable watch参数，可用于dom变动自动检测
+- Uiik mouseButton参数，可指定鼠标响应按钮
+### 修复
+- Droppable 元素同时为Draggable时会自己触发Droppable事件
 
 ## [1.2.0] - 2023/9/3
 ### Add

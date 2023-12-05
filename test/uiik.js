@@ -1,4 +1,4 @@
-/* uiik 1.3.0-beta.2 @holyhigh2 https://github.com/holyhigh2/uiik */
+/* uiik 1.3.0-beta.3 @holyhigh2 https://github.com/holyhigh2/uiik */
 (function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -2008,6 +2008,7 @@ class Uii {
         this.enabled = true;
         _Uii_listeners.set(this, []);
         this.opts = opts || {};
+        this.opts.mouseButton = this.opts.mouseButton || 'left';
         if (isArrayLike$3(ele) && !isString$3(ele)) {
             this.ele = map(ele, (el) => {
                 let e = isString$3(el) ? document.querySelector(el) : el;
@@ -2027,7 +2028,9 @@ class Uii {
                 console.error('Invalid element "' + ele + '"');
                 return;
             }
-            this.ele = isArrayLike$3(el) ? toArray$2(el) : [el];
+            this.ele = isArrayLike$3(el)
+                ? toArray$2(el)
+                : [el];
         }
     }
     /**
@@ -2045,12 +2048,24 @@ class Uii {
         const threshold = opts.threshold || 0;
         const toLockPage = opts.lockPage || false;
         const uiiOptions = this.opts;
-        this.registerEvent(el, 'mousedown', (e) => {
+        this.registerEvent(el, "mousedown", (e) => {
+            if (uiiOptions.mouseButton) {
+                switch (uiiOptions.mouseButton) {
+                    case "left":
+                        if (e.button != 0)
+                            return;
+                        break;
+                    case "right":
+                        if (e.button != 2)
+                            return;
+                        break;
+                }
+            }
             let t = e.target;
             if (!t)
                 return;
             //uiik options
-            const hasCursor = !isEmpty(get$1(uiiOptions, 'cursor.active'));
+            const hasCursor = !isEmpty(get$1(uiiOptions, "cursor.active"));
             //提取通用信息
             const currentStyle = el.style;
             const currentCStyle = window.getComputedStyle(el);
@@ -2065,12 +2080,23 @@ class Uii {
             let onPointerMove;
             let onPointerEnd;
             const toBreak = !!onPointerDown({
-                onPointerMove: (pm) => { onPointerMove = pm; },
-                onPointerStart: (ps) => { onPointerStart = ps; },
-                onPointerEnd: (pe) => { onPointerEnd = pe; },
+                onPointerMove: (pm) => {
+                    onPointerMove = pm;
+                },
+                onPointerStart: (ps) => {
+                    onPointerStart = ps;
+                },
+                onPointerEnd: (pe) => {
+                    onPointerEnd = pe;
+                },
                 ev: e,
-                pointX: e.clientX, pointY: e.clientY, target: t,
-                currentTarget: el, currentStyle, currentCStyle, currentRect
+                pointX: e.clientX,
+                pointY: e.clientY,
+                target: t,
+                currentTarget: el,
+                currentStyle,
+                currentCStyle,
+                currentRect,
             });
             if (toBreak) {
                 e.preventDefault();
@@ -2096,12 +2122,21 @@ class Uii {
                         return false;
                     }
                 }
-                onPointerMove && onPointerMove({ ev, pointX: ev.clientX, pointY: ev.clientY, offX, offY, currentStyle, currentCStyle });
+                onPointerMove &&
+                    onPointerMove({
+                        ev,
+                        pointX: ev.clientX,
+                        pointY: ev.clientY,
+                        offX,
+                        offY,
+                        currentStyle,
+                        currentCStyle,
+                    });
             };
             const pointerEnd = (ev) => {
-                document.removeEventListener('mousemove', pointerMove, false);
-                document.removeEventListener('mouseup', pointerEnd, false);
-                window.removeEventListener('blur', pointerEnd, false);
+                document.removeEventListener("mousemove", pointerMove, false);
+                document.removeEventListener("mouseup", pointerEnd, false);
+                window.removeEventListener("blur", pointerEnd, false);
                 if (dragging) {
                     if (toLockPage) {
                         unlockPage();
@@ -3805,7 +3840,8 @@ class Draggable extends Uii {
             scroll: true,
             snapOptions: {
                 tolerance: 10,
-            }
+            },
+            self: true
         }, opts));
         _Draggable_instances.add(this);
         _Draggable_handleMap.set(this, new WeakMap());
@@ -3881,6 +3917,8 @@ class Draggable extends Uii {
             if (handle && !handle.contains(t)) {
                 return true;
             }
+            if (opts.self && dragDom !== t)
+                return;
             //检测
             const onPointerDown = opts.onPointerDown;
             if (onPointerDown && onPointerDown({ draggable: dragDom }, ev) === false)
@@ -4298,7 +4336,9 @@ const CLASS_DROPPABLE = "uii-droppable";
  */
 class Droppable extends Uii {
     constructor(el, opts) {
-        super(el, assign({}, opts));
+        super(el, assign({
+            watch: true
+        }, opts));
         _Droppable_active.set(this, void 0);
         Droppables.push(this);
     }
@@ -4309,6 +4349,8 @@ class Droppable extends Uii {
         //dragenter
         this.registerEvent(droppable, "mouseenter", (e) => {
             if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
+                return;
+            if (e.target === droppable)
                 return;
             if (opts.hoverClass) {
                 each$1(split(opts.hoverClass, ' '), cls => {
@@ -4324,6 +4366,8 @@ class Droppable extends Uii {
         this.registerEvent(droppable, "mouseleave", (e) => {
             if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
                 return;
+            if (e.target === droppable)
+                return;
             if (opts.hoverClass) {
                 each$1(split(opts.hoverClass, ' '), cls => {
                     droppable.classList.toggle(cls, false);
@@ -4338,11 +4382,15 @@ class Droppable extends Uii {
         this.registerEvent(droppable, "mousemove", (e) => {
             if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
                 return;
+            if (e.target === droppable)
+                return;
             opts.onOver && opts.onOver({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
         });
         //drop
         this.registerEvent(droppable, "mouseup", (e) => {
             if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
+                return;
+            if (e.target === droppable)
                 return;
             if (opts.hoverClass) {
                 each$1(split(opts.hoverClass, ' '), cls => {
@@ -4358,6 +4406,10 @@ class Droppable extends Uii {
     active(target) {
         let valid = true;
         const opts = this.opts;
+        if (opts.watch && this.eleString) {
+            let nodes = document.querySelectorAll(this.eleString);
+            this.ele = toArray$2(nodes);
+        }
         //check accepts
         if (isString$3(opts.accepts)) {
             valid = !!target.dataset.dropType && test(opts.accepts, target.dataset.dropType);
@@ -5348,7 +5400,7 @@ function newSortable(container, opts) {
     return new Sortable(container, opts);
 }
 
-var version = "1.3.0-beta.2";
+var version = "1.3.0-beta.3";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

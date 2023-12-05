@@ -1,8 +1,14 @@
-import { isElement, isString, isArrayLike, isEmpty } from 'myfx/is'
-import { each, map, toArray } from 'myfx/collection'
-import { assign, get } from 'myfx/object'
-import { lockPage, restoreCursor, saveCursor, setCursor, unlockPage } from './utils';
-import { UiiTransform } from './transform';
+import { isElement, isString, isArrayLike, isEmpty } from "myfx/is";
+import { each, map, toArray } from "myfx/collection";
+import { assign, get } from "myfx/object";
+import {
+  lockPage,
+  restoreCursor,
+  saveCursor,
+  setCursor,
+  unlockPage,
+} from "./utils";
+import { UiiTransform } from "./transform";
 
 /**
  * A Base class for all Uii classes
@@ -18,18 +24,14 @@ export abstract class Uii {
   opts: Record<string, any>;
   protected enabled: boolean = true;
   #listeners: Array<[Element, string, Function, boolean]> = [];
-  protected eleString: string
+  protected eleString: string;
 
   constructor(
-    ele:
-      | string
-      | Element
-      | NodeList
-      | HTMLCollection
-      | Array<string | Element>,
+    ele: string | Element | NodeList | HTMLCollection | Array<string | Element>,
     opts?: Record<string, any>
   ) {
     this.opts = opts || {};
+    this.opts.mouseButton = this.opts.mouseButton||'left'
 
     if (isArrayLike(ele) && !isString(ele)) {
       this.ele = map<HTMLElement>(ele, (el) => {
@@ -42,14 +44,16 @@ export abstract class Uii {
       });
     } else {
       if (isString(ele)) {
-        this.eleString = ele
+        this.eleString = ele;
       }
       const el = isString(ele) ? document.querySelectorAll(ele) : ele;
       if (!isElement(el) && !isArrayLike(el)) {
         console.error('Invalid element "' + ele + '"');
         return;
       }
-      this.ele = isArrayLike(el) ? toArray<HTMLElement>(el) : [el as HTMLElement];
+      this.ele = isArrayLike(el)
+        ? toArray<HTMLElement>(el)
+        : [el as HTMLElement];
     }
   }
 
@@ -63,109 +67,145 @@ export abstract class Uii {
     this.#listeners = [];
   }
 
-
   //通用指针事件处理接口
-  addPointerDown(el: Element, pointerDown: (args: Record<string, any>) => void|boolean, opts: {
-    threshold?: number,
-    lockPage?: boolean
-  }) {
-    const onPointerDown = pointerDown
-    const threshold = opts.threshold || 0
-    const toLockPage = opts.lockPage || false
+  addPointerDown(
+    el: Element,
+    pointerDown: (args: Record<string, any>) => void | boolean,
+    opts: {
+      threshold?: number;
+      lockPage?: boolean;
+    }
+  ) {
+    const onPointerDown = pointerDown;
+    const threshold = opts.threshold || 0;
+    const toLockPage = opts.lockPage || false;
 
-    const uiiOptions = this.opts
+    const uiiOptions = this.opts;
 
-    this.registerEvent(el, 'mousedown', (e: PointerEvent) => {
-      let t = e.target as HTMLElement
-      if (!t) return;
+    this.registerEvent(
+      el,
+      "mousedown",
+      (e: PointerEvent) => {
+        if (uiiOptions.mouseButton) {
+          switch (uiiOptions.mouseButton) {
+            case "left":
+              if (e.button != 0) return;
+              break;
+            case "right":
+              if (e.button != 2) return;
+              break;
+          }
+        }
 
-      //uiik options
-      const hasCursor = !isEmpty(get(uiiOptions, 'cursor.active'))
+        let t = e.target as HTMLElement;
+        if (!t) return;
 
-      //提取通用信息
-      const currentStyle = (el as HTMLStyleElement).style
-      const currentCStyle = window.getComputedStyle(el)
-      const currentRect = el.getBoundingClientRect()
+        //uiik options
+        const hasCursor = !isEmpty(get(uiiOptions, "cursor.active"));
 
-      let dragging = false;
-      const originPosX = e.clientX
-      const originPosY = e.clientY
+        //提取通用信息
+        const currentStyle = (el as HTMLStyleElement).style;
+        const currentCStyle = window.getComputedStyle(el);
+        const currentRect = el.getBoundingClientRect();
 
-      if (hasCursor) {
-        saveCursor()
-      }
+        let dragging = false;
+        const originPosX = e.clientX;
+        const originPosY = e.clientY;
 
-      let onPointerStart: Function
-      let onPointerMove: Function
-      let onPointerEnd: Function
+        if (hasCursor) {
+          saveCursor();
+        }
 
-      const toBreak = !!onPointerDown({
-        onPointerMove: (pm: (args: Record<string, any>) => void) => { onPointerMove = pm },
-        onPointerStart: (ps: (args: Record<string, any>) => void) => { onPointerStart = ps },
-        onPointerEnd: (pe: (args: Record<string, any>) => void) => { onPointerEnd = pe },
-        ev: e,
-        pointX: e.clientX, pointY: e.clientY, target: t,
-        currentTarget: el, currentStyle, currentCStyle, currentRect
-      })
-      if(toBreak){
+        let onPointerStart: Function;
+        let onPointerMove: Function;
+        let onPointerEnd: Function;
+
+        const toBreak = !!onPointerDown({
+          onPointerMove: (pm: (args: Record<string, any>) => void) => {
+            onPointerMove = pm;
+          },
+          onPointerStart: (ps: (args: Record<string, any>) => void) => {
+            onPointerStart = ps;
+          },
+          onPointerEnd: (pe: (args: Record<string, any>) => void) => {
+            onPointerEnd = pe;
+          },
+          ev: e,
+          pointX: e.clientX,
+          pointY: e.clientY,
+          target: t,
+          currentTarget: el,
+          currentStyle,
+          currentCStyle,
+          currentRect,
+        });
+        if (toBreak) {
+          e.preventDefault();
+          return false;
+        }
+
+        //函数
+        const pointerMove = (ev: MouseEvent) => {
+          const offX = ev.clientX - originPosX;
+          const offY = ev.clientY - originPosY;
+
+          if (!dragging) {
+            if (Math.abs(offX) > threshold || Math.abs(offY) > threshold) {
+              dragging = true;
+
+              if (toLockPage) {
+                lockPage();
+              }
+
+              if (hasCursor) {
+                setCursor(uiiOptions.cursor.active);
+              }
+
+              onPointerStart && onPointerStart({ ev });
+            } else {
+              ev.preventDefault();
+              return false;
+            }
+          }
+
+          onPointerMove &&
+            onPointerMove({
+              ev,
+              pointX: ev.clientX,
+              pointY: ev.clientY,
+              offX,
+              offY,
+              currentStyle,
+              currentCStyle,
+            });
+        };
+        const pointerEnd = (ev: MouseEvent) => {
+          document.removeEventListener("mousemove", pointerMove, false);
+          document.removeEventListener("mouseup", pointerEnd, false);
+          window.removeEventListener("blur", pointerEnd, false);
+
+          if (dragging) {
+            if (toLockPage) {
+              unlockPage();
+            }
+            if (hasCursor) {
+              restoreCursor();
+            }
+
+            onPointerEnd && onPointerEnd({ ev, currentStyle });
+          }
+        };
+
+        document.addEventListener("mousemove", pointerMove);
+        document.addEventListener("mouseup", pointerEnd);
+        window.addEventListener("blur", pointerEnd);
+
         e.preventDefault();
         return false;
-      }
-
-      //函数
-      const pointerMove = (ev: MouseEvent) => {
-        const offX = ev.clientX - originPosX
-        const offY = ev.clientY - originPosY
-
-        if (!dragging) {
-          if (Math.abs(offX) > threshold || Math.abs(offY) > threshold) {
-            dragging = true;
-
-            if (toLockPage) {
-              lockPage()
-            }
-
-            if (hasCursor) {
-              setCursor(uiiOptions.cursor.active)
-            }
-
-            onPointerStart && onPointerStart({ ev })
-          } else {
-            ev.preventDefault();
-            return false;
-          }
-
-        }
-
-        onPointerMove && onPointerMove({ ev, pointX: ev.clientX, pointY: ev.clientY, offX, offY, currentStyle, currentCStyle })
-      }
-      const pointerEnd = (ev: MouseEvent) => {
-        document.removeEventListener('mousemove', pointerMove, false)
-        document.removeEventListener('mouseup', pointerEnd, false)
-        window.removeEventListener('blur', pointerEnd, false)
-
-        if (dragging) {
-          if (toLockPage) {
-            unlockPage()
-          }
-          if (hasCursor) {
-            restoreCursor()
-          }
-
-          onPointerEnd && onPointerEnd({ ev, currentStyle })
-        }
-
-      }
-
-      document.addEventListener("mousemove", pointerMove);
-      document.addEventListener("mouseup", pointerEnd);
-      window.addEventListener("blur", pointerEnd);
-
-      e.preventDefault();
-      return false;
-    }, true)
+      },
+      true
+    );
   }
-
 
   /**
    * 注册事件，以便在{@link destroy}方法中卸载
@@ -212,7 +252,7 @@ export abstract class Uii {
    * @returns
    */
   getOption(name: string): any {
-    return this.opts[name]
+    return this.opts[name];
   }
   /**
    * 设置多个选项值。触发`onOptionChanged`
@@ -235,14 +275,28 @@ export abstract class Uii {
   /**
    * @internal
    */
-  protected onOptionChanged(opts?: Record<string, any>): void { }
+  protected onOptionChanged(opts?: Record<string, any>): void {}
 }
 
 export type ResizableOptions = {
   /**
    * 控制器元素选择器(1-n个元素)，如果为空表示点击任意元素即可触发
    */
-  handle?: ((target:HTMLElement | SVGGraphicsElement) => NodeList | HTMLCollection | HTMLElement[] | HTMLElement | SVGGraphicsElement) | string | NodeList | HTMLCollection | HTMLElement[] | HTMLElement | SVGGraphicsElement;
+  handle?:
+    | ((
+        target: HTMLElement | SVGGraphicsElement
+      ) =>
+        | NodeList
+        | HTMLCollection
+        | HTMLElement[]
+        | HTMLElement
+        | SVGGraphicsElement)
+    | string
+    | NodeList
+    | HTMLCollection
+    | HTMLElement[]
+    | HTMLElement
+    | SVGGraphicsElement;
   /**
    * 拖动元素的最小size，如果是数组，表示 [width,height]
    */
@@ -266,17 +320,34 @@ export type ResizableOptions = {
   ghostClass?: string;
   //相对于图形左上角的圆心偏移，支持数字/百分比
   //仅对SVG元素有效，对于非SVG元素使用transform-origin属性
-  ox?:number|string;
-  oy?:number|string;
+  ox?: number | string;
+  oy?: number | string;
   /**
    * 指针点击时触发，可用于阻止后续逻辑
-   * @param event 
+   * @param event
    * @returns 返回false则停止后续逻辑
    */
   onPointerDown?: (event: MouseEvent) => boolean;
-  onStart?: (data: { w: number; h: number,transform:UiiTransform }, event: MouseEvent) => void;
-  onResize?: (data: { w: number; h: number, ow: number, oh: number, target: HTMLElement | SVGGraphicsElement, vertex: Array<{ x: number, y: number }>, transform: UiiTransform }, event: MouseEvent) => void;
-  onEnd?: (data: { w: number; h: number, transform: UiiTransform }, event: MouseEvent) => void;
+  onStart?: (
+    data: { w: number; h: number; transform: UiiTransform },
+    event: MouseEvent
+  ) => void;
+  onResize?: (
+    data: {
+      w: number;
+      h: number;
+      ow: number;
+      oh: number;
+      target: HTMLElement | SVGGraphicsElement;
+      vertex: Array<{ x: number; y: number }>;
+      transform: UiiTransform;
+    },
+    event: MouseEvent
+  ) => void;
+  onEnd?: (
+    data: { w: number; h: number; transform: UiiTransform },
+    event: MouseEvent
+  ) => void;
   onClone?: (data: { clone: HTMLElement }, event: MouseEvent) => void;
 };
 
@@ -322,6 +393,14 @@ export type SplittableOptions = {
 
 export type DraggableOptions = {
   /**
+   * 是否不响应子元素触发，默认true
+   */
+  self?:boolean;
+  /**
+   * 鼠标控制时的按键，默认left
+   */
+  mouseButton?: 'all' | "left" | "right";
+  /**
    * 限制活动范围，默认false
    * boolean 值会获取第一个可拖动元素的parent元素
    * string 选择器选中的第一个元素
@@ -350,10 +429,10 @@ export type DraggableOptions = {
    * 拖动目标，dom/selector数组，用于拖动交互事件
    */
   droppable?:
-  | (() => NodeList | HTMLCollection | HTMLElement[])
-  | string
-  | HTMLElement
-  | HTMLElement[];
+    | (() => NodeList | HTMLCollection | HTMLElement[])
+    | string
+    | HTMLElement
+    | HTMLElement[];
   /**
    * 开启ghost模式后，拖动元素时会自动创建元素副本并拖动副本，当拖动结束后，副本销毁并且元素移动到最后位置。默认false，支持函数返回副本元素
    */
@@ -411,11 +490,22 @@ export type DraggableOptions = {
   type?: string;
   /**
    * 指针点击时触发，可用于阻止后续逻辑
-   * @param event 
+   * @param event
    * @returns 返回false则停止后续逻辑
    */
-  onPointerDown?: (data: { draggable: HTMLElement | SVGGraphicsElement},event: MouseEvent) => boolean;
-  onStart?: (data: { draggable: HTMLElement | SVGGraphicsElement, x: number, y: number, transform: UiiTransform }, event: MouseEvent) => void;
+  onPointerDown?: (
+    data: { draggable: HTMLElement | SVGGraphicsElement },
+    event: MouseEvent
+  ) => boolean;
+  onStart?: (
+    data: {
+      draggable: HTMLElement | SVGGraphicsElement;
+      x: number;
+      y: number;
+      transform: UiiTransform;
+    },
+    event: MouseEvent
+  ) => void;
   /**
    * 拖动中调用，返回false阻止dom移动
    * @param dragDom
@@ -426,11 +516,12 @@ export type DraggableOptions = {
    */
   onDrag?: (
     data: {
-      draggable: HTMLElement | SVGGraphicsElement,
-      x: number,
-      y: number,
-      ox: number,
-      oy: number, transform: UiiTransform
+      draggable: HTMLElement | SVGGraphicsElement;
+      x: number;
+      y: number;
+      ox: number;
+      oy: number;
+      transform: UiiTransform;
     },
     event: MouseEvent
   ) => boolean | void;
@@ -442,13 +533,17 @@ export type DraggableOptions = {
    */
   onEnd?: (
     data: {
-      draggable: HTMLElement | SVGGraphicsElement, 
-      x: number,
-      y: number, transform: UiiTransform
+      draggable: HTMLElement | SVGGraphicsElement;
+      x: number;
+      y: number;
+      transform: UiiTransform;
     },
     event: MouseEvent
   ) => boolean | void;
-  onClone?: (data: { clone: HTMLElement | SVGGraphicsElement }, event: MouseEvent) => void;
+  onClone?: (
+    data: { clone: HTMLElement | SVGGraphicsElement },
+    event: MouseEvent
+  ) => void;
   onSnap?: (
     data: {
       el: HTMLElement | SVGGraphicsElement;
@@ -463,6 +558,10 @@ export type DraggableOptions = {
 
 export type DroppableOptions = {
   /**
+   * 如果可响应元素为选择器，会在每次拖动开启时自动重置匹配的可响应元素。默认true
+   */
+  watch?: boolean;
+  /**
    * 当accepts的draggable对象开始拖动时，自动设置该样式。多个样式使用空格分隔
    */
   activeClass?: string;
@@ -474,26 +573,44 @@ export type DroppableOptions = {
    * 定义哪些draggable元素进行交互。如果是字符串，支持不同Draggable对象进行编组
    */
   accepts?:
-  | ((ele: Array<HTMLElement>, draggable: HTMLElement) => boolean)
-  | string;
+    | ((ele: Array<HTMLElement>, draggable: HTMLElement) => boolean)
+    | string;
   /**
    * 当accepts的draggable对象开始拖动时触发
    * @param draggable
    * @param ele
    * @returns
    */
-  onActive?: (data: { draggable: HTMLElement, droppables: Array<HTMLElement> }) => void;
-  onEnter?: (data: { draggable: HTMLElement, droppable: HTMLElement }, event: MouseEvent) => void;
-  onOver?: (data: { draggable: HTMLElement, droppable: HTMLElement }, event: MouseEvent) => void;
-  onLeave?: (data: { draggable: HTMLElement, droppable: HTMLElement }, event: MouseEvent) => void;
-  onDrop?: (data: { draggable: HTMLElement, droppable: HTMLElement }, event: MouseEvent) => void;
+  onActive?: (data: {
+    draggable: HTMLElement;
+    droppables: Array<HTMLElement>;
+  }) => void;
+  onEnter?: (
+    data: { draggable: HTMLElement; droppable: HTMLElement },
+    event: MouseEvent
+  ) => void;
+  onOver?: (
+    data: { draggable: HTMLElement; droppable: HTMLElement },
+    event: MouseEvent
+  ) => void;
+  onLeave?: (
+    data: { draggable: HTMLElement; droppable: HTMLElement },
+    event: MouseEvent
+  ) => void;
+  onDrop?: (
+    data: { draggable: HTMLElement; droppable: HTMLElement },
+    event: MouseEvent
+  ) => void;
   /**
    * 当accepts的draggable对象结束拖动时触发
    * @param draggable
    * @param ele
    * @returns
    */
-  onDeactive?: (data: { draggable: HTMLElement, droppables: Array<HTMLElement> }) => void;
+  onDeactive?: (data: {
+    draggable: HTMLElement;
+    droppables: Array<HTMLElement>;
+  }) => void;
 };
 
 export type RotatableOptions = {
@@ -506,20 +623,47 @@ export type RotatableOptions = {
   };
   //相对于图形左上角的圆心偏移，支持数字/百分比
   //仅对SVG元素有效，对于非SVG元素使用transform-origin属性
-  ox?:number|string;
-  oy?:number|string;
+  ox?: number | string;
+  oy?: number | string;
   /**
    * 控制器元素选择器(1-n个元素)，如果为空表示点击任意元素即可触发
    */
-  handle?: ((target: HTMLElement | SVGGraphicsElement) => NodeList | HTMLCollection | HTMLElement[] | HTMLElement | SVGGraphicsElement) | string | NodeList | HTMLCollection | HTMLElement[] | HTMLElement | SVGGraphicsElement;
+  handle?:
+    | ((
+        target: HTMLElement | SVGGraphicsElement
+      ) =>
+        | NodeList
+        | HTMLCollection
+        | HTMLElement[]
+        | HTMLElement
+        | SVGGraphicsElement)
+    | string
+    | NodeList
+    | HTMLCollection
+    | HTMLElement[]
+    | HTMLElement
+    | SVGGraphicsElement;
   /**
    * 指针点击时触发，可用于阻止后续逻辑
-   * @param event 
+   * @param event
    * @returns 返回false则停止后续逻辑
    */
   onPointerDown?: (event: MouseEvent) => boolean;
-  onStart?: (data: { deg: number, cx: number, cy: number }, event: MouseEvent) => {};
-  onRotate?: (data: { deg: number, cx: number, cy: number,ox: number, oy: number,target: HTMLElement | SVGGraphicsElement}, event: MouseEvent) => {};
+  onStart?: (
+    data: { deg: number; cx: number; cy: number },
+    event: MouseEvent
+  ) => {};
+  onRotate?: (
+    data: {
+      deg: number;
+      cx: number;
+      cy: number;
+      ox: number;
+      oy: number;
+      target: HTMLElement | SVGGraphicsElement;
+    },
+    event: MouseEvent
+  ) => {};
   onEnd?: (data: { deg: number }, event: MouseEvent) => {};
 };
 
@@ -558,14 +702,23 @@ export type SelectableOptions = {
   filter?: ((el: HTMLElement) => boolean) | string;
   /**
    * 指针点击时触发，可用于阻止后续逻辑
-   * @param event 
+   * @param event
    * @returns 返回false则停止后续逻辑
    */
   onPointerDown?: (event: MouseEvent) => boolean;
-  onStart?: (data: { selection: Array<HTMLElement>, selectable: HTMLElement }, event: MouseEvent) => void;
+  onStart?: (
+    data: { selection: Array<HTMLElement>; selectable: HTMLElement },
+    event: MouseEvent
+  ) => void;
   //选中元素变动时触发
-  onSelect?: (data: { selection: Array<HTMLElement>, selectable: HTMLElement }, event: MouseEvent) => void;
-  onEnd?: (data: { selection: Array<HTMLElement>, selectable: HTMLElement }, event: MouseEvent) => void;
+  onSelect?: (
+    data: { selection: Array<HTMLElement>; selectable: HTMLElement },
+    event: MouseEvent
+  ) => void;
+  onEnd?: (
+    data: { selection: Array<HTMLElement>; selectable: HTMLElement },
+    event: MouseEvent
+  ) => void;
 };
 
 export type SortableOptions = {
@@ -608,74 +761,116 @@ export type SortableOptions = {
     /**
      * 表示元素从fromContainer的移出策略，默认true
      */
-    to?: ((item: HTMLElement, from: HTMLElement) => boolean) | boolean | 'copy',
+    to?: ((item: HTMLElement, from: HTMLElement) => boolean) | boolean | "copy";
     /**
      * 表示来自fromContainer的元素对toContainers的移入策略，默认true
      */
-    from?: ((item: HTMLElement, from: HTMLElement, to: HTMLElement) => boolean) | boolean,
-  }
+    from?:
+      | ((item: HTMLElement, from: HTMLElement, to: HTMLElement) => boolean)
+      | boolean;
+  };
   /**
    * 当ghost元素移出容器后列表元素的处理方式
    * remove 删除列表元素
    * revert 复原拖动前位置
    */
-  spill?: 'remove' | 'revert'
+  spill?: "remove" | "revert";
   /**
    * 是否可排序，默认true
    */
-  sort?: boolean
+  sort?: boolean;
   /**
    * 当一组中的任意sortable容器中的元素被拖动时，其他容器会触发激活事件
-   * @param data 
-   * @param event 
-   * @returns 
+   * @param data
+   * @param event
+   * @returns
    */
-  onActive?: (data: { item: HTMLElement, from: HTMLElement }) => void;
-  onDeactive?: (data: { item: HTMLElement, from: HTMLElement }) => void;
-  onStart?: (data: { item: HTMLElement, from: HTMLElement, index: number }, event: MouseEvent) => void;
+  onActive?: (data: { item: HTMLElement; from: HTMLElement }) => void;
+  onDeactive?: (data: { item: HTMLElement; from: HTMLElement }) => void;
+  onStart?: (
+    data: { item: HTMLElement; from: HTMLElement; index: number },
+    event: MouseEvent
+  ) => void;
   /**
    * 拖动结束后触发
-   * @param data 
-   * @param event 
-   * @returns 
+   * @param data
+   * @param event
+   * @returns
    */
-  onEnd?: (data: { item: HTMLElement, from: HTMLElement, to: HTMLElement }, event: MouseEvent) => void;
+  onEnd?: (
+    data: { item: HTMLElement; from: HTMLElement; to: HTMLElement },
+    event: MouseEvent
+  ) => void;
   /**
    * 拖动中且排序发生变更时触发
-   * @param data 
-   * @param event 
+   * @param data
+   * @param event
    */
-  onChange?: (data: { item: HTMLElement, from: HTMLElement, to: HTMLElement, fromIndex: number, toIndex: number }, event: MouseEvent) => void;
+  onChange?: (
+    data: {
+      item: HTMLElement;
+      from: HTMLElement;
+      to: HTMLElement;
+      fromIndex: number;
+      toIndex: number;
+    },
+    event: MouseEvent
+  ) => void;
   /**
    * 拖动结束后，如果列表排序发生变更时触发，包括顺序变更或新增节点或移除节点
-   * @param data 
-   * @param event 
+   * @param data
+   * @param event
    */
-  onUpdate?: (data: { item: HTMLElement, from: HTMLElement, to: HTMLElement }, event: MouseEvent) => void;
+  onUpdate?: (
+    data: { item: HTMLElement; from: HTMLElement; to: HTMLElement },
+    event: MouseEvent
+  ) => void;
   /**
    * 拖动中指针进入sortable容器时触发
-   * @param data 
-   * @param event 
+   * @param data
+   * @param event
    */
-  onEnter?: (data: { item: HTMLElement, from: HTMLElement, to: HTMLElement, dir: string }, event: MouseEvent) => void;
+  onEnter?: (
+    data: {
+      item: HTMLElement;
+      from: HTMLElement;
+      to: HTMLElement;
+      dir: string;
+    },
+    event: MouseEvent
+  ) => void;
   /**
    * 拖动中指针离开sortable容器时触发
-   * @param data 
-   * @param event 
+   * @param data
+   * @param event
    */
-  onLeave?: (data: { item: HTMLElement, from: HTMLElement, to: HTMLElement }, event: MouseEvent) => void;
+  onLeave?: (
+    data: { item: HTMLElement; from: HTMLElement; to: HTMLElement },
+    event: MouseEvent
+  ) => void;
   /**
    * 拖动元素插入到sortable容器中时触发
-   * @param data 
-   * @param event 
+   * @param data
+   * @param event
    */
-  onAdd?: (data: { item: HTMLElement, from: HTMLElement, to: HTMLElement, index: number }, event: MouseEvent) => void;
+  onAdd?: (
+    data: {
+      item: HTMLElement;
+      from: HTMLElement;
+      to: HTMLElement;
+      index: number;
+    },
+    event: MouseEvent
+  ) => void;
   /**
    * 拖动元素从sortable容器中删除时触发
-   * @param data 
-   * @param event 
+   * @param data
+   * @param event
    */
-  onRemove?: (data: { item: HTMLElement, from: HTMLElement, to: HTMLElement }, event: MouseEvent) => void;
+  onRemove?: (
+    data: { item: HTMLElement; from: HTMLElement; to: HTMLElement },
+    event: MouseEvent
+  ) => void;
 };
 
 export type CollisionDetectorOptions = {

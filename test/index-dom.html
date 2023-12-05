@@ -450,6 +450,7 @@
           直接元素拖动
           <div class="rotate-handler"></div>
           <div class="resize-handle uii-resizable-handle-se" style="bottom:5px;right:5px;"></div>
+          <div style="position: absolute;left: 100px;top:100px;background-color: red;border: 1px solid red;">子元素</div>
         </section>
 
         <section
@@ -783,6 +784,7 @@
       });
 
       const d1 = uii.newDraggable("#dragger1", {
+        self:true,
         cursor: {
           default: "grab",
           active: "not-allowed",
@@ -844,6 +846,15 @@
           draggable.style["pointer-events"] = "";
           draggable.parentNode.removeChild(copy);
           // document.body.style.cursor = ''
+        },
+      });
+      
+      uii.newDroppable("#dragger5", {
+        onEnter({ draggable, droppable }) {
+          debugger
+        },
+        onDrop: function ({ draggable, droppable }) {
+          debugger
         },
       });
       const gh = document.getElementById("gh");

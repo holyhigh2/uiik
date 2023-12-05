@@ -68,7 +68,8 @@ export class Draggable extends Uii {
           scroll:true,
           snapOptions: {
             tolerance: 10,
-          }
+          },
+          self:true
         },
         opts
       )
@@ -171,6 +172,8 @@ export class Draggable extends Uii {
       if (handle && !handle.contains(t as Node)) {
         return true
       }
+
+      if(opts.self && dragDom !== t)return
 
       //检测
       const onPointerDown = opts.onPointerDown;
