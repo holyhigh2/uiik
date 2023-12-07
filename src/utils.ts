@@ -146,59 +146,80 @@ export function getStyleSize(el: HTMLElement | SVGGraphicsElement,cStyle?:CSSSty
 }
 
 const EXP_MATRIX =
-  /matrix\((?<a>[\d.-]+)\s*,\s*(?<b>[\d.-]+)\s*,\s*(?<c>[\d.-]+)\s*,\s*(?<d>[\d.-]+)\s*,\s*(?<x>[\d.-]+)\s*,\s*(?<y>[\d.-]+)\s*\)/;
+  /matrix\((?<a>[\d.-]+)\s*,\s*(?<b>[\d.-]+)\s*,\s*(?<c>[\d.-]+)\s*,\s*(?<d>[\d.-]+)\s*,\s*(?<e>[\d.-]+)\s*,\s*(?<f>[\d.-]+)\s*\)/;
 
 /**
  * 获取matrix中的scale/angle
  * @param elCStyle
+ * @param recur 递归计算matrix
  * @returns
  */
 export function getMatrixInfo(
-  elCStyle: CSSStyleDeclaration | HTMLElement | SVGGraphicsElement
+  el: HTMLElement | SVGGraphicsElement,
+  recur:boolean = false
 ) {
+  
+  const rs = _getMatrixInfo(el)
+
+  if(recur){
+    let p = el.parentElement
+    while(p && p.tagName !== "BODY"){
+      let prs = _getMatrixInfo(p)
+      rs.scale *= prs.scale
+      p = p.parentElement
+    }
+  }
+
+  return rs;
+}
+
+function _getMatrixInfo(el: HTMLElement | SVGGraphicsElement){
+  const rs = { scale: 1, angle: 0,x:0,y:0 };
   let a = 1,
     b = 0,
     c = 0,
     d = 1,
     x = 0,
     y = 0;
-  let e = undefined,
-    f = undefined;
-  if (elCStyle instanceof SVGGraphicsElement) {
-    const transMatrix = elCStyle.transform.animVal[0];
-    if (transMatrix) {
-      e = transMatrix.matrix.e;
-      f = transMatrix.matrix.f;
+  let elCStyle:CSSStyleDeclaration
+    if (el instanceof SVGGraphicsElement || el instanceof HTMLElement){
+      elCStyle = window.getComputedStyle(el);
     }
 
-    elCStyle = window.getComputedStyle(elCStyle);
-  } else {
-    if (elCStyle instanceof HTMLElement) {
-      elCStyle = window.getComputedStyle(elCStyle);
-    }
+    let matrix = _getMatrix(elCStyle!.transform)
+  if(matrix){
+    a = matrix.a;
+    b = matrix.b;
+    c = matrix.c;
+    d = matrix.d;
+    rs.x = matrix.e;
+    rs.y = matrix.f;
   }
-
-  const matched = elCStyle.transform.match(EXP_MATRIX);
-  if (matched && matched.groups) {
-    a = parseFloat(matched.groups.a);
-    b = parseFloat(matched.groups.b);
-    c = parseFloat(matched.groups.c);
-    d = parseFloat(matched.groups.d);
-    x = parseFloat(matched.groups.x);
-    y = parseFloat(matched.groups.y);
-  }
-
-  if (e && f) {
-    x = e;
-    y = f;
-  }
-
-  const rs = { scale: 1, angle: 0, x, y };
 
   rs.scale = Math.sqrt(a * a + b * b);
   rs.angle = Math.round(Math.atan2(b, a) * (180 / Math.PI));
 
-  return rs;
+  return rs
+}
+
+function _getMatrix(transform:string):any{
+  let matrix:{a:number,b:number,c:number,d:number,e:number,f:number}|null = null
+  if(window.WebKitCSSMatrix){
+    matrix = new WebKitCSSMatrix(transform)
+  }else{
+    const matched = transform.match(EXP_MATRIX);
+    if (matched && matched.groups) {
+      matrix = {
+        a : parseFloat(matched.groups.a),
+        b : parseFloat(matched.groups.b),
+        c : parseFloat(matched.groups.c),
+        d : parseFloat(matched.groups.d),
+        e : parseFloat(matched.groups.e),
+        f : parseFloat(matched.groups.f),
+      }      
+    }
+  }
+  return matrix
 }
 
 /**
@@ -223,7 +244,7 @@ export function getPointInContainer(
     elCStyle = window.getComputedStyle(el);
   }
   if (!matrixInfo) {
-    matrixInfo = getMatrixInfo(elCStyle);
+    matrixInfo = getMatrixInfo(el,true);
   }
 
   const scale = matrixInfo.scale;
@@ -254,7 +275,7 @@ export function getRectInContainer(
   const elRect = el.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
   const elCStyle = window.getComputedStyle(container);
-  const matrixInfo = getMatrixInfo(elCStyle);
+  const matrixInfo = getMatrixInfo(container);
   const scale = matrixInfo.scale;
 
   let x =
@@ -329,7 +350,7 @@ export function getVertex(el: HTMLElement | SVGGraphicsElement,ox:number|string,
   const {originX,originY} = parseOxy(ox,oy,w,h)
 
   const { x, y, sx, sy } = el instanceof SVGGraphicsElement?getCenterXySVG(el,originX,originY):getCenterXy(el);
-  const {angle} = getMatrixInfo(cStyle)
+  const {angle} = getMatrixInfo(el)
 
   return calcVertex(w,h,x,y,sx,sy,angle * ONE_ANG)
 }

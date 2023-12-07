@@ -7,12 +7,14 @@
 import {
   each,
   find,
+  includes,
   map,
   some,
 } from "myfx/collection"
 import {assign} from 'myfx/object'
 import {split} from 'myfx/string'
 import { compact} from 'myfx/array'
+import { closest} from 'myfx/tree'
 import {
   isString,
   isArrayLike,
@@ -69,7 +71,7 @@ export class Draggable extends Uii {
           snapOptions: {
             tolerance: 10,
           },
-          self:true
+          self:false
         },
         opts
       )
@@ -164,7 +166,7 @@ export class Draggable extends Uii {
       }
 
       //find drag dom & handle
-      let findRs = find<HTMLElement | SVGGraphicsElement>(draggableList,el=>el.contains(t))
+      let findRs = closest<HTMLElement | SVGGraphicsElement>(t,node=>includes(draggableList,node),'parentNode')
       if (!findRs)return true
       const dragDom: HTMLElement | SVGGraphicsElement = findRs
 
@@ -173,7 +175,7 @@ export class Draggable extends Uii {
         return true
       }
 
-      if(opts.self && dragDom !== t)return
+      if(opts.self && dragDom !== t)return true
 
       //检测
       const onPointerDown = opts.onPointerDown;
@@ -196,12 +198,8 @@ export class Draggable extends Uii {
       let offsetPointX = offsetXy.x
       let offsetPointY = offsetXy.y
 
-      const matrixInfo = getMatrixInfo(dragDom)
+      const matrixInfo = getMatrixInfo(dragDom,true)
       const currentXy = getPointInContainer(ev, offsetParent as any, offsetParentRect, offsetParentCStyle)
-
-      const matrixInfoParent = getMatrixInfo(offsetParent as any)
-      offsetPointX = offsetPointX / (matrixInfo.scale*matrixInfoParent.scale)
-      offsetPointY = offsetPointY / (matrixInfo.scale * matrixInfoParent.scale)
       
       if (matrixInfo.angle != 0) {
         offsetPointX = currentXy.x - matrixInfo.x

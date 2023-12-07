@@ -108,7 +108,7 @@ export class Selectable extends Uii {
 
       let originPos = "";
 
-      let matrixInfo = getMatrixInfo(currentCStyle)
+      let matrixInfo = getMatrixInfo(currentTarget)
       const startxy = getPointInContainer(ev, con, currentRect, currentCStyle, matrixInfo)
       let hitPosX = startxy.x
       let hitPosY = startxy.y

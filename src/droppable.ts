@@ -55,7 +55,7 @@ export class Droppable extends Uii {
     //dragenter
     this.registerEvent(droppable, "mouseenter", (e: MouseEvent) => {
       if(!this.#active)return
-      if(e.target === droppable)return
+      if(this.#active === droppable)return
 
       if(opts.hoverClass){
         each(split(opts.hoverClass,' '),cls=>{
@@ -72,7 +72,7 @@ export class Droppable extends Uii {
     //dragleave
     this.registerEvent(droppable, "mouseleave", (e: MouseEvent) => {
       if(!this.#active)return
-      if(e.target === droppable)return
+      if(this.#active === droppable)return
 
       if(opts.hoverClass){
         each(split(opts.hoverClass,' '),cls=>{
@@ -89,14 +89,14 @@ export class Droppable extends Uii {
     //dragover
     this.registerEvent(droppable, "mousemove", (e: MouseEvent) => {
       if(!this.#active)return
-      if(e.target === droppable)return
+      if(this.#active === droppable)return
 
       opts.onOver && opts.onOver({draggable:this.#active,droppable},e)
     })
     //drop
     this.registerEvent(droppable, "mouseup", (e: MouseEvent) => {
       if(!this.#active)return
-      if(e.target === droppable)return
+      if(this.#active === droppable)return
 
       if(opts.hoverClass){
         each(split(opts.hoverClass,' '),cls=>{

@@ -1805,45 +1805,64 @@ function getStyleSize(el, cStyle) {
     const h = parseFloat(cStyle.height);
     return { w, h };
 }
-const EXP_MATRIX = /matrix\((?<a>[\d.-]+)\s*,\s*(?<b>[\d.-]+)\s*,\s*(?<c>[\d.-]+)\s*,\s*(?<d>[\d.-]+)\s*,\s*(?<x>[\d.-]+)\s*,\s*(?<y>[\d.-]+)\s*\)/;
+const EXP_MATRIX = /matrix\((?<a>[\d.-]+)\s*,\s*(?<b>[\d.-]+)\s*,\s*(?<c>[\d.-]+)\s*,\s*(?<d>[\d.-]+)\s*,\s*(?<e>[\d.-]+)\s*,\s*(?<f>[\d.-]+)\s*\)/;
 /**
  * 获取matrix中的scale/angle
  * @param elCStyle
+ * @param recur 递归计算matrix
  * @returns
  */
-function getMatrixInfo(elCStyle) {
-    let a = 1, b = 0, x = 0, y = 0;
-    let e = undefined, f = undefined;
-    if (elCStyle instanceof SVGGraphicsElement) {
-        const transMatrix = elCStyle.transform.animVal[0];
-        if (transMatrix) {
-            e = transMatrix.matrix.e;
-            f = transMatrix.matrix.f;
-        }
-        elCStyle = window.getComputedStyle(elCStyle);
-    }
-    else {
-        if (elCStyle instanceof HTMLElement) {
-            elCStyle = window.getComputedStyle(elCStyle);
+function getMatrixInfo(el, recur = false) {
+    const rs = _getMatrixInfo(el);
+    if (recur) {
+        let p = el.parentElement;
+        while (p && p.tagName !== "BODY") {
+            let prs = _getMatrixInfo(p);
+            rs.scale *= prs.scale;
+            p = p.parentElement;
         }
     }
-    const matched = elCStyle.transform.match(EXP_MATRIX);
-    if (matched && matched.groups) {
-        a = parseFloat(matched.groups.a);
-        b = parseFloat(matched.groups.b);
-        parseFloat(matched.groups.c);
-        parseFloat(matched.groups.d);
-        x = parseFloat(matched.groups.x);
-        y = parseFloat(matched.groups.y);
+    return rs;
+}
+function _getMatrixInfo(el) {
+    const rs = { scale: 1, angle: 0, x: 0, y: 0 };
+    let a = 1, b = 0;
+    let elCStyle;
+    if (el instanceof SVGGraphicsElement || el instanceof HTMLElement) {
+        elCStyle = window.getComputedStyle(el);
     }
-    if (e && f) {
-        x = e;
-        y = f;
+    let matrix = _getMatrix(elCStyle.transform);
+    if (matrix) {
+        a = matrix.a;
+        b = matrix.b;
+        matrix.c;
+        matrix.d;
+        rs.x = matrix.e;
+        rs.y = matrix.f;
     }
-    const rs = { scale: 1, angle: 0, x, y };
     rs.scale = Math.sqrt(a * a + b * b);
     rs.angle = Math.round(Math.atan2(b, a) * (180 / Math.PI));
     return rs;
+}
+function _getMatrix(transform) {
+    let matrix = null;
+    if (window.WebKitCSSMatrix) {
+        matrix = new WebKitCSSMatrix(transform);
+    }
+    else {
+        const matched = transform.match(EXP_MATRIX);
+        if (matched && matched.groups) {
+            matrix = {
+                a: parseFloat(matched.groups.a),
+                b: parseFloat(matched.groups.b),
+                c: parseFloat(matched.groups.c),
+                d: parseFloat(matched.groups.d),
+                e: parseFloat(matched.groups.e),
+                f: parseFloat(matched.groups.f),
+            };
+        }
+    }
+    return matrix;
 }
 /**
  * 获取当前鼠标相对于指定元素el的坐标
@@ -1861,7 +1880,7 @@ function getPointInContainer(event, el, elRect, elCStyle, matrixInfo) {
         elCStyle = window.getComputedStyle(el);
     }
     if (!matrixInfo) {
-        matrixInfo = getMatrixInfo(elCStyle);
+        matrixInfo = getMatrixInfo(el, true);
     }
     const scale = matrixInfo.scale;
     let x = event.clientX -
@@ -1883,7 +1902,7 @@ function getRectInContainer(el, container) {
     const elRect = el.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
     const elCStyle = window.getComputedStyle(container);
-    const matrixInfo = getMatrixInfo(elCStyle);
+    const matrixInfo = getMatrixInfo(container);
     const scale = matrixInfo.scale;
     let x = elRect.x -
         containerRect.x -
@@ -1943,7 +1962,7 @@ function getVertex(el, ox, oy) {
     const h = parseFloat(cStyle.height);
     const { originX, originY } = parseOxy(ox, oy, w, h);
     const { x, y, sx, sy } = el instanceof SVGGraphicsElement ? getCenterXySVG(el, originX, originY) : getCenterXy(el);
-    const { angle } = getMatrixInfo(cStyle);
+    const { angle } = getMatrixInfo(el);
     return calcVertex(w, h, x, y, sx, sy, angle * ONE_ANG);
 }
 /**
@@ -2882,7 +2901,6 @@ class Resizable extends Uii {
                         break;
                 }
                 if (changeW) {
-                    console.log(minWidth, 'xxxxxx', w);
                     if (minWidth && w < minWidth)
                         w = minWidth;
                     if (maxWidth && w > maxWidth)
@@ -3812,6 +3830,36 @@ function findIndex(array, predicate, fromIndex) {
     return rs;
 }
 
+/**
+   * myfx/tree v1.1.0
+   * A modular utility library with more utils, higher performance and simpler declarations ...
+   * https://github.com/holyhigh2/myfx
+   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   */
+
+/**
+ * 根据指定的node及parentKey属性，查找最近的祖先节点
+ * @param node Element节点或普通对象节点
+ * @param predicate (node,times,cancel)断言函数，如果返回true表示节点匹配。或调用cancel中断查找
+ * @param parentKey 父节点引用属性名
+ * @returns 断言为true的最近一个祖先节点
+ * @since 1.0.0
+ */
+function closest(node, predicate, parentKey) {
+    let p = node;
+    let t = null;
+    let k = true;
+    let i = 0;
+    while (k && p) {
+        if (predicate(p, i++, () => { k = false; })) {
+            t = p;
+            break;
+        }
+        p = p[parentKey];
+    }
+    return t;
+}
+
 var _Draggable_instances, _Draggable_handleMap, _Draggable_container, _Draggable_initStyle;
 const DRAGGER_GROUPS = {};
 const CLASS_DRAGGABLE = "uii-draggable";
@@ -3841,7 +3889,7 @@ class Draggable extends Uii {
             snapOptions: {
                 tolerance: 10,
             },
-            self: true
+            self: false
         }, opts));
         _Draggable_instances.add(this);
         _Draggable_handleMap.set(this, new WeakMap());
@@ -3909,7 +3957,7 @@ class Draggable extends Uii {
                 initStyle(draggableList);
             }
             //find drag dom & handle
-            let findRs = find(draggableList, el => el.contains(t));
+            let findRs = closest(t, node => includes(draggableList, node), 'parentNode');
             if (!findRs)
                 return true;
             const dragDom = findRs;
@@ -3918,7 +3966,7 @@ class Draggable extends Uii {
                 return true;
             }
             if (opts.self && dragDom !== t)
-                return;
+                return true;
             //检测
             const onPointerDown = opts.onPointerDown;
             if (onPointerDown && onPointerDown({ draggable: dragDom }, ev) === false)
@@ -3936,11 +3984,8 @@ class Draggable extends Uii {
             const offsetXy = getPointInContainer(ev, dragDom);
             let offsetPointX = offsetXy.x;
             let offsetPointY = offsetXy.y;
-            const matrixInfo = getMatrixInfo(dragDom);
+            const matrixInfo = getMatrixInfo(dragDom, true);
             const currentXy = getPointInContainer(ev, offsetParent, offsetParentRect, offsetParentCStyle);
-            const matrixInfoParent = getMatrixInfo(offsetParent);
-            offsetPointX = offsetPointX / (matrixInfo.scale * matrixInfoParent.scale);
-            offsetPointY = offsetPointY / (matrixInfo.scale * matrixInfoParent.scale);
             if (matrixInfo.angle != 0) {
                 offsetPointX = currentXy.x - matrixInfo.x;
                 offsetPointY = currentXy.y - matrixInfo.y;
@@ -4350,7 +4395,7 @@ class Droppable extends Uii {
         this.registerEvent(droppable, "mouseenter", (e) => {
             if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
                 return;
-            if (e.target === droppable)
+            if (__classPrivateFieldGet(this, _Droppable_active, "f") === droppable)
                 return;
             if (opts.hoverClass) {
                 each$1(split(opts.hoverClass, ' '), cls => {
@@ -4366,7 +4411,7 @@ class Droppable extends Uii {
         this.registerEvent(droppable, "mouseleave", (e) => {
             if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
                 return;
-            if (e.target === droppable)
+            if (__classPrivateFieldGet(this, _Droppable_active, "f") === droppable)
                 return;
             if (opts.hoverClass) {
                 each$1(split(opts.hoverClass, ' '), cls => {
@@ -4382,7 +4427,7 @@ class Droppable extends Uii {
         this.registerEvent(droppable, "mousemove", (e) => {
             if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
                 return;
-            if (e.target === droppable)
+            if (__classPrivateFieldGet(this, _Droppable_active, "f") === droppable)
                 return;
             opts.onOver && opts.onOver({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
         });
@@ -4390,7 +4435,7 @@ class Droppable extends Uii {
         this.registerEvent(droppable, "mouseup", (e) => {
             if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
                 return;
-            if (e.target === droppable)
+            if (__classPrivateFieldGet(this, _Droppable_active, "f") === droppable)
                 return;
             if (opts.hoverClass) {
                 each$1(split(opts.hoverClass, ' '), cls => {
@@ -4797,7 +4842,7 @@ _Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap()
         if (onPointerDown && onPointerDown(ev) === false)
             return true;
         let originPos = "";
-        let matrixInfo = getMatrixInfo(currentCStyle);
+        let matrixInfo = getMatrixInfo(currentTarget);
         const startxy = getPointInContainer(ev, con, currentRect, currentCStyle, matrixInfo);
         let hitPosX = startxy.x;
         let hitPosY = startxy.y;
@@ -5400,7 +5445,7 @@ function newSortable(container, opts) {
     return new Sortable(container, opts);
 }
 
-var version = "1.3.0-beta.3";
+var version = "1.3.0-beta.4";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

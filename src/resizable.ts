@@ -474,7 +474,6 @@ export class Resizable extends Uii {
           }
 
           if (changeW) {
-            console.log(minWidth,'xxxxxx',w)
             if (minWidth && w < minWidth) w = minWidth;
             if (maxWidth && w > maxWidth) w = maxWidth;
           }

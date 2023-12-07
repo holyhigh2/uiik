@@ -428,11 +428,18 @@
           <div class="rotate-handler"></div>
         </section>
 
-        <section class="resizer" id="resizer2" style="margin-top: 300px;">
+        <section class="resizer" id="resizer2" style="margin-top: 300px;width:400px;height:400px">
           1方向resize
           <div class="handle uii-resizable-handle-se" style="bottom:5px;right:5px;"></div>
           <div class="handle uii-resizable-handle-s" style="left:50%;bottom:-5px;"></div>
           <div class="handle uii-resizable-handle-e" style="top:50%;right:-5px;"></div>
+
+          <section class="resizer" id="resizer2_c" style="margin-top: 100px;">
+            子
+            <div class="handle uii-resizable-handle-se" style="bottom:5px;right:5px;"></div>
+            <div class="handle uii-resizable-handle-s" style="left:50%;bottom:-5px;"></div>
+            <div class="handle uii-resizable-handle-e" style="top:50%;right:-5px;"></div>
+          </section>
         </section>
       </div>
 
@@ -450,7 +457,6 @@
           直接元素拖动
           <div class="rotate-handler"></div>
           <div class="resize-handle uii-resizable-handle-se" style="bottom:5px;right:5px;"></div>
-          <div style="position: absolute;left: 100px;top:100px;background-color: red;border: 1px solid red;">子元素</div>
         </section>
 
         <section
@@ -762,11 +768,21 @@
       });
       
       uii.newResizable("#resizer2", {
-        handle:'#resizer2 .handle',
+        handle:'#resizer2>.handle',
         offset: 10,
         // ghost: true,
         ghostClass: "resizer-ghost",
         dir: ["se"],
+      });
+      uii.newResizable("#resizer2_c", {
+        handle:'#resizer2_c>.handle',
+        offset: 10,
+        // ghost: true,
+        ghostClass: "resizer-ghost",
+        dir: ["se"],
+      });
+      uii.newDraggable("#resizer2_c", {
+        filter:'.handle',
       });
 
       uii.newDroppable(".drag-targets div", {
@@ -795,6 +811,7 @@
         group: "xx",
         zIndex: 999,
       });
+      
       uii.newDraggable("#dragger2", {
         group: "xx",
         containment: true,
@@ -849,14 +866,6 @@
         },
       });
       
-      uii.newDroppable("#dragger5", {
-        onEnter({ draggable, droppable }) {
-          debugger
-        },
-        onDrop: function ({ draggable, droppable }) {
-          debugger
-        },
-      });
       const gh = document.getElementById("gh");
       const gv = document.getElementById("gv");
       uii.newDraggable("#dragger6", {
