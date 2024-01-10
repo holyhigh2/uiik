@@ -2,6 +2,7 @@ import { isElement, isString, isArrayLike, isEmpty } from "myfx/is";
 import { each, map, toArray } from "myfx/collection";
 import { assign, get } from "myfx/object";
 import {
+  getMatrixInfo,
   lockPage,
   restoreCursor,
   saveCursor,
@@ -144,10 +145,12 @@ export abstract class Uii {
           return false;
         }
 
+        let matrixInfo = getMatrixInfo(el as any,true)
+
         //函数
         const pointerMove = (ev: MouseEvent) => {
-          const offX = ev.clientX - originPosX;
-          const offY = ev.clientY - originPosY;
+          const offX = (ev.clientX - originPosX) / matrixInfo.scale;
+          const offY = (ev.clientY - originPosY) / matrixInfo.scale;
 
           if (!dragging) {
             if (Math.abs(offX) > threshold || Math.abs(offY) > threshold) {
@@ -392,6 +395,10 @@ export type SplittableOptions = {
 };
 
 export type DraggableOptions = {
+  /**
+   * 使用transform属性控制位移，默认true
+   */
+  useTransform?:boolean;
   /**
    * 是否不响应子元素触发，默认true
    */

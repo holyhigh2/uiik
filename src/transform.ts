@@ -5,7 +5,7 @@
  * @author holyhigh2
  */
 
-import { isDefined } from "myfx/is";
+import { isDefined, isNaN, isNumber } from "myfx/is";
 import { get } from "myfx/object";
 
 const UtMap = new WeakMap();
@@ -13,10 +13,18 @@ const UtMap = new WeakMap();
 export class UiiTransform {
   x: number;
   y: number;
+  offx: number;
+  offy: number;
   angle: number = 0;
   el: HTMLElement | SVGGraphicsElement;
-  constructor(el: HTMLElement | SVGGraphicsElement) {
+  useTransform: boolean;
+  constructor(
+    el: HTMLElement | SVGGraphicsElement,
+    useTransform: boolean = true
+  ) {
     this.el = el;
+
+    this.useTransform = useTransform;
 
     this.normalize(el);
 
@@ -24,24 +32,39 @@ export class UiiTransform {
   }
 
   normalize(el?: HTMLElement | SVGGraphicsElement) {
-    let { x, y } = normalize(el||this.el);
-    this.x = x;
-    this.y = y;
+    let { offx, offy } = normalize(el || this.el, this.useTransform);
+    // this.x = offx
+    // this.y = offy
+    this.offx = offx * -1;
+    this.offy = offy * -1;
     return this;
   }
 
   moveTo(x: number, y: number) {
     this.x = x;
     this.y = y;
-    moveTo(this.el, this.x, this.y);
+
+    (this.useTransform ? transformMoveTo : moveTo)(
+      this.el,
+      this.x + this.offx,
+      this.y + this.offy
+    );
   }
   moveToX(x: number) {
     this.x = x;
-    moveTo(this.el, this.x, this.y);
+    (this.useTransform ? transformMoveTo : moveTo)(
+      this.el,
+      this.x + this.offx,
+      NaN
+    );
   }
   moveToY(y: number) {
     this.y = y;
-    moveTo(this.el, this.x, this.y);
+    (this.useTransform ? transformMoveTo : moveTo)(
+      this.el,
+      NaN,
+      this.y + this.offy
+    );
   }
   rotateTo(deg: number, cx?: number, cy?: number) {
     this.angle = deg;
@@ -50,20 +73,28 @@ export class UiiTransform {
 }
 
 /**
- * 统一化处理，所有外边距都处理为translate
+ * 统一化处理，记录offset
  * @param el
  */
-function normalize(el: HTMLElement | SVGGraphicsElement) {
+function normalize(
+  el: HTMLElement | SVGGraphicsElement,
+  useTransform: boolean
+) {
   const style: any = window.getComputedStyle(el);
+
+  let offx = 0,
+    offy = 0;
   let x = 0,
     y = 0;
-  //1. convert left/top (include margins)
+  let mx = 0,
+    my = 0;
+
+  //1. get left/top (include margins)
   if (el instanceof HTMLElement) {
-    x = (parseFloat(style.left) || 0) + (parseFloat(style.marginLeft) || 0);
-    y = (parseFloat(style.top) || 0) + (parseFloat(style.marginTop) || 0);
-    el.style.setProperty("left", "0", "important");
-    el.style.setProperty("top", "0", "important");
-    el.style.setProperty("margin", "0", "important");
+    x = parseFloat(style.left) || 0;
+    y = parseFloat(style.top) || 0;
+    mx = parseFloat(style.marginLeft) || 0;
+    my = parseFloat(style.marginTop) || 0;
   } else {
     x =
       parseFloat(get(el, "x.baseVal.value") || get(el, "cx.baseVal.value")) ||
@@ -71,29 +102,30 @@ function normalize(el: HTMLElement | SVGGraphicsElement) {
     y =
       parseFloat(get(el, "y.baseVal.value") || get(el, "cy.baseVal.value")) ||
       0;
-    el.removeAttribute("x");
-    el.removeAttribute("y");
-    el.removeAttribute("cx");
-    el.removeAttribute("cy");
   }
 
-  //2. merge transform
-  const { x: tx, y: ty } = getTranslate(el);
-  x += tx || 0;
-  y += ty || 0;
+  //2. get translate
+  if (useTransform) {
+    (offx = x), (offy = y);
+  } else {
+    (offx = 0), (offy = 0);
+  }
 
-  moveTo(el, x, y);
-  return { x, y };
+  // moveTo(el, x, y);
+  return { offx: offx + mx, offy: offy + my };
 }
 
 /**
  * 返回一个包装后的变形对象，可执行变形操作
  * @param el
  */
-export function wrapper(el: HTMLElement | SVGGraphicsElement): UiiTransform {
+export function wrapper(
+  el: HTMLElement | SVGGraphicsElement,
+  useTransform: boolean = true
+): UiiTransform {
   let ut = UtMap.get(el);
   if (ut) return ut.normalize(el);
-  return new UiiTransform(el);
+  return new UiiTransform(el, useTransform);
 }
 
 function transformMove(
@@ -102,6 +134,18 @@ function transformMove(
   y: number,
   unit = false
 ) {
+  if (!isNumber(x) || isNaN(x)) {
+    return (
+      `translateY(${y}${unit ? "px" : ""}) ` +
+      transofrmStr.replace(/translateY\([^)]+?\)/, "").trim()
+    );
+  }
+  if (!isNumber(y) || isNaN(x)) {
+    return (
+      `translateX(${x}${unit ? "px" : ""}) ` +
+      transofrmStr.replace(/translateX\([^)]+?\)/, "").trim()
+    );
+  }
   return (
     `translate(${x}${unit ? "px" : ""},${y}${unit ? "px" : ""}) ` +
     transofrmStr.replace(/translate\([^)]+?\)/, "").trim()
@@ -121,6 +165,14 @@ export function getTranslate(el: HTMLElement | SVGGraphicsElement) {
   //svg
   if (el instanceof SVGGraphicsElement) {
     transformStr = el.getAttribute("transform") || "";
+    if (!transformStr) {
+      xVal =
+        parseFloat(get(el, "x.baseVal.value") || get(el, "cx.baseVal.value")) ||
+        0;
+      yVal =
+        parseFloat(get(el, "y.baseVal.value") || get(el, "cy.baseVal.value")) ||
+        0;
+    }
   } else {
     let style = (el as HTMLElement).style;
     transformStr = style.transform || "";
@@ -159,13 +211,34 @@ export function moveTo(
 ) {
   //svg
   if (el instanceof SVGGraphicsElement) {
+    if (x) el.setAttribute("x", x + "");
+    if (y) el.setAttribute("y", y + "");
+  } else {
+    let style = (el as HTMLElement).style;
+    if (x) style.left = x + "px";
+    if (y) style.top = y + "px";
+  }
+}
+
+export function transformMoveTo(
+  el: HTMLElement | SVGGraphicsElement,
+  x: number,
+  y: number
+) {
+  //svg
+  if (el instanceof SVGGraphicsElement) {
     el.setAttribute(
       "transform",
-      transformMove(el.getAttribute("transform") || "", x, y)
+      transformMove(el.getAttribute("transform") || "", x || 0, y || 0)
     );
   } else {
     let style = (el as HTMLElement).style;
-    style.transform = transformMove(style.transform || "", x, y, true);
+    style.transform = transformMove(
+      style.transform || "",
+      x || 0,
+      y || 0,
+      true
+    );
   }
 }
 

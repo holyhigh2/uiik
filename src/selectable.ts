@@ -10,12 +10,11 @@ import { compact } from 'myfx/array'
 import { isFunction } from 'myfx/is'
 import { CollisionDetector, newCollisionDetector } from "./detector";
 import { SelectableOptions, Uii } from "./types";
-import { EDGE_THRESHOLD, getMatrixInfo, getPointInContainer } from "./utils";
+import { EDGE_THRESHOLD, THRESHOLD, getPointInContainer } from "./utils";
 
 const CLASS_SELECTOR = "uii-selector";
 const CLASS_SELECTING = "uii-selecting";
 const CLASS_SELECTED = "uii-selected";
-const THRESHOLD = 2;
 
 /**
  * 用于表示一个元素选择器的定义
@@ -108,10 +107,9 @@ export class Selectable extends Uii {
 
       let originPos = "";
 
-      let matrixInfo = getMatrixInfo(currentTarget)
-      const startxy = getPointInContainer(ev, con, currentRect, currentCStyle, matrixInfo)
-      let hitPosX = startxy.x
-      let hitPosY = startxy.y
+      let startPointXy:{x:number,y:number} = getPointInContainer(ev, con, currentRect, currentCStyle)
+      let hitPosX = startPointXy.x
+      let hitPosY = startPointXy.y
 
       const style = selector.style;
 
@@ -147,16 +145,10 @@ export class Selectable extends Uii {
 
         onStart && onStart({ selection: that.#_lastSelected, selectable: con }, ev);
       })
-      onPointerMove((args: Record<string, any>) => {
-        const { ev } = args
+      onPointerMove(({ ev, offX, offY }: Record<string, any>) => {
 
-        //获取当前位置坐标
-        const currentXy = getPointInContainer(ev, currentTarget, currentRect, currentCStyle, matrixInfo)
-
-        let pointX = currentXy.x
-        let pointY = currentXy.y
-        let offX = pointX - hitPosX
-        let offY = pointY - hitPosY
+        let pointX = startPointXy.x + offX
+        let pointY = startPointXy.y + offY
 
         //edge detect
         if (scroll) {

@@ -11,7 +11,7 @@ import {split} from 'myfx/string'
 import {isEmpty,isFunction} from 'myfx/is'
 
 import { SortableOptions, Uii } from "./types";
-import { lockPage, restoreCursor, saveCursor, unlockPage } from "./utils";
+import { THRESHOLD, lockPage, restoreCursor, saveCursor, unlockPage } from "./utils";
 
 const SORTABLE_GROUPS: Record<string, Array<[Sortable, HTMLElement[]]>> = {};
 const CLASS_SORTABLE_CONTAINER = "uii-sortable-container";
@@ -19,7 +19,6 @@ const CLASS_SORTABLE_GHOST = "uii-sortable-ghost";
 const CLASS_SORTABLE_ACTIVE = "uii-sortable-active";
 
 const ATTR_SORTABLE_ACTIVE = "uii-sortable-active";
-const THRESHOLD = 2;
 
 /**
  * 用于表示一类排序容器的定义

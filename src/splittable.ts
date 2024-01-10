@@ -7,8 +7,8 @@ import { isArray, isEmpty} from 'myfx/is'
 import { each, includes, map, reject } from 'myfx/collection'
 import { assign } from 'myfx/object'
 import { SplittableOptions, Uii } from './types'
+import { THRESHOLD } from './utils';
 
-const THRESHOLD = 1;
 const CLASS_SPLITTABLE = "uii-splittable";
 const CLASS_SPLITTABLE_HANDLE = "uii-splittable-handle";
 const CLASS_SPLITTABLE_HANDLE_GHOST = "uii-splittable-handle-ghost";
@@ -271,9 +271,9 @@ export class Splittable extends Uii{
 
         if (ghostNode) {
           if (dir === 'v') {
-            ghostNode.style.top = startPos + ds1 - handleSize / 2 + 'px'
+            ghostNode.style.top = startPos + ds1 - splitterSize / 2 + 'px'
           } else {
-            ghostNode.style.left = startPos + ds1 - handleSize / 2 + 'px'
+            ghostNode.style.left = startPos + ds1 - splitterSize / 2 + 'px'
           }
         } else {
           const updateProp = dir === 'v' ? 'height' : 'width'
@@ -294,9 +294,9 @@ export class Splittable extends Uii{
 
           //update handle
           if (dir === 'v') {
-            currentStyle.top = dom2.offsetTop - handleSize / 2 + 'px'
+            currentStyle.top = dom2.offsetTop - splitterSize / 2 + 'px'
           } else {
-            currentStyle.left = dom2.offsetLeft - handleSize / 2 + 'px'
+            currentStyle.left = dom2.offsetLeft - splitterSize / 2 + 'px'
           }
         }
 
@@ -331,9 +331,9 @@ export class Splittable extends Uii{
           }
           //update handle
           if (dir === 'v') {
-            currentStyle.top = startPos + ds1 - handleSize / 2 + 'px'
+            currentStyle.top = startPos + ds1 - splitterSize / 2 + 'px'
           } else {
-            currentStyle.left = startPos + ds1 - handleSize / 2 + 'px'
+            currentStyle.left = startPos + ds1 - splitterSize / 2 + 'px'
           }
 
           ghostNode.parentNode?.contains(ghostNode) && ghostNode.parentNode?.removeChild(ghostNode)

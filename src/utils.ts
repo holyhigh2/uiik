@@ -5,7 +5,7 @@
  */
 
 import { find, map } from "myfx/collection";
-import { getTranslate, rotateTo } from "./transform";
+import { rotateTo } from "./transform";
 import { isNumber, isString } from "myfx/is";
 
 /**
@@ -17,10 +17,11 @@ export const ONE_ANG = Math.PI / 180;
  */
 export const ONE_RAD = 180 / Math.PI;
 
+export const THRESHOLD = 3;
+
 /**
  * 获取child相对于parent的位置信息。含border宽度
  *
- * todo
  * @returns {x,y,w,h}
  */
 export function getBox(
@@ -118,7 +119,10 @@ export function restoreCursor() {
  * 获取元素样式/属性中的x/y
  * @param el
  */
-export function getStyleXy(el: HTMLElement | SVGGraphicsElement):{x:number,y:number} {
+export function getStyleXy(el: HTMLElement | SVGGraphicsElement): {
+  x: number;
+  y: number;
+} {
   const style: any = window.getComputedStyle(el);
   let x = 0,
     y = 0;
@@ -136,13 +140,21 @@ export function getStyleXy(el: HTMLElement | SVGGraphicsElement):{x:number,y:num
  * 获取元素样式/属性中的w/h
  * @param el
  */
-export function getStyleSize(el: HTMLElement | SVGGraphicsElement,cStyle?:CSSStyleDeclaration):{w:number,h:number}{
-  if(!cStyle)
-    cStyle = window.getComputedStyle(el)
-  const w = parseFloat(cStyle.width)
-  const h = parseFloat(cStyle.height)
+export function getStyleSize(
+  el: HTMLElement | SVGGraphicsElement,
+  cStyle?: CSSStyleDeclaration
+): { w: number; h: number } {
+  if ("getBBox" in el) {
+    //SVG
+    let { width, height } = el.getBBox();
+    return { w: width, h: height };
+  }
 
-  return {w,h}
+  if (!cStyle) cStyle = window.getComputedStyle(el);
+  const w = parseFloat(cStyle.width);
+  const h = parseFloat(cStyle.height);
+
+  return { w, h };
 }
 
 const EXP_MATRIX =
@@ -156,38 +168,30 @@ const EXP_MATRIX =
  */
 export function getMatrixInfo(
   el: HTMLElement | SVGGraphicsElement,
-  recur:boolean = false
+  recur: boolean = false
 ) {
-  
-  const rs = _getMatrixInfo(el)
-
-  if(recur){
-    let p = el.parentElement
-    while(p && p.tagName !== "BODY"){
-      let prs = _getMatrixInfo(p)
-      rs.scale *= prs.scale
-      p = p.parentElement
-    }
-  }
-
-  return rs;
-}
-
-function _getMatrixInfo(el: HTMLElement | SVGGraphicsElement){
-  const rs = { scale: 1, angle: 0,x:0,y:0 };
+  const rs = { scale: 1, angle: 0, x: 0, y: 0 };
   let a = 1,
     b = 0,
     c = 0,
     d = 1,
     x = 0,
     y = 0;
-  let elCStyle:CSSStyleDeclaration
-    if (el instanceof SVGGraphicsElement || el instanceof HTMLElement){
-      elCStyle = window.getComputedStyle(el);
-    }
 
-    let matrix = _getMatrix(elCStyle!.transform)
-  if(matrix){
+  let elCStyle: CSSStyleDeclaration = window.getComputedStyle(el);
+  let matrix = new DOMMatrix(elCStyle.transform);
+
+  if (recur) {
+    let p = el.parentElement;
+    while (p && p.tagName !== "BODY" && p.tagName.toLowerCase() !== "svg") {
+      let pCStyle: CSSStyleDeclaration = window.getComputedStyle(p);
+      const pMatrix = new DOMMatrix(pCStyle.transform);
+      matrix = matrix.multiply(pMatrix);
+      p = p.parentElement;
+    }
+  }
+
+  if (matrix) {
     a = matrix.a;
     b = matrix.b;
     c = matrix.c;
@@ -198,28 +202,8 @@ function _getMatrixInfo(el: HTMLElement | SVGGraphicsElement){
 
   rs.scale = Math.sqrt(a * a + b * b);
   rs.angle = Math.round(Math.atan2(b, a) * (180 / Math.PI));
-
-  return rs
-}
-
-function _getMatrix(transform:string):any{
-  let matrix:{a:number,b:number,c:number,d:number,e:number,f:number}|null = null
-  if(window.WebKitCSSMatrix){
-    matrix = new WebKitCSSMatrix(transform)
-  }else{
-    const matched = transform.match(EXP_MATRIX);
-    if (matched && matched.groups) {
-      matrix = {
-        a : parseFloat(matched.groups.a),
-        b : parseFloat(matched.groups.b),
-        c : parseFloat(matched.groups.c),
-        d : parseFloat(matched.groups.d),
-        e : parseFloat(matched.groups.e),
-        f : parseFloat(matched.groups.f),
-      }      
-    }
-  }
-  return matrix
+  
+  return rs;
 }
 
 /**
@@ -240,27 +224,30 @@ export function getPointInContainer(
   if (!elRect) {
     elRect = el.getBoundingClientRect();
   }
+  let rx = elRect.x,
+    ry = elRect.y;
+
   if (!elCStyle) {
     elCStyle = window.getComputedStyle(el);
   }
   if (!matrixInfo) {
-    matrixInfo = getMatrixInfo(el,true);
+    matrixInfo = getMatrixInfo(el, true);
   }
 
   const scale = matrixInfo.scale;
 
   let x =
     event.clientX -
-    elRect.x -
+    rx -
     (parseFloat(elCStyle.borderLeftWidth) || 0) * scale +
     el.scrollLeft * scale;
   let y =
     event.clientY -
-    elRect.y -
+    ry -
     (parseFloat(elCStyle.borderTopWidth) || 0) * scale +
     el.scrollTop * scale;
 
-  return { x: x / scale, y: y / scale };
+  return { x: x / scale, y: y / scale, scale };
 }
 
 /**
@@ -270,12 +257,13 @@ export function getPointInContainer(
  */
 export function getRectInContainer(
   el: HTMLElement | SVGGraphicsElement,
-  container: HTMLElement | SVGGraphicsElement
+  container: HTMLElement | SVGGraphicsElement,
+  matrixInfo?: { scale: number; angle: number }
 ): { x: number; y: number; w: number; h: number } {
   const elRect = el.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
   const elCStyle = window.getComputedStyle(container);
-  const matrixInfo = getMatrixInfo(container);
+  matrixInfo = matrixInfo || getMatrixInfo(container, true);
   const scale = matrixInfo.scale;
 
   let x =
@@ -298,15 +286,32 @@ export function getRectInContainer(
 }
 
 /**
+ * 获取指定元素（DOM/SVG）相对于父元素的中心点
+ * @param el 
+ * @returns 
+ */
+export function getRectCenter(el: HTMLElement|SVGGraphicsElement,matrixInfo?: { scale: number; angle: number }):{x:number,y:number}{
+  const panelRect = getRectInContainer(
+    el,
+    el.parentElement!,
+    matrixInfo
+  );
+  let x = Math.round(panelRect.x + panelRect.w/2);
+  let y = Math.round(panelRect.y + panelRect.h/2);
+
+  return {x,y}
+}
+
+/**
  * 获取指定元素的圆心坐标
  * @param el
  * @param left
  * @param top
  * @returns
  */
-export function getCenterXy(el: HTMLElement,ox?:number,oy?:number) {
+export function getCenterXy(el: HTMLElement, ox?: number, oy?: number) {
   const cStyle = window.getComputedStyle(el);
-  
+
   //origin
   const center = cStyle.transformOrigin;
   const centerPair = center.split(" ");
@@ -314,7 +319,7 @@ export function getCenterXy(el: HTMLElement,ox?:number,oy?:number) {
   oy = oy || parseFloat(centerPair[1]);
 
   //left & top
-  const shadowDom = el.cloneNode() as HTMLElement | SVGGraphicsElement;
+  const shadowDom = el.cloneNode() as HTMLElement;
   rotateTo(shadowDom as any, 0);
 
   const parentEl = el.parentElement;
@@ -327,45 +332,77 @@ export function getCenterXy(el: HTMLElement,ox?:number,oy?:number) {
     parentEl.removeChild(shadowDom);
   }
 
-  return {sx:startX,sy:startY, x: startX + ox, y: startY + oy, ox, oy };
+  return { sx: startX, sy: startY, x: startX + ox, y: startY + oy, ox, oy };
 }
-export function getCenterXySVG(el: SVGGraphicsElement,ox:number,oy:number) {
-  const {x,y} = getTranslate(el)
+export function getCenterXySVG(el: SVGGraphicsElement, ox: number, oy: number) {
+  let elRect = el.getBoundingClientRect();
+  let svgRect = el.ownerSVGElement!.getBoundingClientRect();
+  let x = elRect.x - svgRect.x;
+  let y = elRect.y - svgRect.y;
 
-  return {sx:x,sy:y, x: x + ox, y: y + oy, ox, oy };
+  //left & top
+  const shadowDom = el.cloneNode() as SVGGraphicsElement;
+  rotateTo(shadowDom as any, 0);
+
+  const parentEl = el.parentElement;
+  let startX = 0,
+    startY = 0;
+  if (parentEl) {
+    //这里的偏移需要处理
+    parentEl.appendChild(shadowDom);
+    const offsetXY = getRectInContainer(shadowDom, parentEl);
+    (startX = offsetXY.x), (startY = offsetXY.y);
+    parentEl.removeChild(shadowDom);
+  }
+
+  return { sx: x, sy: y, x: x + ox, y: y + oy, ox, oy };
 }
-
 
 /**
  * 获取元素当前顶点
- * @param el 
+ * @param el
  * @param ox 相对于图形左上角的圆心偏移，支持数字/百分比，仅对SVG元素有效，对于非SVG元素使用transform-origin属性
  * @param oy
  */
-export function getVertex(el: HTMLElement | SVGGraphicsElement,ox:number|string,oy:number|string):Array<{x:number,y:number}>{
-  const cStyle = window.getComputedStyle(el)
-  const w = parseFloat(cStyle.width)
-  const h = parseFloat(cStyle.height)
+export function getVertex(
+  el: HTMLElement | SVGGraphicsElement,
+  ox: number | string,
+  oy: number | string
+): Array<{ x: number; y: number }> {
+  const cStyle = window.getComputedStyle(el);
+  const w = parseFloat(cStyle.width);
+  const h = parseFloat(cStyle.height);
 
-  const {originX,originY} = parseOxy(ox,oy,w,h)
+  const { originX, originY } = parseOxy(ox, oy, w, h);
 
-  const { x, y, sx, sy } = el instanceof SVGGraphicsElement?getCenterXySVG(el,originX,originY):getCenterXy(el);
-  const {angle} = getMatrixInfo(el)
+  const { x, y, sx, sy } =
+    el instanceof SVGGraphicsElement
+      ? getCenterXySVG(el, originX, originY)
+      : getCenterXy(el);
+  const { angle } = getMatrixInfo(el);
 
-  return calcVertex(w,h,x,y,sx,sy,angle * ONE_ANG)
+  return calcVertex(w, h, x, y, sx, sy, angle * ONE_ANG);
 }
 /**
  * 计算指定矩形旋转后的顶点坐标
  * @param w 宽
  * @param h 高
  * @param cx 圆心
- * @param cy 
- * @param sx 
- * @param sy 
+ * @param cy
+ * @param sx
+ * @param sy
  * @param radian 旋转角 弧度值
- * @returns 
+ * @returns
  */
-export function calcVertex(w:number,h:number,cx:number,cy:number,sx:number,sy:number,radian:number):Array<{x:number,y:number}>{
+export function calcVertex(
+  w: number,
+  h: number,
+  cx: number,
+  cy: number,
+  sx: number,
+  sy: number,
+  radian: number
+): Array<{ x: number; y: number }> {
   let originVertex = [
     { x: 0, y: 0 },
     { x: w, y: 0 },
@@ -373,41 +410,62 @@ export function calcVertex(w:number,h:number,cx:number,cy:number,sx:number,sy:nu
     { x: w, y: h },
   ];
 
-  return map(
-    originVertex,
-    ({ x, y }) => {
-      const nx =
-        (x - cx + sx) * Math.cos(radian) -
-        (y - cy + sy) * Math.sin(radian);
-      const ny =
-        (x - cx + sx) * Math.sin(radian) +
-        (y - cy + sy) * Math.cos(radian);
-      return { x: cx + nx, y: cy + ny };
-    }
-  );
+  return map(originVertex, ({ x, y }) => {
+    const nx =
+      (x - cx + sx) * Math.cos(radian) - (y - cy + sy) * Math.sin(radian);
+    const ny =
+      (x - cx + sx) * Math.sin(radian) + (y - cy + sy) * Math.cos(radian);
+    return { x: cx + nx, y: cy + ny };
+  });
 }
 
 /**
  * 解析ox/y
  * @param ox 如果不是number或string，originX为0
  * @param oy 如果不是number或string，originY为0
- * @param w 
- * @param h 
+ * @param w
+ * @param h
+ * @param el 
  * @returns {originX,originY}
  */
-export function parseOxy(ox:any,oy:any,w:number,h:number):{originX:number,originY:number}{
-  let originX = 0,originY = 0;
+export function parseOxy(
+  ox: any,
+  oy: any,
+  w: number,
+  h: number,
+  el?: HTMLElement|SVGGraphicsElement
+): { originX: number; originY: number } {
+  let originX = 0,
+    originY = 0;
+  let transformOrigin
+  
   if (isString(ox)) {
     //percent
     originX = (parseFloat(ox) / 100) * w;
-  } else if(isNumber(ox)) {
+  } else if (isNumber(ox)) {
     originX = ox;
+  }else if(el){
+    //origin
+    if(!transformOrigin)transformOrigin = window.getComputedStyle(el).transformOrigin
+    const centerPair = transformOrigin.split(" ");
+    originX = parseFloat(centerPair[0])
   }
   if (isString(oy)) {
     //percent
     originY = (parseFloat(oy) / 100) * h;
-  } else if(isNumber(oy)){
+  } else if (isNumber(oy)) {
     originY = oy;
+  }else if(el){
+    //origin
+    if(!transformOrigin)transformOrigin = window.getComputedStyle(el).transformOrigin
+    const centerPair = transformOrigin.split(" ");
+    originY = parseFloat(centerPair[1])
   }
-  return {originX,originY}
+  return { originX, originY };
+}
+
+
+export function normalizeVector(x:number,y:number){
+  let len = Math.sqrt(x*x+y*y)
+  return {x:x/len,y:y/len}
 }

@@ -105,7 +105,7 @@
         width: 160px;
         height: 160px;
         position: absolute;
-        /* left: 300px; */
+        left: 300px;
         box-shadow: 0 0 4px;
         /* transition: all .3s; */
       }
@@ -349,7 +349,7 @@
 
   <body>
     <h2 class="logo">uii DOM</h2>
-    <main>
+    <main style="transform: scale(.8)">
       <h3>splitter</h3>
       <section class="splitter-container-h" id="splitter1">
         <div class="box" id="box" style="width: 50%"></div>
@@ -783,6 +783,7 @@
       });
       uii.newDraggable("#resizer2_c", {
         filter:'.handle',
+        useTransform:false
       });
 
       uii.newDroppable(".drag-targets div", {
@@ -801,6 +802,7 @@
 
       const d1 = uii.newDraggable("#dragger1", {
         self:true,
+        useTransform:false,
         cursor: {
           default: "grab",
           active: "not-allowed",
@@ -818,7 +820,6 @@
         handle: ".sensor",
         classes: "dragging moving",
       });
-      uii.newResizable("#dragger6", { dir: ["se"] });
       uii.newDraggable("#dragger3", {
         group: "xx",
         threshold: 20,
@@ -826,6 +827,7 @@
       });
       uii.newDraggable("#dragger4", {
         group: "xx",
+        useTransform:false,
         threshold: 50,
         type:'yyy',
         onStart: function ({ draggable }) {
@@ -855,7 +857,9 @@
           draggable.style["pointer-events"] = "none";
         },
         onDrag: function ({ x, y }) {
-          copy.style.transform = `translate(${x}px,${y}px)`
+          copy.style.left = x+'px'
+          copy.style.top = y+'px'
+          // copy.style.transform = `translate(${x}px,${y}px)`
 
           return false;
         },
@@ -871,6 +875,7 @@
       uii.newDraggable("#dragger6", {
         grid: 20,
         ghost: true,
+        containment: true,
         ghostClass: "ghost",
         snap: ".snappable",
         onDrag() {
@@ -929,12 +934,13 @@
           d.style.width = d.style.height = '100px'
           d.style.border = '1px solid red'
           d.style.left = dom.style.left
+          d.style.top = dom.style.top
           d.style.transform = dom.style.transform
           d.style.position = "absolute";
           d.innerHTML = "自定义ghost";
           return d;
         },
-        onDrag() {
+        onDrag({x,y}) {
           gh.style.top = "-999px";
         },
         onEnd() {

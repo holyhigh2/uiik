@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1] - 2024/1/7
+### 优化
+- draggable/resizable/rotatable/selectable 性能提升
+- 对SVG的支持
+### 新增
+- Draggable useTransform参数，可使用left/top方式进行拖动
+
 ## [1.3.0] - 2023/10/4 ⚠️BreakChange
 ### 优化
 - 重构 draggable/resizable/rotatable/selectable，支持transform变形后的操作识别

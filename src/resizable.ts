@@ -3,7 +3,7 @@
  * dom resizer
  * @author holyhigh2
  */
-import { each, map } from "myfx/collection";
+import { each } from "myfx/collection";
 import { assign } from "myfx/object";
 import {
   isArray,
@@ -12,24 +12,23 @@ import {
   isFunction,
   isNumber,
   isString,
-  isUndefined,
 } from "myfx/is";
 import { ResizableOptions, Uii } from "./types";
 import {
   ONE_ANG,
   ONE_RAD,
+  THRESHOLD,
   calcVertex,
-  getCenterXy,
-  getCenterXySVG,
   getMatrixInfo,
   getPointInContainer,
+  getRectCenter,
   getRectInContainer,
   getStyleSize,
+  normalizeVector,
   parseOxy,
 } from "./utils";
-import { UiiTransform, moveTo, rotateTo, wrapper } from "./transform";
+import { UiiTransform, moveTo, wrapper } from "./transform";
 
-const THRESHOLD = 2;
 const CLASS_RESIZABLE_HANDLE = "uii-resizable-handle";
 const CLASS_RESIZABLE_HANDLE_DIR = "uii-resizable-handle-";
 const CLASS_RESIZABLE_HANDLE_ACTIVE = "uii-resizable-handle-active";
@@ -61,15 +60,15 @@ export class Resizable extends Uii {
     );
 
     each(this.ele, (el) => {
-      let tmp = el as any
-      if(tmp._uiik_resizable){
-        tmp._uiik_resizable.destroy()
-        return false  
-      }      
-    })
+      let tmp = el as any;
+      if (tmp._uiik_resizable) {
+        tmp._uiik_resizable.destroy();
+        return false;
+      }
+    });
 
     each(this.ele, (el) => {
-      (el as any)._uiik_resizable = this
+      (el as any)._uiik_resizable = this;
 
       this.initHandle(el);
     });
@@ -96,17 +95,16 @@ export class Resizable extends Uii {
         if (onPointerDown && onPointerDown(ev) === false) return true;
 
         let container: HTMLElement | SVGGraphicsElement =
-          panel instanceof SVGGraphicsElement
-            ? panel.ownerSVGElement
-            : (panel.parentElement as any);
-
-        let setOrigin = !(panel instanceof SVGGraphicsElement);
+          panel.parentElement as any;
 
         // 获取panel当前信息
-        let matrixInfo = getMatrixInfo(panel);
-        const offset = getRectInContainer(panel, container);
+        let matrixInfo = getMatrixInfo(panel, true);
+        const offset = getRectInContainer(panel, container, matrixInfo);
         const offsetParentRect = container.getBoundingClientRect();
         const offsetParentCStyle = window.getComputedStyle(container);
+
+        let setOrigin =
+          !(panel instanceof SVGGraphicsElement) && matrixInfo.angle != 0;
 
         const { w, h } = getStyleSize(panel);
         const originW = w;
@@ -156,10 +154,10 @@ export class Resizable extends Uii {
         }
 
         // boundary
-        let minWidth: number | undefined;
-        let minHeight: number | undefined;
-        let maxWidth: number | undefined;
-        let maxHeight: number | undefined;
+        let minWidth: number = 1;
+        let minHeight: number = 1;
+        let maxWidth: number = 9999;
+        let maxHeight: number = 9999;
         if (isArray(opts.minSize)) {
           minWidth = opts.minSize[0];
           minHeight = opts.minSize[1];
@@ -208,6 +206,8 @@ export class Resizable extends Uii {
         let sX = 0,
           sY = 0;
 
+        let startPointXy: { x: number; y: number };
+
         //bind events
         onPointerStart(function (args: Record<string, any>) {
           const { ev } = args;
@@ -246,18 +246,31 @@ export class Resizable extends Uii {
           startOx = oxy.originX;
           startOy = oxy.originY;
 
-          const { x, y, sx, sy } =
-            panel instanceof SVGGraphicsElement
-              ? getCenterXySVG(panel, startOx, startOy)
-              : getCenterXy(panel);
-          let centerX = x,
-            centerY = y;
+          //计算sx及cx
+          const panelRect = getRectInContainer(
+            panel,
+            panel.parentElement!,
+            matrixInfo
+          );
+          let centerX = Math.round(panelRect.x + panelRect.w / 2);
+          let centerY = Math.round(panelRect.y + panelRect.h / 2);
+          let sx = Math.round(centerX - originW / 2);
+          let sy = Math.round(centerY - originH / 2);
+
+          transform.x = sx;
+          transform.y = sy;
 
           const deg = matrixInfo.angle * ONE_ANG;
 
-            currentVertex =
-            vertexBeforeTransform =
-              calcVertex(originW, originH, centerX, centerY, sx, sy, deg);
+          currentVertex = vertexBeforeTransform = calcVertex(
+            originW,
+            originH,
+            centerX,
+            centerY,
+            sx,
+            sy,
+            deg
+          );
 
           //计算参考点及斜率
           switch (dir) {
@@ -292,9 +305,7 @@ export class Resizable extends Uii {
             if (toTransformOrigin) {
               style.transformOrigin = toTransformOrigin;
             } else {
-              style.transformOrigin = `${centerX - transform.x}px ${
-                centerY - transform.y
-              }px`;
+              style.transformOrigin = `${centerX - sx}px ${centerY - sy}px`;
             }
           }
 
@@ -303,37 +314,40 @@ export class Resizable extends Uii {
             sY = matrixInfo.y - currentVertex[0].y;
           }
 
-          onStart && onStart.call(uiik, { w: originW, h: originH ,transform }, ev);
-        });
-        onPointerMove((args: Record<string, any>) => {
-          const { ev } = args;
-
-          //获取当前位置坐标
-          const currentXy = getPointInContainer(
+          startPointXy = getPointInContainer(
             ev,
             container,
             offsetParentRect,
-            offsetParentCStyle
+            offsetParentCStyle,
+            matrixInfo
           );
-          let newX = currentXy.x;
-          let newY = currentXy.y;
+
+          onStart &&
+            onStart.call(uiik, { w: originW, h: originH, transform }, ev);
+        });
+        onPointerMove((args: Record<string, any>) => {
+          const { ev, offX, offY } = args;
+
+          let newX = startPointXy.x + offX;
+          let newY = startPointXy.y + offY;
+
+          const rpx = refPoint.x;
+          const rpy = refPoint.y;
 
           ////////////////////////////////////////// 计算边长
           //1. calc angle
           let angle =
-            Math.atan2(newY - refPoint.y, newX - refPoint.x) * ONE_RAD -
-            matrixInfo.angle;
+            Math.atan2(newY - rpy, newX - rpx) * ONE_RAD - matrixInfo.angle;
 
           //2. hypotenuse length
           let hyLen = Math.sqrt(
-            (newX - refPoint.x) * (newX - refPoint.x) +
-              (newY - refPoint.y) * (newY - refPoint.y)
+            (newX - rpx) * (newX - rpx) + (newY - rpy) * (newY - rpy)
           );
 
           //3. h&v projection length
           let pl1 = Math.abs(
             k1 === Infinity
-              ? newY - refPoint.y
+              ? newY - refPoint.y / matrixInfo.scale
               : hyLen * Math.cos(angle * ONE_ANG)
           );
           let pl2 = Math.sqrt(hyLen * hyLen - pl1 * pl1);
@@ -345,29 +359,93 @@ export class Resizable extends Uii {
 
           let angl = 0;
           switch (dir) {
+            case "w":
+            case "sw":
+              angl =
+                Math.atan2(
+                  currentVertex[0].y - currentVertex[1].y,
+                  currentVertex[0].x - currentVertex[1].x
+                ) * ONE_RAD;
+              break;
+            case "n":
+            case "ne":
+            case "nw":
+              angl =
+                Math.atan2(
+                  currentVertex[0].y - currentVertex[2].y,
+                  currentVertex[0].x - currentVertex[2].x
+                ) * ONE_RAD;
+          }
+          //w & h
+          switch (dir) {
             case "s":
               h = pl2;
               break;
             case "e":
               w = pl1;
               break;
+            case "n":
+              h = pl2;
+              if (angl === 90) {
+                h = newY - currentVertex[2].y;
+              }
+              break;
+            case "w":
+              w = pl1;
+              if (angl === 0) {
+                w = newX - currentVertex[1].x;
+              }
+              break;
+            case "nw":
+              w = pl1;
+              h = pl2;
+              if (matrixInfo.angle === 180) {
+                w = newX - currentVertex[3].x;
+                h = newY - currentVertex[3].y;
+              }
+              break;
             case "se":
+            case "sw":
+            case "ne":
               w = pl1;
               h = pl2;
               break;
+          }
+
+          //w & h boundary
+          if (minHeight && h < minHeight) h = minHeight;
+          if (maxHeight && h > maxHeight) h = maxHeight;
+          if (minWidth && w < minWidth) {
+            w = minWidth;
+          }
+          if (maxWidth && w > maxWidth) w = maxWidth;
+
+          let hLine, wLine;
+
+          // x & y
+          switch (dir) {
+            case "s":
+              hLine = { p1: currentVertex[1], p2: currentVertex[0] };
+              h = limitWH(newX, newY, hLine, h, minHeight!);
+              break;
+            case "e":
+              wLine = { p1: currentVertex[0], p2: currentVertex[2] };
+              w = limitWH(newX, newY, wLine, w, minWidth);
+              break;
+            case "se":
+              wLine = { p1: currentVertex[0], p2: currentVertex[2] };
+              hLine = { p1: currentVertex[1], p2: currentVertex[0] };
+
+              w = limitWH(newX, newY, wLine, w, minWidth);
+              h = limitWH(newX, newY, hLine, h, minHeight);
+              break;
             case "n":
-              h = pl2;
+              hLine = { p1: currentVertex[2], p2: currentVertex[3] };
+              h = limitWH(newX, newY, hLine, h, minHeight!);
 
-              angl =
-                Math.atan2(
-                  currentVertex[0].y - currentVertex[2].y,
-                  currentVertex[0].x - currentVertex[2].x
-                ) * ONE_RAD;
               let plh;
-
               //1&2 quad
               if (angl === 90) {
-                h = newY - currentVertex[2].y;
                 x = currentVertex[2].x;
                 y = newY;
               } else if (currentVertex[2].y > currentVertex[0].y) {
@@ -382,17 +460,12 @@ export class Resizable extends Uii {
 
               break;
             case "w":
-              w = pl1;
-              angl =
-                Math.atan2(
-                  currentVertex[0].y - currentVertex[1].y,
-                  currentVertex[0].x - currentVertex[1].x
-                ) * ONE_RAD;
-              let plw;
+              wLine = { p1: currentVertex[3], p2: currentVertex[1] };
+              w = limitWH(newX, newY, wLine, w, minWidth);
 
+              let plw;
               //1&4 quad
               if (angl === 0) {
-                w = newX - currentVertex[1].x;
                 x = newX;
                 y = currentVertex[1].y;
               } else if (currentVertex[1].y > currentVertex[0].y) {
@@ -407,29 +480,94 @@ export class Resizable extends Uii {
 
               break;
             case "nw":
-              w = pl1;
-              h = pl2;
+              wLine = { p1: currentVertex[3], p2: currentVertex[1] };
+              hLine = { p1: currentVertex[2], p2: currentVertex[3] };
 
-              //获取顺时针旋转后的直角坐标
+              w = limitWH(newX, newY, wLine, w, minWidth!);
+              h = limitWH(newX, newY, hLine, h, minHeight!);
+
               x = newX;
               y = newY;
 
-              if (matrixInfo.angle === 180) {
-                w = newX - currentVertex[3].x;
-                h = newY - currentVertex[3].y;
+              let cv2x = currentVertex[2].x;
+              let cv2y = currentVertex[2].y;
+              let cv1x = currentVertex[1].x;
+              let cv1y = currentVertex[1].y;
+
+              //W boundary
+              let v32n = normalizeVector(
+                cv2x - currentVertex[3].x,
+                cv2y - currentVertex[3].y
+              );
+              v32n.x *= minWidth;
+              v32n.y *= minWidth;
+              let v10n = normalizeVector(
+                currentVertex[0].x - cv1x,
+                currentVertex[0].y - cv1y
+              );
+              v10n.x *= minWidth;
+              v10n.y *= minWidth;
+
+              let wp1 = { x: wLine.p1.x + v32n.x, y: wLine.p1.y + v32n.y };
+              let wp2 = { x: wLine.p2.x + v10n.x, y: wLine.p2.y + v10n.y };
+
+              let invalid =
+                (wp2.x - wp1.x) * (newY - wp1.y) -
+                  (wp2.y - wp1.y) * (newX - wp1.x) >
+                0;
+              if (invalid) {
+                let v20n = normalizeVector(
+                  currentVertex[0].x - cv2x,
+                  currentVertex[0].y - cv2y
+                );
+                v20n.x *= h;
+                v20n.y *= h;
+
+                x = wp1.x + v20n.x;
+                y = wp1.y + v20n.y;
               }
+
+              //H boundary
+              let v31n = normalizeVector(
+                cv1x - currentVertex[3].x,
+                cv1y - currentVertex[3].y
+              );
+              v31n.x *= minHeight;
+              v31n.y *= minHeight;
+              let v20n = normalizeVector(
+                currentVertex[0].x - cv2x,
+                currentVertex[0].y - cv2y
+              );
+              v20n.x *= minHeight;
+              v20n.y *= minHeight;
+
+              let hp1 = { x: hLine.p1.x + v31n.x, y: hLine.p1.y + v31n.y };
+              let hp2 = { x: hLine.p2.x + v20n.x, y: hLine.p2.y + v20n.y };
+
+              invalid =
+                (hp2.x - hp1.x) * (newY - hp1.y) -
+                  (hp2.y - hp1.y) * (newX - hp1.x) >
+                0;
+              if (invalid) {
+                let v10n = normalizeVector(
+                  currentVertex[0].x - cv1x,
+                  currentVertex[0].y - cv1y
+                );
+                v10n.x *= w;
+                v10n.y *= w;
+
+                x = hp2.x + v10n.x;
+                y = hp2.y + v10n.y;
+              }
+
               break;
             case "sw":
-              w = pl1;
-              h = pl2;
+              wLine = { p1: currentVertex[3], p2: currentVertex[1] };
+              hLine = { p1: currentVertex[1], p2: currentVertex[0] };
+              w = limitWH(newX, newY, wLine, w, minWidth);
+              h = limitWH(newX, newY, hLine, h, minHeight);
 
-              angl =
-                Math.atan2(
-                  currentVertex[0].y - currentVertex[1].y,
-                  currentVertex[0].x - currentVertex[1].x
-                ) * ONE_RAD;
               let plw1;
-
               //1&4 quad
               if (angl === 0) {
                 x = newX;
@@ -446,16 +584,12 @@ export class Resizable extends Uii {
 
               break;
             case "ne":
-              w = pl1;
-              h = pl2;
+              wLine = { p1: currentVertex[0], p2: currentVertex[2] };
+              hLine = { p1: currentVertex[2], p2: currentVertex[3] };
+              w = limitWH(newX, newY, wLine, w, minWidth);
+              h = limitWH(newX, newY, hLine, h, minHeight);
 
-              angl =
-                Math.atan2(
-                  currentVertex[0].y - currentVertex[2].y,
-                  currentVertex[0].x - currentVertex[2].x
-                ) * ONE_RAD;
               let plne;
-
               if (angl === 0) {
                 x = newX;
                 y = currentVertex[0].y;
@@ -471,15 +605,6 @@ export class Resizable extends Uii {
               }
 
               break;
-          }
-
-          if (changeW) {
-            if (minWidth && w < minWidth) w = minWidth;
-            if (maxWidth && w > maxWidth) w = maxWidth;
-          }
-          if (changeH) {
-            if (minHeight && h < minHeight) h = minHeight;
-            if (maxHeight && h > maxHeight) h = maxHeight;
           }
 
           if (aspectRatio) {
@@ -505,10 +630,10 @@ export class Resizable extends Uii {
             }
           }
           if (changeY) {
-            transform.moveToY(y + sY);
+            transform.moveTo(x, y + sY);
           }
           if (changeX) {
-            transform.moveToX(x + sX);
+            transform.moveTo(x + sX, y);
           }
 
           lastX = x;
@@ -518,10 +643,18 @@ export class Resizable extends Uii {
           currentH = h;
 
           if (onResize && onResize.call) {
-            const { x, y, sx, sy } =
-              panel instanceof SVGGraphicsElement
-                ? getCenterXySVG(panel, startOx, startOy)
-                : getCenterXy(panel);
+            onResize.call;
+
+            const panelRect = getRectInContainer(
+              panel,
+              panel.parentElement!,
+              matrixInfo
+            );
+            let centerX = Math.round(panelRect.x + panelRect.w / 2);
+            let centerY = Math.round(panelRect.y + panelRect.h / 2);
+            let sx = Math.round(centerX - originW / 2);
+            let sy = Math.round(centerY - originH / 2);
+
             onResize.call(
               uiik,
               {
@@ -535,7 +668,7 @@ export class Resizable extends Uii {
                 sx: sx,
                 sy: sy,
                 deg: matrixInfo.angle,
-                transform
+                transform,
               },
               ev
             );
@@ -556,18 +689,14 @@ export class Resizable extends Uii {
               parseFloat(ghostNode.style.width),
               parseFloat(ghostNode.style.height)
             );
-            // panelStyle.width = ghostNode.style.width;
-            // panelStyle.height = ghostNode.style.height;
           }
 
-          panel.style.transformOrigin = originalTransformOrigin;
+          if (setOrigin) panel.style.transformOrigin = originalTransformOrigin;
 
-          const { x, y, sx, sy, ox, oy } =
-            panel instanceof SVGGraphicsElement
-              ? getCenterXySVG(panel, startOx, startOy)
-              : getCenterXy(panel);
-          let centerX = x,
-            centerY = y;
+          let { x: centerX, y: centerY } = getRectCenter(panel, matrixInfo);
+          let sx = Math.round(centerX - currentW / 2);
+          let sy = Math.round(centerY - currentH / 2);
+
           const deg = matrixInfo.angle * ONE_ANG;
 
           const currentVertex = calcVertex(
@@ -581,54 +710,27 @@ export class Resizable extends Uii {
           );
 
           //修正偏移
-          if (panel instanceof SVGGraphicsElement) {
-            //更新rotate圆心
-
-            if (matrixInfo.angle != 0) {
-              const oxy = parseOxy(
-                opts.ox,
-                opts.oy,
-                currentW,
-                currentH
-              );
-
-              rotateTo(transform.el, matrixInfo.angle, oxy.originX, originY);
-
-              let { x, y, sx, sy } = getCenterXySVG(panel, oxy.originX, originY);
-
-              let currentVertex2 = calcVertex(
-                currentW,
-                currentH,
-                x,
-                y,
-                sx,
-                sy,
-                deg
-              );
-              //复原translate
-              transform.moveTo(
-                transform.x - (currentVertex2[0].x - currentVertex[0].x),
-                transform.y - (currentVertex2[0].y - currentVertex[0].y)
-              );
+          if (setOrigin) {
+            if (panel instanceof HTMLElement) {
+              if (changeX || changeY) {
+                transform.moveTo(
+                  transform.x - (currentVertex[0].x - lastX),
+                  transform.y - (currentVertex[0].y - lastY)
+                );
+              } else {
+                transform.moveTo(
+                  transform.x -
+                    (currentVertex[0].x - vertexBeforeTransform[0].x),
+                  transform.y -
+                    (currentVertex[0].y - vertexBeforeTransform[0].y)
+                );
+              }
             }
-          } else {
-            if (changeX || changeY) {
-              transform.moveTo(
-                transform.x - (currentVertex[0].x - lastX),
-                transform.y - (currentVertex[0].y - lastY)
-              );
-            } else {
-              transform.moveTo(
-                transform.x -
-                  (currentVertex[0].x - vertexBeforeTransform[0].x),
-                transform.y -
-                  (currentVertex[0].y - vertexBeforeTransform[0].y)
-              );
-            }
-          }
+          } //if setOrigin
 
           handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
-          onEnd && onEnd.call(uiik, { w: currentW, h: currentH,transform }, ev);
+          onEnd &&
+            onEnd.call(uiik, { w: currentW, h: currentH, transform }, ev);
         });
       },
       {
@@ -672,6 +774,23 @@ export class Resizable extends Uii {
       h.setAttribute("name", "handle");
     });
   }
+}
+
+function limitWH(
+  newX: number,
+  newY: number,
+  line: { p1: any; p2: any },
+  value: number,
+  minValue: number
+) {
+  let p1 = line.p1;
+  let p2 = line.p2;
+  let invalid =
+    (p2.x - p1.x) * (newY - p1.y) - (p2.y - p1.y) * (newX - p1.x) > 0;
+  if (invalid) {
+    return minValue;
+  }
+  return value;
 }
 
 function resize(

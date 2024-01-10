@@ -1,4 +1,4 @@
-/* uiik 1.3.0-beta.3 @holyhigh2 https://github.com/holyhigh2/uiik */
+/* uiik 1.3.0-beta.4 @holyhigh2 https://github.com/holyhigh2/uiik */
 (function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -234,6 +234,28 @@ function isEmpty(v) {
     if (v instanceof Object && Object.keys(v).length < 1)
         return true;
     return false;
+}
+
+/**
+ * 判断值是否NaN本身。与全局isNaN函数相比，只有NaN值本身才会返回true
+ * <p>
+ * isNaN(undefined) => true <br>
+ * _.isNaN(undefined) => false
+ * </p>
+ *
+ * @example
+ * //true
+ * console.log(_.isNaN(NaN))
+ * //false
+ * console.log(_.isNaN(null))
+ * //false
+ * console.log(_.isNaN(undefined))
+ *
+ * @param v
+ * @returns
+ */
+function isNaN(v) {
+    return Number.isNaN(v);
 }
 
 /**
@@ -1506,30 +1528,33 @@ function merge(target, ...sources) {
 /* eslint-disable max-len */
 const UtMap = new WeakMap();
 class UiiTransform {
-    constructor(el) {
+    constructor(el, useTransform = true) {
         this.angle = 0;
         this.el = el;
+        this.useTransform = useTransform;
         this.normalize(el);
         UtMap.set(el, this);
     }
     normalize(el) {
-        let { x, y } = normalize(el || this.el);
-        this.x = x;
-        this.y = y;
+        let { offx, offy } = normalize(el || this.el, this.useTransform);
+        // this.x = offx
+        // this.y = offy
+        this.offx = offx * -1;
+        this.offy = offy * -1;
         return this;
     }
     moveTo(x, y) {
         this.x = x;
         this.y = y;
-        moveTo(this.el, this.x, this.y);
+        (this.useTransform ? transformMoveTo : moveTo)(this.el, this.x + this.offx, this.y + this.offy);
     }
     moveToX(x) {
         this.x = x;
-        moveTo(this.el, this.x, this.y);
+        (this.useTransform ? transformMoveTo : moveTo)(this.el, this.x + this.offx, NaN);
     }
     moveToY(y) {
         this.y = y;
-        moveTo(this.el, this.x, this.y);
+        (this.useTransform ? transformMoveTo : moveTo)(this.el, NaN, this.y + this.offy);
     }
     rotateTo(deg, cx, cy) {
         this.angle = deg;
@@ -1537,19 +1562,20 @@ class UiiTransform {
     }
 }
 /**
- * 统一化处理，所有外边距都处理为translate
+ * 统一化处理，记录offset
  * @param el
  */
-function normalize(el) {
+function normalize(el, useTransform) {
     const style = window.getComputedStyle(el);
+    let offx = 0, offy = 0;
     let x = 0, y = 0;
-    //1. convert left/top (include margins)
+    let mx = 0, my = 0;
+    //1. get left/top (include margins)
     if (el instanceof HTMLElement) {
-        x = (parseFloat(style.left) || 0) + (parseFloat(style.marginLeft) || 0);
-        y = (parseFloat(style.top) || 0) + (parseFloat(style.marginTop) || 0);
-        el.style.setProperty("left", "0", "important");
-        el.style.setProperty("top", "0", "important");
-        el.style.setProperty("margin", "0", "important");
+        x = parseFloat(style.left) || 0;
+        y = parseFloat(style.top) || 0;
+        mx = parseFloat(style.marginLeft) || 0;
+        my = parseFloat(style.marginTop) || 0;
     }
     else {
         x =
@@ -1558,29 +1584,36 @@ function normalize(el) {
         y =
             parseFloat(get$1(el, "y.baseVal.value") || get$1(el, "cy.baseVal.value")) ||
                 0;
-        el.removeAttribute("x");
-        el.removeAttribute("y");
-        el.removeAttribute("cx");
-        el.removeAttribute("cy");
     }
-    //2. merge transform
-    const { x: tx, y: ty } = getTranslate(el);
-    x += tx || 0;
-    y += ty || 0;
-    moveTo(el, x, y);
-    return { x, y };
+    //2. get translate
+    if (useTransform) {
+        (offx = x), (offy = y);
+    }
+    else {
+        (offx = 0), (offy = 0);
+    }
+    // moveTo(el, x, y);
+    return { offx: offx + mx, offy: offy + my };
 }
 /**
  * 返回一个包装后的变形对象，可执行变形操作
  * @param el
  */
-function wrapper(el) {
+function wrapper(el, useTransform = true) {
     let ut = UtMap.get(el);
     if (ut)
         return ut.normalize(el);
-    return new UiiTransform(el);
+    return new UiiTransform(el, useTransform);
 }
 function transformMove(transofrmStr, x, y, unit = false) {
+    if (!isNumber(x) || isNaN(x)) {
+        return (`translateY(${y}${unit ? "px" : ""}) ` +
+            transofrmStr.replace(/translateY\([^)]+?\)/, "").trim());
+    }
+    if (!isNumber(y) || isNaN(x)) {
+        return (`translateX(${x}${unit ? "px" : ""}) ` +
+            transofrmStr.replace(/translateX\([^)]+?\)/, "").trim());
+    }
     return (`translate(${x}${unit ? "px" : ""},${y}${unit ? "px" : ""}) ` +
         transofrmStr.replace(/translate\([^)]+?\)/, "").trim());
 }
@@ -1595,6 +1628,14 @@ function getTranslate(el) {
     //svg
     if (el instanceof SVGGraphicsElement) {
         transformStr = el.getAttribute("transform") || "";
+        if (!transformStr) {
+            xVal =
+                parseFloat(get$1(el, "x.baseVal.value") || get$1(el, "cx.baseVal.value")) ||
+                    0;
+            yVal =
+                parseFloat(get$1(el, "y.baseVal.value") || get$1(el, "cy.baseVal.value")) ||
+                    0;
+        }
     }
     else {
         let style = el.style;
@@ -1629,11 +1670,27 @@ function getTranslate(el) {
 function moveTo(el, x, y) {
     //svg
     if (el instanceof SVGGraphicsElement) {
-        el.setAttribute("transform", transformMove(el.getAttribute("transform") || "", x, y));
+        if (x)
+            el.setAttribute("x", x + "");
+        if (y)
+            el.setAttribute("y", y + "");
     }
     else {
         let style = el.style;
-        style.transform = transformMove(style.transform || "", x, y, true);
+        if (x)
+            style.left = x + "px";
+        if (y)
+            style.top = y + "px";
+    }
+}
+function transformMoveTo(el, x, y) {
+    //svg
+    if (el instanceof SVGGraphicsElement) {
+        el.setAttribute("transform", transformMove(el.getAttribute("transform") || "", x || 0, y || 0));
+    }
+    else {
+        let style = el.style;
+        style.transform = transformMove(style.transform || "", x || 0, y || 0, true);
     }
 }
 const EXP_GET_TRANSLATE = /translate\(\s*(?<x>[\d.-]+)\D*,\s*(?<y>[\d.-]+)\D*\)/gim;
@@ -1698,10 +1755,10 @@ const ONE_ANG = Math.PI / 180;
  * 一弧度对应的角度
  */
 const ONE_RAD = 180 / Math.PI;
+const THRESHOLD = 3;
 /**
  * 获取child相对于parent的位置信息。含border宽度
  *
- * todo
  * @returns {x,y,w,h}
  */
 function getBox(child, parent) {
@@ -1799,13 +1856,17 @@ function getStyleXy(el) {
  * @param el
  */
 function getStyleSize(el, cStyle) {
+    if ("getBBox" in el) {
+        //SVG
+        let { width, height } = el.getBBox();
+        return { w: width, h: height };
+    }
     if (!cStyle)
         cStyle = window.getComputedStyle(el);
     const w = parseFloat(cStyle.width);
     const h = parseFloat(cStyle.height);
     return { w, h };
 }
-const EXP_MATRIX = /matrix\((?<a>[\d.-]+)\s*,\s*(?<b>[\d.-]+)\s*,\s*(?<c>[\d.-]+)\s*,\s*(?<d>[\d.-]+)\s*,\s*(?<e>[\d.-]+)\s*,\s*(?<f>[\d.-]+)\s*\)/;
 /**
  * 获取matrix中的scale/angle
  * @param elCStyle
@@ -1813,25 +1874,19 @@ const EXP_MATRIX = /matrix\((?<a>[\d.-]+)\s*,\s*(?<b>[\d.-]+)\s*,\s*(?<c>[\d.-]+
  * @returns
  */
 function getMatrixInfo(el, recur = false) {
-    const rs = _getMatrixInfo(el);
+    const rs = { scale: 1, angle: 0, x: 0, y: 0 };
+    let a = 1, b = 0;
+    let elCStyle = window.getComputedStyle(el);
+    let matrix = new DOMMatrix(elCStyle.transform);
     if (recur) {
         let p = el.parentElement;
-        while (p && p.tagName !== "BODY") {
-            let prs = _getMatrixInfo(p);
-            rs.scale *= prs.scale;
+        while (p && p.tagName !== "BODY" && p.tagName.toLowerCase() !== "svg") {
+            let pCStyle = window.getComputedStyle(p);
+            const pMatrix = new DOMMatrix(pCStyle.transform);
+            matrix = matrix.multiply(pMatrix);
             p = p.parentElement;
         }
     }
-    return rs;
-}
-function _getMatrixInfo(el) {
-    const rs = { scale: 1, angle: 0, x: 0, y: 0 };
-    let a = 1, b = 0;
-    let elCStyle;
-    if (el instanceof SVGGraphicsElement || el instanceof HTMLElement) {
-        elCStyle = window.getComputedStyle(el);
-    }
-    let matrix = _getMatrix(elCStyle.transform);
     if (matrix) {
         a = matrix.a;
         b = matrix.b;
@@ -1843,26 +1898,6 @@ function _getMatrixInfo(el) {
     rs.scale = Math.sqrt(a * a + b * b);
     rs.angle = Math.round(Math.atan2(b, a) * (180 / Math.PI));
     return rs;
-}
-function _getMatrix(transform) {
-    let matrix = null;
-    if (window.WebKitCSSMatrix) {
-        matrix = new WebKitCSSMatrix(transform);
-    }
-    else {
-        const matched = transform.match(EXP_MATRIX);
-        if (matched && matched.groups) {
-            matrix = {
-                a: parseFloat(matched.groups.a),
-                b: parseFloat(matched.groups.b),
-                c: parseFloat(matched.groups.c),
-                d: parseFloat(matched.groups.d),
-                e: parseFloat(matched.groups.e),
-                f: parseFloat(matched.groups.f),
-            };
-        }
-    }
-    return matrix;
 }
 /**
  * 获取当前鼠标相对于指定元素el的坐标
@@ -1876,6 +1911,7 @@ function getPointInContainer(event, el, elRect, elCStyle, matrixInfo) {
     if (!elRect) {
         elRect = el.getBoundingClientRect();
     }
+    let rx = elRect.x, ry = elRect.y;
     if (!elCStyle) {
         elCStyle = window.getComputedStyle(el);
     }
@@ -1884,25 +1920,25 @@ function getPointInContainer(event, el, elRect, elCStyle, matrixInfo) {
     }
     const scale = matrixInfo.scale;
     let x = event.clientX -
-        elRect.x -
+        rx -
         (parseFloat(elCStyle.borderLeftWidth) || 0) * scale +
         el.scrollLeft * scale;
     let y = event.clientY -
-        elRect.y -
+        ry -
         (parseFloat(elCStyle.borderTopWidth) || 0) * scale +
         el.scrollTop * scale;
-    return { x: x / scale, y: y / scale };
+    return { x: x / scale, y: y / scale, scale };
 }
 /**
  * 获取元素el在容器container中的相对boundingBox
  * @param el
  * @param container
  */
-function getRectInContainer(el, container) {
+function getRectInContainer(el, container, matrixInfo) {
     const elRect = el.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
     const elCStyle = window.getComputedStyle(container);
-    const matrixInfo = getMatrixInfo(container);
+    matrixInfo = matrixInfo || getMatrixInfo(container, true);
     const scale = matrixInfo.scale;
     let x = elRect.x -
         containerRect.x -
@@ -1918,6 +1954,17 @@ function getRectInContainer(el, container) {
         w: elRect.width / scale,
         h: elRect.height / scale,
     };
+}
+/**
+ * 获取指定元素（DOM/SVG）相对于父元素的中心点
+ * @param el
+ * @returns
+ */
+function getRectCenter(el, matrixInfo) {
+    const panelRect = getRectInContainer(el, el.parentElement, matrixInfo);
+    let x = Math.round(panelRect.x + panelRect.w / 2);
+    let y = Math.round(panelRect.y + panelRect.h / 2);
+    return { x, y };
 }
 /**
  * 获取指定元素的圆心坐标
@@ -1947,7 +1994,21 @@ function getCenterXy(el, ox, oy) {
     return { sx: startX, sy: startY, x: startX + ox, y: startY + oy, ox, oy };
 }
 function getCenterXySVG(el, ox, oy) {
-    const { x, y } = getTranslate(el);
+    let elRect = el.getBoundingClientRect();
+    let svgRect = el.ownerSVGElement.getBoundingClientRect();
+    let x = elRect.x - svgRect.x;
+    let y = elRect.y - svgRect.y;
+    //left & top
+    const shadowDom = el.cloneNode();
+    rotateTo(shadowDom, 0);
+    const parentEl = el.parentElement;
+    if (parentEl) {
+        //这里的偏移需要处理
+        parentEl.appendChild(shadowDom);
+        const offsetXY = getRectInContainer(shadowDom, parentEl);
+        (offsetXY.x), (offsetXY.y);
+        parentEl.removeChild(shadowDom);
+    }
     return { sx: x, sy: y, x: x + ox, y: y + oy, ox, oy };
 }
 /**
@@ -1961,7 +2022,9 @@ function getVertex(el, ox, oy) {
     const w = parseFloat(cStyle.width);
     const h = parseFloat(cStyle.height);
     const { originX, originY } = parseOxy(ox, oy, w, h);
-    const { x, y, sx, sy } = el instanceof SVGGraphicsElement ? getCenterXySVG(el, originX, originY) : getCenterXy(el);
+    const { x, y, sx, sy } = el instanceof SVGGraphicsElement
+        ? getCenterXySVG(el, originX, originY)
+        : getCenterXy(el);
     const { angle } = getMatrixInfo(el);
     return calcVertex(w, h, x, y, sx, sy, angle * ONE_ANG);
 }
@@ -1984,10 +2047,8 @@ function calcVertex(w, h, cx, cy, sx, sy, radian) {
         { x: w, y: h },
     ];
     return map(originVertex, ({ x, y }) => {
-        const nx = (x - cx + sx) * Math.cos(radian) -
-            (y - cy + sy) * Math.sin(radian);
-        const ny = (x - cx + sx) * Math.sin(radian) +
-            (y - cy + sy) * Math.cos(radian);
+        const nx = (x - cx + sx) * Math.cos(radian) - (y - cy + sy) * Math.sin(radian);
+        const ny = (x - cx + sx) * Math.sin(radian) + (y - cy + sy) * Math.cos(radian);
         return { x: cx + nx, y: cy + ny };
     });
 }
@@ -1997,16 +2058,25 @@ function calcVertex(w, h, cx, cy, sx, sy, radian) {
  * @param oy 如果不是number或string，originY为0
  * @param w
  * @param h
+ * @param el
  * @returns {originX,originY}
  */
-function parseOxy(ox, oy, w, h) {
+function parseOxy(ox, oy, w, h, el) {
     let originX = 0, originY = 0;
+    let transformOrigin;
     if (isString$3(ox)) {
         //percent
         originX = (parseFloat(ox) / 100) * w;
     }
     else if (isNumber(ox)) {
         originX = ox;
+    }
+    else if (el) {
+        //origin
+        if (!transformOrigin)
+            transformOrigin = window.getComputedStyle(el).transformOrigin;
+        const centerPair = transformOrigin.split(" ");
+        originX = parseFloat(centerPair[0]);
     }
     if (isString$3(oy)) {
         //percent
@@ -2015,7 +2085,18 @@ function parseOxy(ox, oy, w, h) {
     else if (isNumber(oy)) {
         originY = oy;
     }
+    else if (el) {
+        //origin
+        if (!transformOrigin)
+            transformOrigin = window.getComputedStyle(el).transformOrigin;
+        const centerPair = transformOrigin.split(" ");
+        originY = parseFloat(centerPair[1]);
+    }
     return { originX, originY };
+}
+function normalizeVector(x, y) {
+    let len = Math.sqrt(x * x + y * y);
+    return { x: x / len, y: y / len };
 }
 
 var _Uii_listeners;
@@ -2121,10 +2202,11 @@ class Uii {
                 e.preventDefault();
                 return false;
             }
+            let matrixInfo = getMatrixInfo(el, true);
             //函数
             const pointerMove = (ev) => {
-                const offX = ev.clientX - originPosX;
-                const offY = ev.clientY - originPosY;
+                const offX = (ev.clientX - originPosX) / matrixInfo.scale;
+                const offY = (ev.clientY - originPosY) / matrixInfo.scale;
                 if (!dragging) {
                     if (Math.abs(offX) > threshold || Math.abs(offY) > threshold) {
                         dragging = true;
@@ -2240,7 +2322,6 @@ class Uii {
 _Uii_listeners = new WeakMap();
 
 var _Splittable_instances, _Splittable_checkDirection, _Splittable_bindHandle;
-const THRESHOLD$4 = 1;
 const CLASS_SPLITTABLE = "uii-splittable";
 const CLASS_SPLITTABLE_HANDLE = "uii-splittable-handle";
 const CLASS_SPLITTABLE_HANDLE_GHOST = "uii-splittable-handle-ghost";
@@ -2467,10 +2548,10 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
             anotherSize = blockSize - ds1 - splitterSize;
             if (ghostNode) {
                 if (dir === 'v') {
-                    ghostNode.style.top = startPos + ds1 - handleSize / 2 + 'px';
+                    ghostNode.style.top = startPos + ds1 - splitterSize / 2 + 'px';
                 }
                 else {
-                    ghostNode.style.left = startPos + ds1 - handleSize / 2 + 'px';
+                    ghostNode.style.left = startPos + ds1 - splitterSize / 2 + 'px';
                 }
             }
             else {
@@ -2486,10 +2567,10 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
                 }
                 //update handle
                 if (dir === 'v') {
-                    currentStyle.top = dom2.offsetTop - handleSize / 2 + 'px';
+                    currentStyle.top = dom2.offsetTop - splitterSize / 2 + 'px';
                 }
                 else {
-                    currentStyle.left = dom2.offsetLeft - handleSize / 2 + 'px';
+                    currentStyle.left = dom2.offsetLeft - splitterSize / 2 + 'px';
                 }
             }
             onSplit && onSplit({ size1: ds1, size2: anotherSize }, ev);
@@ -2518,17 +2599,17 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
                 }
                 //update handle
                 if (dir === 'v') {
-                    currentStyle.top = startPos + ds1 - handleSize / 2 + 'px';
+                    currentStyle.top = startPos + ds1 - splitterSize / 2 + 'px';
                 }
                 else {
-                    currentStyle.left = startPos + ds1 - handleSize / 2 + 'px';
+                    currentStyle.left = startPos + ds1 - splitterSize / 2 + 'px';
                 }
                 ((_a = ghostNode.parentNode) === null || _a === void 0 ? void 0 : _a.contains(ghostNode)) && ((_b = ghostNode.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(ghostNode));
             }
             onEnd && onEnd({ size1: originSize, size2: originSize1 }, ev);
         });
     }, {
-        threshold: THRESHOLD$4,
+        threshold: THRESHOLD,
         lockPage: true
     });
 };
@@ -2543,7 +2624,6 @@ function newSplittable(container, opts) {
 }
 
 /* eslint-disable max-len */
-const THRESHOLD$3 = 2;
 const CLASS_RESIZABLE_HANDLE = "uii-resizable-handle";
 const CLASS_RESIZABLE_HANDLE_DIR = "uii-resizable-handle-";
 const CLASS_RESIZABLE_HANDLE_ACTIVE = "uii-resizable-handle-active";
@@ -2588,15 +2668,13 @@ class Resizable extends Uii {
             const onPointerDown = opts.onPointerDown;
             if (onPointerDown && onPointerDown(ev) === false)
                 return true;
-            let container = panel instanceof SVGGraphicsElement
-                ? panel.ownerSVGElement
-                : panel.parentElement;
-            let setOrigin = !(panel instanceof SVGGraphicsElement);
+            let container = panel.parentElement;
             // 获取panel当前信息
-            let matrixInfo = getMatrixInfo(panel);
-            const offset = getRectInContainer(panel, container);
+            let matrixInfo = getMatrixInfo(panel, true);
+            const offset = getRectInContainer(panel, container, matrixInfo);
             const offsetParentRect = container.getBoundingClientRect();
             const offsetParentCStyle = window.getComputedStyle(container);
+            let setOrigin = !(panel instanceof SVGGraphicsElement) && matrixInfo.angle != 0;
             const { w, h } = getStyleSize(panel);
             const originW = w;
             const originH = h;
@@ -2641,10 +2719,10 @@ class Resizable extends Uii {
                     break;
             }
             // boundary
-            let minWidth;
-            let minHeight;
-            let maxWidth;
-            let maxHeight;
+            let minWidth = 1;
+            let minHeight = 1;
+            let maxWidth = 9999;
+            let maxHeight = 9999;
             if (isArray$3(opts.minSize)) {
                 minWidth = opts.minSize[0];
                 minHeight = opts.minSize[1];
@@ -2679,9 +2757,8 @@ class Resizable extends Uii {
             let refPoint;
             //slope
             let k1;
-            let startOx = 0;
-            let startOy = 0;
             let sX = 0, sY = 0;
+            let startPointXy;
             //bind events
             onPointerStart(function (args) {
                 var _a;
@@ -2716,16 +2793,18 @@ class Resizable extends Uii {
                 const w = parseFloat(cStyle.width);
                 const h = parseFloat(cStyle.height);
                 const oxy = parseOxy(opts.ox, opts.oy, w, h);
-                startOx = oxy.originX;
-                startOy = oxy.originY;
-                const { x, y, sx, sy } = panel instanceof SVGGraphicsElement
-                    ? getCenterXySVG(panel, startOx, startOy)
-                    : getCenterXy(panel);
-                let centerX = x, centerY = y;
+                oxy.originX;
+                oxy.originY;
+                //计算sx及cx
+                const panelRect = getRectInContainer(panel, panel.parentElement, matrixInfo);
+                let centerX = Math.round(panelRect.x + panelRect.w / 2);
+                let centerY = Math.round(panelRect.y + panelRect.h / 2);
+                let sx = Math.round(centerX - originW / 2);
+                let sy = Math.round(centerY - originH / 2);
+                transform.x = sx;
+                transform.y = sy;
                 const deg = matrixInfo.angle * ONE_ANG;
-                currentVertex =
-                    vertexBeforeTransform =
-                        calcVertex(originW, originH, centerX, centerY, sx, sy, deg);
+                currentVertex = vertexBeforeTransform = calcVertex(originW, originH, centerX, centerY, sx, sy, deg);
                 //计算参考点及斜率
                 switch (dir) {
                     case "s":
@@ -2757,31 +2836,31 @@ class Resizable extends Uii {
                         style.transformOrigin = toTransformOrigin;
                     }
                     else {
-                        style.transformOrigin = `${centerX - transform.x}px ${centerY - transform.y}px`;
+                        style.transformOrigin = `${centerX - sx}px ${centerY - sy}px`;
                     }
                 }
                 if (panel instanceof SVGGraphicsElement) {
                     sX = matrixInfo.x - currentVertex[0].x;
                     sY = matrixInfo.y - currentVertex[0].y;
                 }
-                onStart && onStart.call(uiik, { w: originW, h: originH, transform }, ev);
+                startPointXy = getPointInContainer(ev, container, offsetParentRect, offsetParentCStyle, matrixInfo);
+                onStart &&
+                    onStart.call(uiik, { w: originW, h: originH, transform }, ev);
             });
             onPointerMove((args) => {
-                const { ev } = args;
-                //获取当前位置坐标
-                const currentXy = getPointInContainer(ev, container, offsetParentRect, offsetParentCStyle);
-                let newX = currentXy.x;
-                let newY = currentXy.y;
+                const { ev, offX, offY } = args;
+                let newX = startPointXy.x + offX;
+                let newY = startPointXy.y + offY;
+                const rpx = refPoint.x;
+                const rpy = refPoint.y;
                 ////////////////////////////////////////// 计算边长
                 //1. calc angle
-                let angle = Math.atan2(newY - refPoint.y, newX - refPoint.x) * ONE_RAD -
-                    matrixInfo.angle;
+                let angle = Math.atan2(newY - rpy, newX - rpx) * ONE_RAD - matrixInfo.angle;
                 //2. hypotenuse length
-                let hyLen = Math.sqrt((newX - refPoint.x) * (newX - refPoint.x) +
-                    (newY - refPoint.y) * (newY - refPoint.y));
+                let hyLen = Math.sqrt((newX - rpx) * (newX - rpx) + (newY - rpy) * (newY - rpy));
                 //3. h&v projection length
                 let pl1 = Math.abs(k1 === Infinity
-                    ? newY - refPoint.y
+                    ? newY - refPoint.y / matrixInfo.scale
                     : hyLen * Math.cos(angle * ONE_ANG));
                 let pl2 = Math.sqrt(hyLen * hyLen - pl1 * pl1);
                 let w = originW;
@@ -2790,24 +2869,85 @@ class Resizable extends Uii {
                 let x = originX;
                 let angl = 0;
                 switch (dir) {
+                    case "w":
+                    case "sw":
+                        angl =
+                            Math.atan2(currentVertex[0].y - currentVertex[1].y, currentVertex[0].x - currentVertex[1].x) * ONE_RAD;
+                        break;
+                    case "n":
+                    case "ne":
+                    case "nw":
+                        angl =
+                            Math.atan2(currentVertex[0].y - currentVertex[2].y, currentVertex[0].x - currentVertex[2].x) * ONE_RAD;
+                }
+                //w & h
+                switch (dir) {
                     case "s":
                         h = pl2;
                         break;
                     case "e":
                         w = pl1;
                         break;
+                    case "n":
+                        h = pl2;
+                        if (angl === 90) {
+                            h = newY - currentVertex[2].y;
+                        }
+                        break;
+                    case "w":
+                        w = pl1;
+                        if (angl === 0) {
+                            w = newX - currentVertex[1].x;
+                        }
+                        break;
+                    case "nw":
+                        w = pl1;
+                        h = pl2;
+                        if (matrixInfo.angle === 180) {
+                            w = newX - currentVertex[3].x;
+                            h = newY - currentVertex[3].y;
+                        }
+                        break;
                     case "se":
+                    case "sw":
+                    case "ne":
                         w = pl1;
                         h = pl2;
                         break;
+                }
+                //w & h boundary
+                if (minHeight && h < minHeight)
+                    h = minHeight;
+                if (maxHeight && h > maxHeight)
+                    h = maxHeight;
+                if (minWidth && w < minWidth) {
+                    w = minWidth;
+                }
+                if (maxWidth && w > maxWidth)
+                    w = maxWidth;
+                let hLine, wLine;
+                // x & y
+                switch (dir) {
+                    case "s":
+                        hLine = { p1: currentVertex[1], p2: currentVertex[0] };
+                        h = limitWH(newX, newY, hLine, h, minHeight);
+                        break;
+                    case "e":
+                        wLine = { p1: currentVertex[0], p2: currentVertex[2] };
+                        w = limitWH(newX, newY, wLine, w, minWidth);
+                        break;
+                    case "se":
+                        wLine = { p1: currentVertex[0], p2: currentVertex[2] };
+                        hLine = { p1: currentVertex[1], p2: currentVertex[0] };
+                        w = limitWH(newX, newY, wLine, w, minWidth);
+                        h = limitWH(newX, newY, hLine, h, minHeight);
+                        break;
                     case "n":
-                        h = pl2;
-                        angl =
-                            Math.atan2(currentVertex[0].y - currentVertex[2].y, currentVertex[0].x - currentVertex[2].x) * ONE_RAD;
+                        hLine = { p1: currentVertex[2], p2: currentVertex[3] };
+                        h = limitWH(newX, newY, hLine, h, minHeight);
                         let plh;
                         //1&2 quad
                         if (angl === 90) {
-                            h = newY - currentVertex[2].y;
                             x = currentVertex[2].x;
                             y = newY;
                         }
@@ -2823,13 +2963,11 @@ class Resizable extends Uii {
                         }
                         break;
                     case "w":
-                        w = pl1;
-                        angl =
-                            Math.atan2(currentVertex[0].y - currentVertex[1].y, currentVertex[0].x - currentVertex[1].x) * ONE_RAD;
+                        wLine = { p1: currentVertex[3], p2: currentVertex[1] };
+                        w = limitWH(newX, newY, wLine, w, minWidth);
                         let plw;
                         //1&4 quad
                         if (angl === 0) {
-                            w = newX - currentVertex[1].x;
                             x = newX;
                             y = currentVertex[1].y;
                         }
@@ -2845,21 +2983,61 @@ class Resizable extends Uii {
                         }
                         break;
                     case "nw":
-                        w = pl1;
-                        h = pl2;
-                        //获取顺时针旋转后的直角坐标
+                        wLine = { p1: currentVertex[3], p2: currentVertex[1] };
+                        hLine = { p1: currentVertex[2], p2: currentVertex[3] };
+                        w = limitWH(newX, newY, wLine, w, minWidth);
+                        h = limitWH(newX, newY, hLine, h, minHeight);
                         x = newX;
                         y = newY;
-                        if (matrixInfo.angle === 180) {
-                            w = newX - currentVertex[3].x;
-                            h = newY - currentVertex[3].y;
+                        let cv2x = currentVertex[2].x;
+                        let cv2y = currentVertex[2].y;
+                        let cv1x = currentVertex[1].x;
+                        let cv1y = currentVertex[1].y;
+                        //W boundary
+                        let v32n = normalizeVector(cv2x - currentVertex[3].x, cv2y - currentVertex[3].y);
+                        v32n.x *= minWidth;
+                        v32n.y *= minWidth;
+                        let v10n = normalizeVector(currentVertex[0].x - cv1x, currentVertex[0].y - cv1y);
+                        v10n.x *= minWidth;
+                        v10n.y *= minWidth;
+                        let wp1 = { x: wLine.p1.x + v32n.x, y: wLine.p1.y + v32n.y };
+                        let wp2 = { x: wLine.p2.x + v10n.x, y: wLine.p2.y + v10n.y };
+                        let invalid = (wp2.x - wp1.x) * (newY - wp1.y) -
+                            (wp2.y - wp1.y) * (newX - wp1.x) >
+                            0;
+                        if (invalid) {
+                            let v20n = normalizeVector(currentVertex[0].x - cv2x, currentVertex[0].y - cv2y);
+                            v20n.x *= h;
+                            v20n.y *= h;
+                            x = wp1.x + v20n.x;
+                            y = wp1.y + v20n.y;
+                        }
+                        //H boundary
+                        let v31n = normalizeVector(cv1x - currentVertex[3].x, cv1y - currentVertex[3].y);
+                        v31n.x *= minHeight;
+                        v31n.y *= minHeight;
+                        let v20n = normalizeVector(currentVertex[0].x - cv2x, currentVertex[0].y - cv2y);
+                        v20n.x *= minHeight;
+                        v20n.y *= minHeight;
+                        let hp1 = { x: hLine.p1.x + v31n.x, y: hLine.p1.y + v31n.y };
+                        let hp2 = { x: hLine.p2.x + v20n.x, y: hLine.p2.y + v20n.y };
+                        invalid =
+                            (hp2.x - hp1.x) * (newY - hp1.y) -
+                                (hp2.y - hp1.y) * (newX - hp1.x) >
+                                0;
+                        if (invalid) {
+                            let v10n = normalizeVector(currentVertex[0].x - cv1x, currentVertex[0].y - cv1y);
+                            v10n.x *= w;
+                            v10n.y *= w;
+                            x = hp2.x + v10n.x;
+                            y = hp2.y + v10n.y;
                         }
                         break;
                     case "sw":
-                        w = pl1;
-                        h = pl2;
-                        angl =
-                            Math.atan2(currentVertex[0].y - currentVertex[1].y, currentVertex[0].x - currentVertex[1].x) * ONE_RAD;
+                        wLine = { p1: currentVertex[3], p2: currentVertex[1] };
+                        hLine = { p1: currentVertex[1], p2: currentVertex[0] };
+                        w = limitWH(newX, newY, wLine, w, minWidth);
+                        h = limitWH(newX, newY, hLine, h, minHeight);
                         let plw1;
                         //1&4 quad
                         if (angl === 0) {
@@ -2878,10 +3056,10 @@ class Resizable extends Uii {
                         }
                         break;
                     case "ne":
-                        w = pl1;
-                        h = pl2;
-                        angl =
-                            Math.atan2(currentVertex[0].y - currentVertex[2].y, currentVertex[0].x - currentVertex[2].x) * ONE_RAD;
+                        wLine = { p1: currentVertex[0], p2: currentVertex[2] };
+                        hLine = { p1: currentVertex[2], p2: currentVertex[3] };
+                        w = limitWH(newX, newY, wLine, w, minWidth);
+                        h = limitWH(newX, newY, hLine, h, minHeight);
                         let plne;
                         if (angl === 0) {
                             x = newX;
@@ -2899,18 +3077,6 @@ class Resizable extends Uii {
                             y = currentVertex[2].y + Math.sqrt(h * h - plne * plne);
                         }
                         break;
-                }
-                if (changeW) {
-                    if (minWidth && w < minWidth)
-                        w = minWidth;
-                    if (maxWidth && w > maxWidth)
-                        w = maxWidth;
-                }
-                if (changeH) {
-                    if (minHeight && h < minHeight)
-                        h = minHeight;
-                    if (maxHeight && h > maxHeight)
-                        h = maxHeight;
                 }
                 if (aspectRatio) {
                     if (changeW) {
@@ -2936,19 +3102,22 @@ class Resizable extends Uii {
                     }
                 }
                 if (changeY) {
-                    transform.moveToY(y + sY);
+                    transform.moveTo(x, y + sY);
                 }
                 if (changeX) {
-                    transform.moveToX(x + sX);
+                    transform.moveTo(x + sX, y);
                 }
                 lastX = x;
                 lastY = y;
                 currentW = w;
                 currentH = h;
                 if (onResize && onResize.call) {
-                    const { x, y, sx, sy } = panel instanceof SVGGraphicsElement
-                        ? getCenterXySVG(panel, startOx, startOy)
-                        : getCenterXy(panel);
+                    onResize.call;
+                    const panelRect = getRectInContainer(panel, panel.parentElement, matrixInfo);
+                    let centerX = Math.round(panelRect.x + panelRect.w / 2);
+                    let centerY = Math.round(panelRect.y + panelRect.h / 2);
+                    let sx = Math.round(centerX - originW / 2);
+                    let sy = Math.round(centerY - originH / 2);
                     onResize.call(uiik, {
                         w,
                         h,
@@ -2960,7 +3129,7 @@ class Resizable extends Uii {
                         sx: sx,
                         sy: sy,
                         deg: matrixInfo.angle,
-                        transform
+                        transform,
                     }, ev);
                 }
             });
@@ -2974,43 +3143,33 @@ class Resizable extends Uii {
                     panelStyle.top = ghostNode.style.top;
                     moveTo(panel, lastX / matrixInfo.scale, lastY / matrixInfo.scale);
                     resize(transform, panelStyle, parseFloat(ghostNode.style.width), parseFloat(ghostNode.style.height));
-                    // panelStyle.width = ghostNode.style.width;
-                    // panelStyle.height = ghostNode.style.height;
                 }
-                panel.style.transformOrigin = originalTransformOrigin;
-                const { x, y, sx, sy, ox, oy } = panel instanceof SVGGraphicsElement
-                    ? getCenterXySVG(panel, startOx, startOy)
-                    : getCenterXy(panel);
-                let centerX = x, centerY = y;
+                if (setOrigin)
+                    panel.style.transformOrigin = originalTransformOrigin;
+                let { x: centerX, y: centerY } = getRectCenter(panel, matrixInfo);
+                let sx = Math.round(centerX - currentW / 2);
+                let sy = Math.round(centerY - currentH / 2);
                 const deg = matrixInfo.angle * ONE_ANG;
                 const currentVertex = calcVertex(currentW, currentH, centerX, centerY, sx, sy, deg);
                 //修正偏移
-                if (panel instanceof SVGGraphicsElement) {
-                    //更新rotate圆心
-                    if (matrixInfo.angle != 0) {
-                        const oxy = parseOxy(opts.ox, opts.oy, currentW, currentH);
-                        rotateTo(transform.el, matrixInfo.angle, oxy.originX, originY);
-                        let { x, y, sx, sy } = getCenterXySVG(panel, oxy.originX, originY);
-                        let currentVertex2 = calcVertex(currentW, currentH, x, y, sx, sy, deg);
-                        //复原translate
-                        transform.moveTo(transform.x - (currentVertex2[0].x - currentVertex[0].x), transform.y - (currentVertex2[0].y - currentVertex[0].y));
+                if (setOrigin) {
+                    if (panel instanceof HTMLElement) {
+                        if (changeX || changeY) {
+                            transform.moveTo(transform.x - (currentVertex[0].x - lastX), transform.y - (currentVertex[0].y - lastY));
+                        }
+                        else {
+                            transform.moveTo(transform.x -
+                                (currentVertex[0].x - vertexBeforeTransform[0].x), transform.y -
+                                (currentVertex[0].y - vertexBeforeTransform[0].y));
+                        }
                     }
-                }
-                else {
-                    if (changeX || changeY) {
-                        transform.moveTo(transform.x - (currentVertex[0].x - lastX), transform.y - (currentVertex[0].y - lastY));
-                    }
-                    else {
-                        transform.moveTo(transform.x -
-                            (currentVertex[0].x - vertexBeforeTransform[0].x), transform.y -
-                            (currentVertex[0].y - vertexBeforeTransform[0].y));
-                    }
-                }
+                } //if setOrigin
                 handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
-                onEnd && onEnd.call(uiik, { w: currentW, h: currentH, transform }, ev);
+                onEnd &&
+                    onEnd.call(uiik, { w: currentW, h: currentH, transform }, ev);
             });
         }, {
-            threshold: THRESHOLD$3,
+            threshold: THRESHOLD,
             lockPage: true,
         });
     }
@@ -3044,6 +3203,15 @@ class Resizable extends Uii {
             h.setAttribute("name", "handle");
         });
     }
+}
+function limitWH(newX, newY, line, value, minValue) {
+    let p1 = line.p1;
+    let p2 = line.p2;
+    let invalid = (p2.x - p1.x) * (newY - p1.y) - (p2.y - p1.y) * (newX - p1.x) > 0;
+    if (invalid) {
+        return minValue;
+    }
+    return value;
 }
 function resize(transform, style, w, h) {
     //svg
@@ -3882,14 +4050,15 @@ class Draggable extends Uii {
         super(els, assign({
             containment: false,
             watch: true,
-            threshold: 0,
+            threshold: THRESHOLD,
             ghost: false,
             direction: "",
             scroll: true,
+            useTransform: true,
             snapOptions: {
                 tolerance: 10,
             },
-            self: false
+            self: false,
         }, opts));
         _Draggable_instances.add(this);
         _Draggable_handleMap.set(this, new WeakMap());
@@ -3946,7 +4115,7 @@ class Draggable extends Uii {
         let draggableList = this.ele;
         const eleString = this.eleString;
         const initStyle = __classPrivateFieldGet(this, _Draggable_instances, "m", _Draggable_initStyle).bind(this);
-        this.addPointerDown(bindTarget, ({ ev, currentTarget, currentStyle, currentCStyle, pointX, pointY, onPointerStart, onPointerMove, onPointerEnd }) => {
+        this.addPointerDown(bindTarget, ({ ev, currentCStyle, onPointerStart, onPointerMove, onPointerEnd, }) => {
             var _a;
             let t = ev.target;
             if (!t)
@@ -3957,7 +4126,7 @@ class Draggable extends Uii {
                 initStyle(draggableList);
             }
             //find drag dom & handle
-            let findRs = closest(t, node => includes(draggableList, node), 'parentNode');
+            let findRs = closest(t, (node) => includes(draggableList, node), "parentNode");
             if (!findRs)
                 return true;
             const dragDom = findRs;
@@ -3969,27 +4138,21 @@ class Draggable extends Uii {
                 return true;
             //检测
             const onPointerDown = opts.onPointerDown;
-            if (onPointerDown && onPointerDown({ draggable: dragDom }, ev) === false)
+            if (onPointerDown &&
+                onPointerDown({ draggable: dragDom }, ev) === false)
                 return true;
             const filter = opts.filter;
             //check filter
             if (filter) {
-                if (some(dragDom.querySelectorAll(filter), ele => ele.contains(t)))
+                if (some(dragDom.querySelectorAll(filter), (ele) => ele.contains(t)))
                     return true;
             }
             //用于计算鼠标移动时当前位置
-            const offsetParent = dragDom instanceof HTMLElement ? dragDom.offsetParent || document.body : dragDom.ownerSVGElement;
-            const offsetParentRect = offsetParent.getBoundingClientRect();
-            const offsetParentCStyle = window.getComputedStyle(offsetParent);
-            const offsetXy = getPointInContainer(ev, dragDom);
-            let offsetPointX = offsetXy.x;
-            let offsetPointY = offsetXy.y;
-            const matrixInfo = getMatrixInfo(dragDom, true);
-            const currentXy = getPointInContainer(ev, offsetParent, offsetParentRect, offsetParentCStyle);
-            if (matrixInfo.angle != 0) {
-                offsetPointX = currentXy.x - matrixInfo.x;
-                offsetPointY = currentXy.y - matrixInfo.y;
-            }
+            let offsetParent;
+            let offsetParentRect;
+            let offsetParentCStyle;
+            let offsetPointX = 0;
+            let offsetPointY = 0;
             const inContainer = !!container;
             const ghost = opts.ghost;
             const ghostClass = opts.ghostClass;
@@ -4000,66 +4163,25 @@ class Draggable extends Uii {
             const onClone = opts.onClone;
             const originalZIndex = currentCStyle.zIndex;
             let zIndex = opts.zIndex || originalZIndex;
-            const classes = opts.classes || '';
+            const classes = opts.classes || "";
             const group = opts.group;
-            if (group) {
-                let i = -1;
-                each$1(DRAGGER_GROUPS[group], el => {
-                    const z = parseInt(currentCStyle.zIndex) || 0;
-                    if (z > i)
-                        i = z;
-                });
-                zIndex = i + 1;
-            }
             const scroll = opts.scroll;
             const scrollSpeed = opts.scrollSpeed || 10;
             let gridX, gridY;
-            const grid = opts.grid;
-            if (isArray$3(grid)) {
-                gridX = grid[0];
-                gridY = grid[1];
-            }
-            else if (isNumber(grid)) {
-                gridX = gridY = grid;
-            }
             const snapOn = opts.snap;
             let snappable;
             const snapTolerance = ((_a = opts.snapOptions) === null || _a === void 0 ? void 0 : _a.tolerance) || 10;
             const onSnap = opts.onSnap;
             let lastSnapDirY = "", lastSnapDirX = "";
             let lastSnapping = "";
-            if (snapOn) {
-                //获取拖动元素所在容器内的可吸附对象
-                snappable = map((container || document).querySelectorAll(snapOn), (el) => {
-                    //计算相对容器xy
-                    const { x, y, w, h } = getRectInContainer(el, offsetParent);
-                    return {
-                        x1: x,
-                        y1: y,
-                        x2: x + w,
-                        y2: y + h,
-                        el: el,
-                    };
-                });
-            }
             const dragDomRect = dragDom.getBoundingClientRect();
-            const originW = dragDomRect.width + parseFloat(currentCStyle.borderLeftWidth) + parseFloat(currentCStyle.borderRightWidth);
-            const originH = dragDomRect.height + parseFloat(currentCStyle.borderTopWidth) + parseFloat(currentCStyle.borderBottomWidth);
+            let originW;
+            let originH;
             // boundary
             let minX = 0;
             let minY = 0;
             let maxX = 0;
             let maxY = 0;
-            let originOffX = 0;
-            let originOffY = 0;
-            if (inContainer) {
-                maxX = container.scrollWidth - originW;
-                maxY = container.scrollHeight - originH;
-            }
-            if (maxX < 0)
-                maxX = 0;
-            if (maxY < 0)
-                maxY = 0;
             let copyNode;
             let transform;
             let timer = null;
@@ -4068,10 +4190,81 @@ class Draggable extends Uii {
             let toRight = false;
             let toBottom = false;
             let endX = 0, endY = 0;
+            let startMatrixInfo;
+            let startPointXy;
             //bind events
             onPointerStart(function (args) {
                 var _a;
                 const { ev } = args;
+                ///////////////////////// initial states start;
+                offsetParent =
+                    dragDom instanceof HTMLElement
+                        ? dragDom.offsetParent || document.body
+                        : dragDom.ownerSVGElement;
+                offsetParentRect = offsetParent.getBoundingClientRect();
+                offsetParentCStyle = window.getComputedStyle(offsetParent);
+                startMatrixInfo = getMatrixInfo(dragDom, true);
+                const offsetXy = getPointInContainer(ev, dragDom, undefined, undefined, startMatrixInfo);
+                offsetPointX = offsetXy.x;
+                offsetPointY = offsetXy.y;
+                startPointXy = getPointInContainer(ev, offsetParent, offsetParentRect, offsetParentCStyle, startMatrixInfo);
+                originW =
+                    dragDomRect.width;
+                originH =
+                    dragDomRect.height;
+                //svg group el
+                if (dragDom instanceof SVGGElement || dragDom instanceof SVGSVGElement) {
+                    let bbox = dragDom.getBBox();
+                    offsetPointX += bbox.x;
+                    offsetPointY += bbox.y;
+                }
+                if (startMatrixInfo.angle != 0) {
+                    let { sx, sy } = getCenterXy(dragDom);
+                    offsetPointX = startPointXy.x - sx;
+                    offsetPointY = startPointXy.y - sy;
+                }
+                if (group) {
+                    let i = -1;
+                    each$1(DRAGGER_GROUPS[group], (el) => {
+                        const z = parseInt(currentCStyle.zIndex) || 0;
+                        if (z > i)
+                            i = z;
+                    });
+                    zIndex = i + 1;
+                }
+                const grid = opts.grid;
+                if (isArray$3(grid)) {
+                    gridX = grid[0];
+                    gridY = grid[1];
+                }
+                else if (isNumber(grid)) {
+                    gridX = gridY = grid;
+                }
+                if (snapOn) {
+                    //获取拖动元素所在容器内的可吸附对象
+                    snappable = map((container || document).querySelectorAll(snapOn), (el) => {
+                        //计算相对容器xy
+                        const { x, y, w, h } = getRectInContainer(el, offsetParent);
+                        return {
+                            x1: x,
+                            y1: y,
+                            x2: x + w,
+                            y2: y + h,
+                            el: el,
+                        };
+                    });
+                }
+                if (inContainer) {
+                    maxX =
+                        container.scrollWidth - originW / startMatrixInfo.scale;
+                    maxY =
+                        container.scrollHeight - originH / startMatrixInfo.scale;
+                }
+                if (maxX < 0)
+                    maxX = 0;
+                if (maxY < 0)
+                    maxY = 0;
+                ///////////////////////// initial states end;
                 if (ghost) {
                     if (isFunction$3(ghost)) {
                         copyNode = ghost(dragDom);
@@ -4082,34 +4275,37 @@ class Draggable extends Uii {
                         copyNode.style.pointerEvents = "none";
                         copyNode.style.position = "absolute";
                     }
-                    copyNode.style.zIndex = zIndex + '';
+                    copyNode.style.zIndex = zIndex + "";
                     if (ghostClass) {
-                        copyNode.classList.add(...compact(split(ghostClass, ' ')));
+                        copyNode.classList.add(...compact(split(ghostClass, " ")));
                     }
-                    copyNode.classList.add(...compact(split(classes, ' ')));
+                    copyNode.classList.add(...compact(split(classes, " ")));
                     copyNode.classList.toggle(CLASS_DRAGGABLE_GHOST, true);
                     (_a = dragDom.parentNode) === null || _a === void 0 ? void 0 : _a.appendChild(copyNode);
-                    transform = wrapper(copyNode);
+                    transform = wrapper(copyNode, opts.useTransform);
                     onClone && onClone({ clone: copyNode }, ev);
                 }
                 else {
-                    transform = wrapper(dragDom);
+                    transform = wrapper(dragDom, opts.useTransform);
                 }
                 //apply classes
-                dragDom.classList.add(...compact(split(classes, ' ')));
+                dragDom.classList.add(...compact(split(classes, " ")));
                 if (!copyNode)
-                    dragDom.style.zIndex = zIndex + '';
+                    dragDom.style.zIndex = zIndex + "";
                 dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE, true);
-                onStart && onStart({ draggable: dragDom, x: currentXy.x, y: currentXy.y, transform }, ev);
+                onStart &&
+                    onStart({ draggable: dragDom, x: startPointXy.x, y: startPointXy.y, transform }, ev);
                 //notify
-                const customEv = new Event("uii-dragactive", { "bubbles": true, "cancelable": false });
+                const customEv = new Event("uii-dragactive", {
+                    bubbles: true,
+                    cancelable: false,
+                });
                 dragDom.dispatchEvent(customEv);
             });
             onPointerMove((args) => {
                 const { ev, pointX, pointY, offX, offY } = args;
-                const currentXy = getPointInContainer(ev, offsetParent, offsetParentRect, offsetParentCStyle);
-                let newX = currentXy.x;
-                let newY = currentXy.y;
+                let newX = startPointXy.x + offX;
+                let newY = startPointXy.y + offY;
                 //edge detect
                 if (scroll) {
                     const lX = pointX - offsetParentRect.x;
@@ -4120,9 +4316,7 @@ class Draggable extends Uii {
                     toTop = lY < EDGE_THRESHOLD;
                     toRight = rX < EDGE_THRESHOLD;
                     toBottom = rY < EDGE_THRESHOLD;
-                    if (toLeft || toTop
-                        ||
-                            toRight || toBottom) {
+                    if (toLeft || toTop || toRight || toBottom) {
                         if (!timer) {
                             timer = setInterval(() => {
                                 if (toLeft) {
@@ -4155,17 +4349,17 @@ class Draggable extends Uii {
                     y = ((y / gridY) >> 0) * gridY;
                 }
                 if (inContainer) {
-                    if (originOffX + x < minX) {
-                        x = -0;
+                    if (x < minX) {
+                        x = 0;
                     }
-                    if (originOffY + y < minY) {
-                        y = -0;
+                    if (y < minY) {
+                        y = 0;
                     }
-                    if (originOffX + x > maxX) {
-                        x = maxX - originOffX;
+                    if (x > maxX) {
+                        x = maxX;
                     }
-                    if (originOffY + y > maxY) {
-                        y = maxY - originOffY;
+                    if (y > maxY) {
+                        y = maxY;
                     }
                 }
                 let canDrag = true;
@@ -4270,7 +4464,7 @@ class Draggable extends Uii {
                         oy: offY,
                         x: x,
                         y: y,
-                        transform
+                        transform,
                     }, ev) === false) {
                         canDrag = false;
                         endX = x;
@@ -4301,26 +4495,34 @@ class Draggable extends Uii {
                     }
                 }
                 //restore classes
-                dragDom.classList.remove(...compact(split(classes, ' ')));
+                dragDom.classList.remove(...compact(split(classes, " ")));
                 currentStyle.zIndex = originalZIndex;
                 dragDom.classList.remove(CLASS_DRAGGABLE_ACTIVE);
                 let moveToGhost = true;
                 if (onEnd) {
-                    moveToGhost = onEnd({ draggable: dragDom, x: endX, y: endY, transform }, ev) === false ? false : true;
+                    moveToGhost =
+                        onEnd({ draggable: dragDom, x: endX, y: endY, transform }, ev) ===
+                            false
+                            ? false
+                            : true;
                 }
                 //notify
-                const customEv = new Event("uii-dragdeactive", { "bubbles": true, "cancelable": false });
+                const customEv = new Event("uii-dragdeactive", {
+                    bubbles: true,
+                    cancelable: false,
+                });
                 dragDom.dispatchEvent(customEv);
                 if (ghost) {
-                    ((_a = dragDom.parentNode) === null || _a === void 0 ? void 0 : _a.contains(copyNode)) && ((_b = dragDom.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(copyNode));
+                    ((_a = dragDom.parentNode) === null || _a === void 0 ? void 0 : _a.contains(copyNode)) &&
+                        ((_b = dragDom.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(copyNode));
                     if (moveToGhost !== false) {
-                        wrapper(dragDom).moveTo(transform.x, transform.y);
+                        wrapper(dragDom, opts.useTransform).moveTo(transform.x, transform.y);
                     }
                 }
             });
         }, {
             threshold: this.opts.threshold || 0,
-            lockPage: true
+            lockPage: true,
         });
     }
     /**
@@ -4352,10 +4554,10 @@ _Draggable_handleMap = new WeakMap(), _Draggable_container = new WeakMap(), _Dra
         const ee = __classPrivateFieldGet(this, _Draggable_handleMap, "f").get(el) || el;
         ee.classList.toggle(CLASS_DRAGGABLE_HANDLE, true);
         if (!isUndefined$2(this.opts.cursor)) {
-            el.style.cursor = this.opts.cursor.default || 'move';
+            el.style.cursor = this.opts.cursor.default || "move";
             if (isDefined(this.opts.cursor.over)) {
                 el.dataset.cursorOver = this.opts.cursor.over;
-                el.dataset.cursorActive = this.opts.cursor.active || 'move';
+                el.dataset.cursorActive = this.opts.cursor.active || "move";
             }
         }
     });
@@ -4523,7 +4725,6 @@ function newDroppable(els, opts) {
 }
 
 /* eslint-disable max-len */
-const THRESHOLD$2 = 2;
 const CLASS_ROTATABLE = "uii-rotatable";
 const CLASS_ROTATABLE_HANDLE = "uii-rotatable-handle";
 const CLASS_ROTATABLE_ACTIVE = "uii-rotatable-active";
@@ -4583,24 +4784,21 @@ function bindHandle(uiik, handle, el, opts) {
         let startOy = 0;
         let startDeg = 0;
         let container;
+        let startPointXy;
         //bind events
         onPointerStart(function (args) {
             const { ev } = args;
             const { w, h } = getStyleSize(el);
-            const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h);
+            const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h, el);
             startOx = originX;
             startOy = originY;
-            const { x, y, ox, oy } = el instanceof SVGGraphicsElement
-                ? getCenterXySVG(el, startOx, startOy)
-                : getCenterXy(el, startOx, startOy);
-            (centerX = x), (centerY = y);
-            (startOx = ox), (startOy = oy);
-            container =
-                el instanceof SVGGraphicsElement
-                    ? el.ownerSVGElement : el.parentElement;
-            const currentXy = getPointInContainer(ev, container);
+            let centerXy = getRectCenter(el);
+            centerX = centerXy.x;
+            centerY = centerXy.y;
+            container = el.parentElement;
+            startPointXy = getPointInContainer(ev, container);
             startDeg =
-                Math.atan2(currentXy.y - centerY, currentXy.x - centerX) * ONE_RAD +
+                Math.atan2(startPointXy.y - centerY, startPointXy.x - centerX) * ONE_RAD +
                     90;
             if (startDeg < 0)
                 startDeg = 360 + startDeg;
@@ -4611,10 +4809,11 @@ function bindHandle(uiik, handle, el, opts) {
             onStart && onStart({ deg, cx: centerX, cy: centerY }, ev);
         });
         onPointerMove((args) => {
-            const { ev } = args;
-            const currentXy = getPointInContainer(ev, container);
+            const { ev, offX, offY } = args;
+            let newX = startPointXy.x + offX;
+            let newY = startPointXy.y + offY;
             deg =
-                Math.atan2(currentXy.y - centerY, currentXy.x - centerX) * ONE_RAD +
+                Math.atan2(newY - centerY, newX - centerX) * ONE_RAD +
                     90 -
                     startDeg;
             onRotate &&
@@ -4634,7 +4833,7 @@ function bindHandle(uiik, handle, el, opts) {
             onEnd && onEnd({ deg }, ev);
         });
     }, {
-        threshold: THRESHOLD$2,
+        threshold: THRESHOLD,
         lockPage: true,
     });
 }
@@ -4759,7 +4958,6 @@ var _Selectable_instances, _Selectable__detector, _Selectable__lastSelected, _Se
 const CLASS_SELECTOR = "uii-selector";
 const CLASS_SELECTING = "uii-selecting";
 const CLASS_SELECTED = "uii-selected";
-const THRESHOLD$1 = 2;
 /**
  * 用于表示一个元素选择器的定义
  * > 可用CSS接口
@@ -4842,10 +5040,9 @@ _Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap()
         if (onPointerDown && onPointerDown(ev) === false)
             return true;
         let originPos = "";
-        let matrixInfo = getMatrixInfo(currentTarget);
-        const startxy = getPointInContainer(ev, con, currentRect, currentCStyle, matrixInfo);
-        let hitPosX = startxy.x;
-        let hitPosY = startxy.y;
+        let startPointXy = getPointInContainer(ev, con, currentRect, currentCStyle);
+        let hitPosX = startPointXy.x;
+        let hitPosY = startPointXy.y;
         const style = selector.style;
         let selection = [];
         let lastSelection = [];
@@ -4873,14 +5070,9 @@ _Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap()
             style.display = 'block';
             onStart && onStart({ selection: __classPrivateFieldGet(that, _Selectable__lastSelected, "f"), selectable: con }, ev);
         });
-        onPointerMove((args) => {
-            const { ev } = args;
-            //获取当前位置坐标
-            const currentXy = getPointInContainer(ev, currentTarget, currentRect, currentCStyle, matrixInfo);
-            let pointX = currentXy.x;
-            let pointY = currentXy.y;
-            let offX = pointX - hitPosX;
-            let offY = pointY - hitPosY;
+        onPointerMove(({ ev, offX, offY }) => {
+            let pointX = startPointXy.x + offX;
+            let pointY = startPointXy.y + offY;
             //edge detect
             if (scroll) {
                 const ltX = ev.clientX - currentRect.x;
@@ -4988,7 +5180,7 @@ _Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap()
                 onEnd({ selection, selectable: con }, ev);
         });
     }, {
-        threshold: THRESHOLD$1,
+        threshold: THRESHOLD,
         lockPage: true
     });
 };
@@ -5034,7 +5226,6 @@ const CLASS_SORTABLE_CONTAINER = "uii-sortable-container";
 const CLASS_SORTABLE_GHOST = "uii-sortable-ghost";
 const CLASS_SORTABLE_ACTIVE = "uii-sortable-active";
 const ATTR_SORTABLE_ACTIVE = "uii-sortable-active";
-const THRESHOLD = 2;
 /**
  * 用于表示一类排序容器的定义
  * > 可用CSS接口
@@ -5445,7 +5636,7 @@ function newSortable(container, opts) {
     return new Sortable(container, opts);
 }
 
-var version = "1.3.0-beta.4";
+var version = "1.3.1";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"
@@ -5479,4 +5670,4 @@ var index = {
     newSortable
 };
 
-export { CollisionDetector, DRAGGING_RULE, Draggable, Droppable, EDGE_THRESHOLD, ONE_ANG, ONE_RAD, Resizable, Rotatable, Selectable, Sortable, Splittable, Uii, UiiTransform, VERSION, calcVertex, index as default, getBox, getCenterXy, getCenterXySVG, getMatrixInfo, getPointInContainer, getPointOffset, getRectInContainer, getStyleSize, getStyleXy, getTranslate, getVertex, isSVGEl, lockPage, moveBy, moveTo, newCollisionDetector, newDraggable, newDroppable, newResizable, newRotatable, newSelectable, newSortable, newSplittable, parseOxy, restoreCursor, rotateTo, saveCursor, setCursor, unlockPage, wrapper };
+export { CollisionDetector, DRAGGING_RULE, Draggable, Droppable, EDGE_THRESHOLD, ONE_ANG, ONE_RAD, Resizable, Rotatable, Selectable, Sortable, Splittable, THRESHOLD, Uii, UiiTransform, VERSION, calcVertex, index as default, getBox, getCenterXy, getCenterXySVG, getMatrixInfo, getPointInContainer, getPointOffset, getRectCenter, getRectInContainer, getStyleSize, getStyleXy, getTranslate, getVertex, isSVGEl, lockPage, moveBy, moveTo, newCollisionDetector, newDraggable, newDroppable, newResizable, newRotatable, newSelectable, newSortable, newSplittable, normalizeVector, parseOxy, restoreCursor, rotateTo, saveCursor, setCursor, transformMoveTo, unlockPage, wrapper };

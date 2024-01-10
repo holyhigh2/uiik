@@ -9,15 +9,14 @@ import { rotateTo } from "./transform";
 import { isFunction, isString } from "myfx/is";
 import {
   ONE_RAD,
-  getCenterXy,
-  getCenterXySVG,
+  THRESHOLD,
   getMatrixInfo,
   getPointInContainer,
+  getRectCenter,
   getStyleSize,
   parseOxy,
 } from "./utils";
 
-const THRESHOLD = 2;
 const CLASS_ROTATABLE = "uii-rotatable";
 const CLASS_ROTATABLE_HANDLE = "uii-rotatable-handle";
 const CLASS_ROTATABLE_ACTIVE = "uii-rotatable-active";
@@ -98,36 +97,32 @@ function bindHandle(
       let startDeg = 0;
       let container: HTMLElement | SVGGraphicsElement;
 
+      let startPointXy:{x:number,y:number}
+
       //bind events
       onPointerStart(function (args: Record<string, any>) {
         const { ev } = args;
 
         const { w, h } = getStyleSize(el);
 
-        const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h);
+        const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h,el);
         startOx = originX;
         startOy = originY;
 
-        const { x, y, ox, oy } =
-          el instanceof SVGGraphicsElement
-            ? getCenterXySVG(el, startOx, startOy)
-            : getCenterXy(el, startOx, startOy);
-        (centerX = x), (centerY = y);
-        (startOx = ox), (startOy = oy);
+        let centerXy = getRectCenter(el)
+        centerX = centerXy.x
+        centerY = centerXy.y
 
-        container =
-          el instanceof SVGGraphicsElement
-          ? el.ownerSVGElement: (el.parentElement as any);
+        container = el.parentElement as any
 
-        const currentXy = getPointInContainer(ev, container);
+        startPointXy = getPointInContainer(ev, container);
         startDeg =
-          Math.atan2(currentXy.y - centerY, currentXy.x - centerX) * ONE_RAD +
+          Math.atan2(startPointXy.y - centerY, startPointXy.x - centerX) * ONE_RAD +
           90;
 
         if (startDeg < 0) startDeg = 360 + startDeg;
 
         let matrixInfo = getMatrixInfo(el);
-
         startDeg -= matrixInfo.angle;
 
         //apply classes
@@ -135,12 +130,13 @@ function bindHandle(
         onStart && onStart({ deg, cx: centerX, cy: centerY }, ev);
       });
       onPointerMove((args: Record<string, any>) => {
-        const { ev } = args;
+        const { ev, offX, offY } = args;
 
-        const currentXy = getPointInContainer(ev, container);
+        let newX = startPointXy.x + offX
+        let newY = startPointXy.y + offY
 
         deg =
-          Math.atan2(currentXy.y - centerY, currentXy.x - centerX) * ONE_RAD +
+          Math.atan2(newY - centerY, newX - centerX) * ONE_RAD +
           90 -
           startDeg;
 

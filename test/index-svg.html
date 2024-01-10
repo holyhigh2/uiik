@@ -347,7 +347,7 @@
         width="800"
         height="600"
       >
-        <g>
+        <g id="group">
           <circle r="5" cx="70" cy="20" id="handle"></circle>
           <rect
             width="100"
@@ -366,14 +366,40 @@
             fill="rgba(100, 100, 100, 0.5)"
           ></rect>
           <rect
-            class="handle uii-resizable-handle-nw"
+            class="handle uii-resizable-handle-e"
             width="10"
             height="10"
-            x="15"
-            y="35"
+            x="115"
+            y="85"
+            fill="rgba(100, 100, 100, 0.5)"
+          ></rect>
+          <rect
+            class="handle uii-resizable-handle-s"
+            width="10"
+            height="10"
+            x="65"
+            y="135"
             fill="rgba(100, 100, 100, 0.5)"
           ></rect>
         </g>
+        <svg 
+        id="resizer2" x="100" y="100">
+          <rect
+            width="100"
+            height="100"
+            x="20"
+            y="40"
+            fill="blue"
+          ></rect>
+
+          <rect
+            width="50"
+            height="50"
+            x="120"
+            y="140"
+            fill="black"
+          ></rect>
+        </svg>
       </svg>
     </main>
     <script type="module">
@@ -388,8 +414,11 @@
       } from "./uiik.js";
 
       const resizeHandle = document.querySelector("#resizer1~.handle");
-      const resizeHandle2 = document.querySelector(
-        "#selector-con .uii-resizable-handle-nw"
+      const resizeHandleE = document.querySelector(
+        "#selector-con .uii-resizable-handle-e"
+      );
+      const resizeHandleS = document.querySelector(
+        "#selector-con .uii-resizable-handle-s"
       );
       let rotateHandle = document.getElementById("handle");
       let rotateHandleTransformer = wrapper(rotateHandle);
@@ -405,51 +434,25 @@
         // aspectRatio: 16 / 9,
         onStart() {
           this.hst2 = getTranslate(resizeHandle);
+          this.groupTransform = wrapper(document.getElementById("group"))
         },
-        onResize({ ow, oh, target, w, h, cx, cy, sx, sy, deg }) {
-          let theta = (deg % 360) * ONE_ANG;
-          const vertex = calcVertex(w, h, cx, cy, sx, sy, theta);
-          console.log(cx, cy, "2222");
-
-          resizeHandle.setAttribute("x", -5);
-          resizeHandle.setAttribute("y", -5);
-          moveTo(resizeHandle, vertex[3].x, vertex[3].y);
-
-          resizeHandle2.setAttribute("x", -5);
-          resizeHandle2.setAttribute("y", -5);
-          moveTo(resizeHandle2, vertex[0].x, vertex[0].y);
-
-          // 计算拖动点handle坐标
-          //1. 计算中间点(top，bottom)
-          let tcx = (vertex[0].x + vertex[1].x) / 2,
-            tcy = (vertex[0].y + vertex[1].y) / 2;
-          let bcx = (vertex[2].x + vertex[3].x) / 2,
-            bcy = (vertex[2].y + vertex[3].y) / 2;
-
-          //2. 计算向量
-          let vx = tcx - bcx,
-            vy = tcy - bcy
-          //3. 标准化向量
-          let vLen = Math.sqrt(vx*vx+vy*vy)
-          vx = vx / vLen
-          vy = vy / vLen
-
-          let nx = tcx + vx*20,
-            ny = tcy + vy*20
-
-          rotateHandleTransformer.moveTo(nx, ny);
+        onResize({ ow, oh, target, w, h, cx, cy, sx, sy, deg,transform }) {
+          moveTo(resizeHandle, w +  15, h + 35);
+          moveTo(resizeHandleE, w +  15, h/2 + 35);
+          moveTo(resizeHandleS, w/2 +  15, h + 35);
+          rotateHandleTransformer.moveToX(w/2+20);
         },
       });
 
-      uii.newRotatable("#resizer1", {
+      uii.newRotatable("#group", {
         handle: "#handle",
         ox: "50%",
-        oy: "50%",
+        oy: "60%",
         cursor: {
-          default: "move",
+          default: "crosshair",
           active: "cell",
         },
-        onRotate({ deg, ox, oy, target }) {
+        onRotate1({ deg, ox, oy, target }) {
           
           const vertex = getVertex(target, "50%", "50%");
           
@@ -483,36 +486,43 @@
         },
       });
 
-      //先把拖动兼容svg
       let hst, hst2, hst3;
-      uii.newDraggable("#resizer1", {
+
+      //在group里会出问题
+      uii.newDraggable("#group", {
         cursor: {
-          default: "grab",
+          default: "default",
           active: "not-allowed",
           over: "copy",
         },
+        handle:'#resizer1',
         group: "xx",
+        filter:'#handle, .handle',
         zIndex: 999,
         onStart() {
           //记录handle初始位置
-          hst = getTranslate(document.getElementById("handle"));
-          hst2 = getTranslate(resizeHandle);
-          hst3 = getTranslate(resizeHandle2);
+          // hst = getTranslate(document.getElementById("handle"));
+          // hst2 = getTranslate(resizeHandle);
+          // hst3 = getTranslate(resizeHandle2);
         },
-        onDrag({ x, y, ox, oy }, ev) {
-          rotateHandleTransformer.moveTo((hst.x || 0) + ox, (hst.y || 0) + oy);
-          // moveTo(rotateHandle, (hst.x||0) + ox, (hst.y||0)+oy)
-          moveTo(resizeHandle, (hst2.x || 0) + ox, (hst2.y || 0) + oy);
-          moveTo(resizeHandle2, (hst3.x || 0) + ox, (hst3.y || 0) + oy);
+        onDrag({ x, y, ox, oy,transform }, ev) {
+          
+          // rotateHandleTransformer.moveTo((hst.x || 0) + ox - transform.offx, (hst.y || 0) + oy- transform.offy);
+          // // moveTo(rotateHandle, (hst.x||0) + ox, (hst.y||0)+oy)
+          // moveTo(resizeHandle, (hst2.x || 0) + ox, (hst2.y || 0) + oy);
+          // moveTo(resizeHandle2, (hst3.x || 0) + ox, (hst3.y || 0) + oy);
         },
       });
 
+      uii.newDraggable("#resizer2",{
+        useTransform:false
+      })
       uii.newDraggable("#dd1");
 
       const selector = uii.newSelectable("#selector-con", {
         class: "selector-custom",
         selectingClass: "active",
-        targets: "#selector-con rect,#dd1",
+        targets: "#selector-con rect:not(.handle),#dd1",
         mode: "overlap",
         filter(t) {
           if (t.ownerSVGElement) return true;
