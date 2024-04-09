@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.2] - 2024/4/6
+### 修复
+- Splittable handle嵌入模式下，无法准确识别拖动主体的问题
+### 新增
+- Draggable & Splittable ghostTo参数
+
 ## [1.3.1] - 2024/1/7
 ### 优化
 - draggable/resizable/rotatable/selectable 性能提升

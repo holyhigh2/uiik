@@ -3,7 +3,7 @@
  * splitter
  * @author holyhigh
  */
-import { isArray, isEmpty} from 'myfx/is'
+import { isArray, isEmpty, isString} from 'myfx/is'
 import { each, includes, map, reject } from 'myfx/collection'
 import { assign } from 'myfx/object'
 import { SplittableOptions, Uii } from './types'
@@ -101,8 +101,16 @@ export class Splittable extends Uii{
             dom1 = h.previousElementSibling
             dom2 = h.nextElementSibling
           }else{
-            dom2 = getRootEl(h, con) as HTMLElement
-            dom1 = dom2.previousElementSibling as HTMLElement
+            let domCon = getRootEl(h, con) as HTMLElement
+            let domL = domCon.previousElementSibling;
+            let domR = domCon.nextElementSibling;
+            if(domL && !domL.querySelector(this.opts.handle)){
+              dom1 = domL as HTMLElement;
+              dom2 = domCon;
+            }else{
+              dom1 = domCon;
+              dom2 = domR as HTMLElement;
+            }
           }
           this.#bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, dom1, dom2,h)
         })
@@ -195,6 +203,7 @@ export class Splittable extends Uii{
       //ghost
       const ghost = opts.ghost
       const ghostClass = opts.ghostClass
+      const ghostTo = opts.ghostTo;
       let ghostNode: HTMLElement | null = null
 
       // 初始化sticked位置
@@ -223,7 +232,8 @@ export class Splittable extends Uii{
               ghostNode.className =
                 ghostNode.className.replace(ghostClass, '') + ' ' + ghostClass
             }
-            currentTarget.parentNode.appendChild(ghostNode)
+            let ghostParent = ghostTo?(isString(ghostTo) ? document.querySelector(ghostTo) : ghostTo):currentTarget.parentNode;
+            ghostParent.appendChild(ghostNode)
 
             onClone && onClone({ clone: ghostNode }, ev)
           }
@@ -336,7 +346,7 @@ export class Splittable extends Uii{
             currentStyle.left = startPos + ds1 - splitterSize / 2 + 'px'
           }
 
-          ghostNode.parentNode?.contains(ghostNode) && ghostNode.parentNode?.removeChild(ghostNode)
+          ghostNode.parentNode?.removeChild(ghostNode)
         }
         onEnd && onEnd({ size1: originSize, size2: originSize1 }, ev)
       })

@@ -1,5 +1,5 @@
-/* uiik 1.3.0-beta.4 @holyhigh2 https://github.com/holyhigh2/uiik */
-(function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
+/* uiik 1.3.1 @holyhigh2 https://github.com/holyhigh2/uiik */
+(function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35730/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -2402,8 +2402,17 @@ class Splittable extends Uii {
                         dom2 = h.nextElementSibling;
                     }
                     else {
-                        dom2 = getRootEl(h, con);
-                        dom1 = dom2.previousElementSibling;
+                        let domCon = getRootEl(h, con);
+                        let domL = domCon.previousElementSibling;
+                        let domR = domCon.nextElementSibling;
+                        if (domL && !domL.querySelector(this.opts.handle)) {
+                            dom1 = domL;
+                            dom2 = domCon;
+                        }
+                        else {
+                            dom1 = domCon;
+                            dom2 = domR;
+                        }
                     }
                     __classPrivateFieldGet(this, _Splittable_instances, "m", _Splittable_bindHandle).call(this, minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, dom1, dom2, h);
                 });
@@ -2479,6 +2488,7 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
         //ghost
         const ghost = opts.ghost;
         const ghostClass = opts.ghostClass;
+        const ghostTo = opts.ghostTo;
         let ghostNode = null;
         // 初始化sticked位置
         let sticked = 'none';
@@ -2504,7 +2514,8 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
                         ghostNode.className =
                             ghostNode.className.replace(ghostClass, '') + ' ' + ghostClass;
                     }
-                    currentTarget.parentNode.appendChild(ghostNode);
+                    let ghostParent = ghostTo ? (isString$3(ghostTo) ? document.querySelector(ghostTo) : ghostTo) : currentTarget.parentNode;
+                    ghostParent.appendChild(ghostNode);
                     onClone && onClone({ clone: ghostNode }, ev);
                 }
             }
@@ -2576,7 +2587,7 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
             onSplit && onSplit({ size1: ds1, size2: anotherSize }, ev);
         });
         onPointerEnd((args) => {
-            var _a, _b;
+            var _a;
             const { ev, currentStyle } = args;
             switch (dir) {
                 case 'v':
@@ -2604,7 +2615,7 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
                 else {
                     currentStyle.left = startPos + ds1 - splitterSize / 2 + 'px';
                 }
-                ((_a = ghostNode.parentNode) === null || _a === void 0 ? void 0 : _a.contains(ghostNode)) && ((_b = ghostNode.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(ghostNode));
+                (_a = ghostNode.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(ghostNode);
             }
             onEnd && onEnd({ size1: originSize, size2: originSize1 }, ev);
         });
@@ -4156,6 +4167,7 @@ class Draggable extends Uii {
             const inContainer = !!container;
             const ghost = opts.ghost;
             const ghostClass = opts.ghostClass;
+            const ghostTo = opts.ghostTo;
             const direction = opts.direction;
             const onStart = opts.onStart;
             const onDrag = opts.onDrag;
@@ -4182,7 +4194,7 @@ class Draggable extends Uii {
             let minY = 0;
             let maxX = 0;
             let maxY = 0;
-            let copyNode;
+            let ghostNode;
             let transform;
             let timer = null;
             let toLeft = false;
@@ -4194,7 +4206,6 @@ class Draggable extends Uii {
             let startPointXy;
             //bind events
             onPointerStart(function (args) {
-                var _a;
                 const { ev } = args;
                 ///////////////////////// initial states start;
                 offsetParent =
@@ -4267,30 +4278,31 @@ class Draggable extends Uii {
                 ///////////////////////// initial states end;
                 if (ghost) {
                     if (isFunction$3(ghost)) {
-                        copyNode = ghost(dragDom);
+                        ghostNode = ghost(dragDom);
                     }
                     else {
-                        copyNode = dragDom.cloneNode(true);
-                        copyNode.style.opacity = "0.3";
-                        copyNode.style.pointerEvents = "none";
-                        copyNode.style.position = "absolute";
+                        ghostNode = dragDom.cloneNode(true);
+                        ghostNode.style.opacity = "0.3";
+                        ghostNode.style.pointerEvents = "none";
+                        ghostNode.style.position = "absolute";
                     }
-                    copyNode.style.zIndex = zIndex + "";
+                    ghostNode.style.zIndex = zIndex + "";
                     if (ghostClass) {
-                        copyNode.classList.add(...compact(split(ghostClass, " ")));
+                        ghostNode.classList.add(...compact(split(ghostClass, " ")));
                     }
-                    copyNode.classList.add(...compact(split(classes, " ")));
-                    copyNode.classList.toggle(CLASS_DRAGGABLE_GHOST, true);
-                    (_a = dragDom.parentNode) === null || _a === void 0 ? void 0 : _a.appendChild(copyNode);
-                    transform = wrapper(copyNode, opts.useTransform);
-                    onClone && onClone({ clone: copyNode }, ev);
+                    ghostNode.classList.add(...compact(split(classes, " ")));
+                    ghostNode.classList.toggle(CLASS_DRAGGABLE_GHOST, true);
+                    let ghostParent = ghostTo ? (isString$3(ghostTo) ? document.querySelector(ghostTo) : ghostTo) : dragDom.parentNode;
+                    ghostParent === null || ghostParent === void 0 ? void 0 : ghostParent.appendChild(ghostNode);
+                    transform = wrapper(ghostNode, opts.useTransform);
+                    onClone && onClone({ clone: ghostNode }, ev);
                 }
                 else {
                     transform = wrapper(dragDom, opts.useTransform);
                 }
                 //apply classes
                 dragDom.classList.add(...compact(split(classes, " ")));
-                if (!copyNode)
+                if (!ghostNode)
                     dragDom.style.zIndex = zIndex + "";
                 dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE, true);
                 onStart &&
@@ -4442,7 +4454,7 @@ class Draggable extends Uii {
                             setTimeout(() => {
                                 //emit after relocate
                                 onSnap({
-                                    el: copyNode || dragDom,
+                                    el: ghostNode || dragDom,
                                     targetH: targetX,
                                     targetV: targetY,
                                     dirH: snapDirX,
@@ -4486,7 +4498,7 @@ class Draggable extends Uii {
                 }
             });
             onPointerEnd((args) => {
-                var _a, _b;
+                var _a;
                 const { ev, currentStyle } = args;
                 if (scroll) {
                     if (timer) {
@@ -4513,8 +4525,7 @@ class Draggable extends Uii {
                 });
                 dragDom.dispatchEvent(customEv);
                 if (ghost) {
-                    ((_a = dragDom.parentNode) === null || _a === void 0 ? void 0 : _a.contains(copyNode)) &&
-                        ((_b = dragDom.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(copyNode));
+                    (_a = ghostNode.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(ghostNode);
                     if (moveToGhost !== false) {
                         wrapper(dragDom, opts.useTransform).moveTo(transform.x, transform.y);
                     }
@@ -5636,7 +5647,7 @@ function newSortable(container, opts) {
     return new Sortable(container, opts);
 }
 
-var version = "1.3.1";
+var version = "1.3.2";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

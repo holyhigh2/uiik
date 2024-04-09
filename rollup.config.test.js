@@ -25,7 +25,7 @@ export default {
     }),
     serve({
       open: true,
-      port: 8818,
+      port: 8819,
       openPage: '/test/index.html',
       host: 'localhost',
       headers: {

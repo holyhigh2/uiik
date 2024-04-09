@@ -217,6 +217,7 @@ export class Draggable extends Uii {
         const inContainer = !!container;
         const ghost = opts.ghost;
         const ghostClass = opts.ghostClass;
+        const ghostTo = opts.ghostTo;
         const direction = opts.direction;
 
         const onStart = opts.onStart;
@@ -253,7 +254,7 @@ export class Draggable extends Uii {
         let maxX: number = 0;
         let maxY: number = 0;
 
-        let copyNode: HTMLElement;
+        let ghostNode: HTMLElement;
         let transform: UiiTransform;
 
         let timer: any = null;
@@ -365,32 +366,33 @@ export class Draggable extends Uii {
 
           if (ghost) {
             if (isFunction(ghost)) {
-              copyNode = ghost(dragDom as any);
+              ghostNode = ghost(dragDom as any);
             } else {
-              copyNode = dragDom.cloneNode(true) as HTMLElement;
-              copyNode.style.opacity = "0.3";
-              copyNode.style.pointerEvents = "none";
-              copyNode.style.position = "absolute";
+              ghostNode = dragDom.cloneNode(true) as HTMLElement;
+              ghostNode.style.opacity = "0.3";
+              ghostNode.style.pointerEvents = "none";
+              ghostNode.style.position = "absolute";
             }
 
-            copyNode.style.zIndex = zIndex + "";
+            ghostNode.style.zIndex = zIndex + "";
 
             if (ghostClass) {
-              copyNode.classList.add(...compact(split(ghostClass, " ")));
+              ghostNode.classList.add(...compact(split(ghostClass, " ")));
             }
-            copyNode.classList.add(...compact(split(classes, " ")));
-            copyNode.classList.toggle(CLASS_DRAGGABLE_GHOST, true);
-            dragDom.parentNode?.appendChild(copyNode);
+            ghostNode.classList.add(...compact(split(classes, " ")));
+            ghostNode.classList.toggle(CLASS_DRAGGABLE_GHOST, true);
+            let ghostParent = ghostTo?(isString(ghostTo) ? document.querySelector(ghostTo) : ghostTo):dragDom.parentNode;
+            ghostParent?.appendChild(ghostNode);
 
-            transform = wrapper(copyNode, opts.useTransform);
+            transform = wrapper(ghostNode, opts.useTransform);
 
-            onClone && onClone({ clone: copyNode }, ev);
+            onClone && onClone({ clone: ghostNode }, ev);
           } else {
             transform = wrapper(dragDom, opts.useTransform);
           }
           //apply classes
           dragDom.classList.add(...compact(split(classes, " ")));
-          if (!copyNode) dragDom.style.zIndex = zIndex + "";
+          if (!ghostNode) dragDom.style.zIndex = zIndex + "";
 
           dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE, true);
 
@@ -563,7 +565,7 @@ export class Draggable extends Uii {
                   //emit after relocate
                   onSnap(
                     {
-                      el: copyNode || dragDom,
+                      el: ghostNode || dragDom,
                       targetH: targetX,
                       targetV: targetY,
                       dirH: snapDirX,
@@ -644,8 +646,7 @@ export class Draggable extends Uii {
           dragDom.dispatchEvent(customEv);
 
           if (ghost) {
-            dragDom.parentNode?.contains(copyNode) &&
-              dragDom.parentNode?.removeChild(copyNode);
+            ghostNode.parentNode?.removeChild(ghostNode);
             if (moveToGhost !== false) {
               wrapper(dragDom, opts.useTransform).moveTo(
                 transform.x,

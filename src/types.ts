@@ -381,6 +381,10 @@ export type SplittableOptions = {
   ghost?: boolean;
   ghostClass?: string;
   /**
+   * ghost元素创建与指定元素下，默认与handle元素平级
+   */
+  ghostTo?:string|HTMLElement;
+  /**
    * 自定义handle选择器，多个使用空格分隔。handle元素可以是与分割元素平级或在分割元素内
    */
   handle?: string;
@@ -445,6 +449,10 @@ export type DraggableOptions = {
    */
   ghost?: ((el: HTMLElement) => HTMLElement) | boolean;
   ghostClass?: string;
+  /**
+   * ghost元素创建与指定元素下，默认与handle元素平级
+   */
+  ghostTo?:string|HTMLElement;
   /**
    * 传递v/h可实现单向拖动。默认''
    */
