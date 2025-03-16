@@ -1,6 +1,7 @@
-import { isElement, isString, isArrayLike, isEmpty } from "myfx/is";
 import { each, map, toArray } from "myfx/collection";
+import { isArrayLike, isElement, isEmpty, isString } from "myfx/is";
 import { assign, get } from "myfx/object";
+import { UiiTransform } from "./transform";
 import {
   getMatrixInfo,
   lockPage,
@@ -9,7 +10,6 @@ import {
   setCursor,
   unlockPage,
 } from "./utils";
-import { UiiTransform } from "./transform";
 
 /**
  * A Base class for all Uii classes
@@ -32,7 +32,7 @@ export abstract class Uii {
     opts?: Record<string, any>
   ) {
     this.opts = opts || {};
-    this.opts.mouseButton = this.opts.mouseButton||'left'
+    this.opts.mouseButton = this.opts.mouseButton || 'left'
 
     if (isArrayLike(ele) && !isString(ele)) {
       this.ele = map<HTMLElement>(ele, (el) => {
@@ -145,7 +145,7 @@ export abstract class Uii {
           return false;
         }
 
-        let matrixInfo = getMatrixInfo(el as any,true)
+        let matrixInfo = getMatrixInfo(el as any, true)
 
         //函数
         const pointerMove = (ev: MouseEvent) => {
@@ -278,7 +278,7 @@ export abstract class Uii {
   /**
    * @internal
    */
-  protected onOptionChanged(opts?: Record<string, any>): void {}
+  protected onOptionChanged(opts?: Record<string, any>): void { }
 }
 
 export type ResizableOptions = {
@@ -286,20 +286,20 @@ export type ResizableOptions = {
    * 控制器元素选择器(1-n个元素)，如果为空表示点击任意元素即可触发
    */
   handle?:
-    | ((
-        target: HTMLElement | SVGGraphicsElement
-      ) =>
-        | NodeList
-        | HTMLCollection
-        | HTMLElement[]
-        | HTMLElement
-        | SVGGraphicsElement)
-    | string
+  | ((
+    target: HTMLElement | SVGGraphicsElement
+  ) =>
     | NodeList
     | HTMLCollection
     | HTMLElement[]
     | HTMLElement
-    | SVGGraphicsElement;
+    | SVGGraphicsElement)
+  | string
+  | NodeList
+  | HTMLCollection
+  | HTMLElement[]
+  | HTMLElement
+  | SVGGraphicsElement;
   /**
    * 拖动元素的最小size，如果是数组，表示 [width,height]
    */
@@ -383,7 +383,7 @@ export type SplittableOptions = {
   /**
    * ghost元素创建与指定元素下，默认与handle元素平级
    */
-  ghostTo?:string|HTMLElement;
+  ghostTo?: string | HTMLElement;
   /**
    * 自定义handle选择器，多个使用空格分隔。handle元素可以是与分割元素平级或在分割元素内
    */
@@ -402,11 +402,11 @@ export type DraggableOptions = {
   /**
    * 使用transform属性控制位移，默认true
    */
-  useTransform?:boolean;
+  useTransform?: boolean;
   /**
    * 是否不响应子元素触发，默认true
    */
-  self?:boolean;
+  self?: boolean;
   /**
    * 鼠标控制时的按键，默认left
    */
@@ -440,10 +440,10 @@ export type DraggableOptions = {
    * 拖动目标，dom/selector数组，用于拖动交互事件
    */
   droppable?:
-    | (() => NodeList | HTMLCollection | HTMLElement[])
-    | string
-    | HTMLElement
-    | HTMLElement[];
+  | (() => NodeList | HTMLCollection | HTMLElement[])
+  | string
+  | HTMLElement
+  | HTMLElement[];
   /**
    * 开启ghost模式后，拖动元素时会自动创建元素副本并拖动副本，当拖动结束后，副本销毁并且元素移动到最后位置。默认false，支持函数返回副本元素
    */
@@ -452,7 +452,7 @@ export type DraggableOptions = {
   /**
    * ghost元素创建与指定元素下，默认与handle元素平级
    */
-  ghostTo?:string|HTMLElement;
+  ghostTo?: string | HTMLElement;
   /**
    * 传递v/h可实现单向拖动。默认''
    */
@@ -588,8 +588,8 @@ export type DroppableOptions = {
    * 定义哪些draggable元素进行交互。如果是字符串，支持不同Draggable对象进行编组
    */
   accepts?:
-    | ((ele: Array<HTMLElement>, draggable: HTMLElement) => boolean)
-    | string;
+  | ((ele: Array<HTMLElement>, draggable: HTMLElement) => boolean)
+  | string;
   /**
    * 当accepts的draggable对象开始拖动时触发
    * @param draggable
@@ -644,20 +644,20 @@ export type RotatableOptions = {
    * 控制器元素选择器(1-n个元素)，如果为空表示点击任意元素即可触发
    */
   handle?:
-    | ((
-        target: HTMLElement | SVGGraphicsElement
-      ) =>
-        | NodeList
-        | HTMLCollection
-        | HTMLElement[]
-        | HTMLElement
-        | SVGGraphicsElement)
-    | string
+  | ((
+    target: HTMLElement | SVGGraphicsElement
+  ) =>
     | NodeList
     | HTMLCollection
     | HTMLElement[]
     | HTMLElement
-    | SVGGraphicsElement;
+    | SVGGraphicsElement)
+  | string
+  | NodeList
+  | HTMLCollection
+  | HTMLElement[]
+  | HTMLElement
+  | SVGGraphicsElement;
   /**
    * 指针点击时触发，可用于阻止后续逻辑
    * @param event
@@ -781,8 +781,8 @@ export type SortableOptions = {
      * 表示来自fromContainer的元素对toContainers的移入策略，默认true
      */
     from?:
-      | ((item: HTMLElement, from: HTMLElement, to: HTMLElement) => boolean)
-      | boolean;
+    | ((item: HTMLElement, from: HTMLElement, to: HTMLElement) => boolean)
+    | boolean;
   };
   /**
    * 当ghost元素移出容器后列表元素的处理方式

@@ -4,24 +4,25 @@
  * dom dragger
  * @author holyhigh2
  */
+import { compact } from "myfx/array";
 import { each, includes, map, some } from "myfx/collection";
+import {
+  isArray,
+  isArrayLike,
+  isBoolean,
+  isDefined,
+  isElement,
+  isEmpty,
+  isFunction,
+  isNumber,
+  isString,
+  isUndefined,
+} from "myfx/is";
 import { assign } from "myfx/object";
 import { split } from "myfx/string";
-import { compact } from "myfx/array";
 import { closest } from "myfx/tree";
-import {
-  isString,
-  isArrayLike,
-  isFunction,
-  isUndefined,
-  isElement,
-  isArray,
-  isNumber,
-  isDefined,
-  isBoolean,
-  isEmpty,
-} from "myfx/is";
 
+import { UiiTransform, wrapper } from "./transform";
 import { DraggableOptions, Uii } from "./types";
 import {
   EDGE_THRESHOLD,
@@ -31,7 +32,6 @@ import {
   getPointInContainer,
   getRectInContainer
 } from "./utils";
-import { UiiTransform, wrapper } from "./transform";
 
 const DRAGGER_GROUPS: Record<string, Array<HTMLElement>> = {};
 const CLASS_DRAGGABLE = "uii-draggable";
@@ -265,9 +265,9 @@ export class Draggable extends Uii {
 
         let endX = 0,
           endY = 0;
-        
-        let startMatrixInfo:any
-        let startPointXy:{x:number,y:number}
+
+        let startMatrixInfo: any
+        let startPointXy: { x: number, y: number }
 
         //bind events
         onPointerStart(function (args: Record<string, any>) {
@@ -284,7 +284,7 @@ export class Draggable extends Uii {
 
           startMatrixInfo = getMatrixInfo(dragDom, true);
 
-          const offsetXy = getPointInContainer(ev, dragDom,undefined,undefined,startMatrixInfo);
+          const offsetXy = getPointInContainer(ev, dragDom, undefined, undefined, startMatrixInfo);
           offsetPointX = offsetXy.x;
           offsetPointY = offsetXy.y;
 
@@ -297,12 +297,12 @@ export class Draggable extends Uii {
           );
 
           originW =
-            dragDomRect.width 
+            dragDomRect.width
           originH =
-            dragDomRect.height 
-          
+            dragDomRect.height
+
           //svg group el
-          if(dragDom instanceof SVGGElement || dragDom instanceof SVGSVGElement){
+          if (dragDom instanceof SVGGElement || dragDom instanceof SVGSVGElement) {
             let bbox = dragDom.getBBox()
             offsetPointX += bbox.x
             offsetPointY += bbox.y
@@ -356,9 +356,9 @@ export class Draggable extends Uii {
 
           if (inContainer) {
             maxX =
-              container.scrollWidth - originW/startMatrixInfo.scale
+              container.scrollWidth - originW / startMatrixInfo.scale
             maxY =
-              container.scrollHeight - originH/startMatrixInfo.scale
+              container.scrollHeight - originH / startMatrixInfo.scale
           }
           if (maxX < 0) maxX = 0;
           if (maxY < 0) maxY = 0;
@@ -381,7 +381,7 @@ export class Draggable extends Uii {
             }
             ghostNode.classList.add(...compact(split(classes, " ")));
             ghostNode.classList.toggle(CLASS_DRAGGABLE_GHOST, true);
-            let ghostParent = ghostTo?(isString(ghostTo) ? document.querySelector(ghostTo) : ghostTo):dragDom.parentNode;
+            let ghostParent = ghostTo ? (isString(ghostTo) ? document.querySelector(ghostTo) : ghostTo) : dragDom.parentNode;
             ghostParent?.appendChild(ghostNode);
 
             transform = wrapper(ghostNode, opts.useTransform);
@@ -460,17 +460,17 @@ export class Draggable extends Uii {
           }
 
           if (inContainer) {
-            if ( x < minX) {
+            if (x < minX) {
               x = 0;
             }
-            if ( y < minY) {
+            if (y < minY) {
               y = 0;
             }
-            if ( x  > maxX) {
-              x = maxX ;
+            if (x > maxX) {
+              x = maxX;
             }
-            if (y  > maxY) {
-              y = maxY ;
+            if (y > maxY) {
+              y = maxY;
             }
           }
           let canDrag = true;
@@ -634,7 +634,7 @@ export class Draggable extends Uii {
           if (onEnd) {
             moveToGhost =
               onEnd({ draggable: dragDom, x: endX, y: endY, transform }, ev) ===
-              false
+                false
                 ? false
                 : true;
           }
@@ -670,7 +670,7 @@ export class Draggable extends Uii {
     const droppable = opts.droppable;
     if (!isFunction(droppable)) {
       if (isUndefined(droppable)) {
-        opts.droppable = () => {};
+        opts.droppable = () => { };
       } else if (isString(droppable)) {
         opts.droppable = () => document.querySelectorAll(droppable);
       } else if (isArrayLike(droppable)) {

@@ -5,8 +5,8 @@
  */
 
 import { find, map } from "myfx/collection";
-import { rotateTo } from "./transform";
 import { isNumber, isString } from "myfx/is";
+import { rotateTo } from "./transform";
 
 /**
  * 一角度对应的弧度
@@ -202,7 +202,7 @@ export function getMatrixInfo(
 
   rs.scale = Math.sqrt(a * a + b * b);
   rs.angle = Math.round(Math.atan2(b, a) * (180 / Math.PI));
-  
+
   return rs;
 }
 
@@ -290,16 +290,16 @@ export function getRectInContainer(
  * @param el 
  * @returns 
  */
-export function getRectCenter(el: HTMLElement|SVGGraphicsElement,matrixInfo?: { scale: number; angle: number }):{x:number,y:number}{
+export function getRectCenter(el: HTMLElement | SVGGraphicsElement, matrixInfo?: { scale: number; angle: number }): { x: number, y: number } {
   const panelRect = getRectInContainer(
     el,
     el.parentElement!,
     matrixInfo
   );
-  let x = Math.round(panelRect.x + panelRect.w/2);
-  let y = Math.round(panelRect.y + panelRect.h/2);
+  let x = Math.round(panelRect.x + panelRect.w / 2);
+  let y = Math.round(panelRect.y + panelRect.h / 2);
 
-  return {x,y}
+  return { x, y }
 }
 
 /**
@@ -433,20 +433,20 @@ export function parseOxy(
   oy: any,
   w: number,
   h: number,
-  el?: HTMLElement|SVGGraphicsElement
+  el?: HTMLElement | SVGGraphicsElement
 ): { originX: number; originY: number } {
   let originX = 0,
     originY = 0;
   let transformOrigin
-  
+
   if (isString(ox)) {
     //percent
     originX = (parseFloat(ox) / 100) * w;
   } else if (isNumber(ox)) {
     originX = ox;
-  }else if(el){
+  } else if (el) {
     //origin
-    if(!transformOrigin)transformOrigin = window.getComputedStyle(el).transformOrigin
+    if (!transformOrigin) transformOrigin = window.getComputedStyle(el).transformOrigin
     const centerPair = transformOrigin.split(" ");
     originX = parseFloat(centerPair[0])
   }
@@ -455,17 +455,24 @@ export function parseOxy(
     originY = (parseFloat(oy) / 100) * h;
   } else if (isNumber(oy)) {
     originY = oy;
-  }else if(el){
+  } else if (el) {
     //origin
-    if(!transformOrigin)transformOrigin = window.getComputedStyle(el).transformOrigin
+    if (!transformOrigin) transformOrigin = window.getComputedStyle(el).transformOrigin
     const centerPair = transformOrigin.split(" ");
     originY = parseFloat(centerPair[1])
   }
   return { originX, originY };
 }
 
+export function normalizeVector(x: number, y: number) {
+  let len = Math.sqrt(x * x + y * y)
+  return { x: x / len, y: y / len }
+}
 
-export function normalizeVector(x:number,y:number){
-  let len = Math.sqrt(x*x+y*y)
-  return {x:x/len,y:y/len}
+export function isVisible(el: Element) {
+  let rect = el.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    return false;
+  }
+  return true;
 }

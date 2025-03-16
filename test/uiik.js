@@ -1,4 +1,4 @@
-/* uiik 1.3.1 @holyhigh2 https://github.com/holyhigh2/uiik */
+/* uiik 1.3.2 @holyhigh2 https://github.com/holyhigh2/uiik */
 (function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35730/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -34,12 +34,59 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 };
 
 /**
-   * myfx/is v1.1.0
+   * myfx/collection v1.1.0
    * A modular utility library with more utils, higher performance and simpler declarations ...
    * https://github.com/holyhigh2/myfx
    * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
    */
   /**
+ * 判断参数是否为undefined
+ * @example
+ * //true
+ * console.log(_.isUndefined(undefined))
+ * //false
+ * console.log(_.isUndefined(null))
+ *
+ * @param v
+ * @returns
+ */
+function isUndefined$2(v) {
+    return v === undefined;
+}
+
+/**
+ * 判断参数是否为函数对象
+ *
+ * @example
+ * //true
+ * console.log(_.isFunction(new Function()))
+ * //true
+ * console.log(_.isFunction(()=>{}))
+ *
+ * @param v
+ * @returns
+ */
+function isFunction$3(v) {
+    return typeof v == 'function' || v instanceof Function;
+}
+
+/**
+ * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
+ *
+ * @example
+ * //true
+ * console.log(_.isString(new String('')))
+ * //true
+ * console.log(_.isString(''))
+ *
+ * @param v
+ * @returns
+ */
+function isString$3(v) {
+    return typeof v === 'string' || v instanceof String;
+}
+
+/**
  * 判断参数是否为Array对象的实例
  *
  * @example
@@ -58,22 +105,6 @@ function isArray$3(v) {
     // typeof new Proxy([],{}) => object
     // Array.isArray(new Proxy([],{})) => true
     return Array.isArray(v);
-}
-
-/**
- * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
- *
- * @example
- * //true
- * console.log(_.isString(new String('')))
- * //true
- * console.log(_.isString(''))
- *
- * @param v
- * @returns
- */
-function isString$3(v) {
-    return typeof v === 'string' || v instanceof String;
 }
 
 const PRIMITIVE_TYPES$3 = [
@@ -105,302 +136,13 @@ function isObject$3(v) {
     return null !== v && PRIMITIVE_TYPES$3.indexOf(typeof v) < 0;
 }
 
-/**
- * 判断参数是否为函数对象
- *
- * @example
- * //true
- * console.log(_.isFunction(new Function()))
- * //true
- * console.log(_.isFunction(()=>{}))
- *
- * @param v
- * @returns
- */
-function isFunction$3(v) {
-    return typeof v == 'function' || v instanceof Function;
-}
-
-/**
- * 判断参数是否为类数组对象
- *
- * @example
- * //true
- * console.log(_.isArrayLike('abc123'))
- * //true
- * console.log(_.isArrayLike([]))
- * //true
- * console.log(_.isArrayLike(document.body.children))
- *
- * @param v
- * @returns
- */
-function isArrayLike$3(v) {
-    if (isString$3(v) && v.length > 0)
-        return true;
-    if (!isObject$3(v))
-        return false;
-    // 具有length属性
-    const list = v;
-    if (list.length !== undefined) {
-        const proto = list.constructor.prototype;
-        // NodeList/HTMLCollection/CSSRuleList/...
-        if (isFunction$3(proto.item))
-            return true;
-        // arguments
-        if (isFunction$3(list[Symbol.iterator]))
-            return true;
-    }
-    return false;
-}
-
-/**
- * 判断值是不是一个布尔值
- *
- * @example
- * //true
- * console.log(_.isBoolean(false))
- * //false
- * console.log(_.isBoolean('true'))
- * //false
- * console.log(_.isBoolean(1))
- *
- * @param v
- * @returns
- */
-function isBoolean(v) {
-    return typeof v === 'boolean' || v instanceof Boolean;
-}
-
-/**
- * isUndefined()的反向验证函数，在需要验证是否变量存在的场景下非常有用
- * @example
- * //true
- * console.log(_.isDefined(null))
- * //false
- * console.log(_.isDefined(undefined))
- *
- * @param v
- * @returns
- */
-function isDefined(v) {
-    return v !== undefined;
-}
-
-/**
- * 判断值是不是Element的实例
- *
- * @example
- * //true
- * console.log(_.isElement(document.body))
- * //false
- * console.log(_.isElement(document))
- *
- * @param v
- * @returns
- * @since 1.0.0
- */
-function isElement(v) {
-    return typeof v === 'object' && v instanceof Element;
-}
-
-/**
- * 判断参数是否为空，包括`null/undefined/空字符串/0/[]/{}`都表示空
- *
- * 注意：相比isBlank，isEmpty只判断字符串长度是否为0
- *
- * @example
- * //true
- * console.log(_.isEmpty(null))
- * //true
- * console.log(_.isEmpty([]))
- * //false
- * console.log(_.isEmpty({x:1}))
- *
- * @param v
- * @returns
- */
-function isEmpty(v) {
-    if (null === v)
-        return true;
-    if (undefined === v)
-        return true;
-    if ('' === v)
-        return true;
-    if (0 === v)
-        return true;
-    if (isArrayLike$3(v) && v.length < 1)
-        return true;
-    if (v instanceof Object && Object.keys(v).length < 1)
-        return true;
-    return false;
-}
-
-/**
- * 判断值是否NaN本身。与全局isNaN函数相比，只有NaN值本身才会返回true
- * <p>
- * isNaN(undefined) => true <br>
- * _.isNaN(undefined) => false
- * </p>
- *
- * @example
- * //true
- * console.log(_.isNaN(NaN))
- * //false
- * console.log(_.isNaN(null))
- * //false
- * console.log(_.isNaN(undefined))
- *
- * @param v
- * @returns
- */
-function isNaN(v) {
-    return Number.isNaN(v);
-}
-
-/**
- * 判断参数是否为数字类型值
- *
- * @example
- * //true
- * console.log(_.isNumber(1))
- * //true
- * console.log(_.isNumber(Number.MAX_VALUE))
- * //false
- * console.log(_.isNumber('1'))
- *
- * @param v
- * @returns
- */
-function isNumber(v) {
-    return typeof v === 'number' || v instanceof Number;
-}
-
-/**
- * 判断参数是否为undefined
- * @example
- * //true
- * console.log(_.isUndefined(undefined))
- * //false
- * console.log(_.isUndefined(null))
- *
- * @param v
- * @returns
- */
-function isUndefined$2(v) {
-    return v === undefined;
-}
-
-/**
-   * myfx/collection v1.1.0
-   * A modular utility library with more utils, higher performance and simpler declarations ...
-   * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
-   */
-  /**
- * 判断参数是否为undefined
- * @example
- * //true
- * console.log(_.isUndefined(undefined))
- * //false
- * console.log(_.isUndefined(null))
- *
- * @param v
- * @returns
- */
-function isUndefined$1(v) {
-    return v === undefined;
-}
-
-/**
- * 判断参数是否为函数对象
- *
- * @example
- * //true
- * console.log(_.isFunction(new Function()))
- * //true
- * console.log(_.isFunction(()=>{}))
- *
- * @param v
- * @returns
- */
-function isFunction$2(v) {
-    return typeof v == 'function' || v instanceof Function;
-}
-
-/**
- * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
- *
- * @example
- * //true
- * console.log(_.isString(new String('')))
- * //true
- * console.log(_.isString(''))
- *
- * @param v
- * @returns
- */
-function isString$2(v) {
-    return typeof v === 'string' || v instanceof String;
-}
-
-/**
- * 判断参数是否为Array对象的实例
- *
- * @example
- * //true
- * console.log(_.isArray([]))
- * //false
- * console.log(_.isArray(document.body.children))
- *
- * @param v
- * @returns
- */
-function isArray$2(v) {
-    // 使用 instanceof Array 无法鉴别某些场景，比如
-    // Array.prototype instanceof Array => false
-    // Array.isArray(Array.prototype) => true
-    // typeof new Proxy([],{}) => object
-    // Array.isArray(new Proxy([],{})) => true
-    return Array.isArray(v);
-}
-
-const PRIMITIVE_TYPES$2 = [
-    'string',
-    'number',
-    'bigint',
-    'boolean',
-    'undefined',
-    'symbol',
-];
-/**
- * 判断值是不是一个非基本类型外的值，如果true则认为值是一个对象
- * 同样，该方法还可以用来判断一个值是不是基本类型
- *
- * @example
- * //false
- * console.log(_.isObject(1))
- * //true
- * console.log(_.isObject(new String()))
- * //false
- * console.log(_.isObject(true))
- * //false
- * console.log(_.isObject(null))
- *
- * @param v value
- * @returns 是否对象。如果值是null返回false，即使typeof null === 'object'
- */
-function isObject$2(v) {
-    return null !== v && PRIMITIVE_TYPES$2.indexOf(typeof v) < 0;
-}
-
 function identity$2(v) {
     return v;
 }
 
 function toPath$1$2(path) {
     let chain = path;
-    if (isArray$2(chain)) {
+    if (isArray$3(chain)) {
         chain = chain.join('.');
     }
     else {
@@ -436,7 +178,7 @@ function toPath$1$2(path) {
  * @returns 属性值或默认值
  */
 function get$2(obj, path, defaultValue) {
-    if (!isObject$2(obj))
+    if (!isObject$3(obj))
         return defaultValue;
     const chain = toPath$1$2(path);
     let target = obj;
@@ -544,14 +286,14 @@ function isMatchWith$1(target, props, comparator = eq$1) {
     if (isNil$2(props))
         return true;
     const ks = Object.keys(props);
-    if (!isObject$2(target))
+    if (!isObject$3(target))
         return false;
     let rs = true;
     for (let i = ks.length; i--;) {
         const k = ks[i];
         const v1 = target[k];
         const v2 = props[k];
-        if (isObject$2(v1) && isObject$2(v2)) {
+        if (isObject$3(v1) && isObject$3(v2)) {
             if (!isMatchWith$1(v1, v2, comparator)) {
                 rs = false;
                 break;
@@ -618,19 +360,19 @@ function matcher$1(props) {
 }
 
 function iteratee$1(value) {
-    if (isUndefined$1(value)) {
+    if (isUndefined$2(value)) {
         return identity$2;
     }
-    else if (isFunction$2(value)) {
+    else if (isFunction$3(value)) {
         return value;
     }
-    else if (isString$2(value)) {
+    else if (isString$3(value)) {
         return prop$1(value);
     }
-    else if (isArray$2(value)) {
+    else if (isArray$3(value)) {
         return prop$1(toPath$2(value));
     }
-    else if (isObject$2(value)) {
+    else if (isObject$3(value)) {
         return matcher$1(value);
     }
     return () => false;
@@ -650,20 +392,20 @@ function iteratee$1(value) {
  * @param v
  * @returns
  */
-function isArrayLike$2(v) {
-    if (isString$2(v) && v.length > 0)
+function isArrayLike$3(v) {
+    if (isString$3(v) && v.length > 0)
         return true;
-    if (!isObject$2(v))
+    if (!isObject$3(v))
         return false;
     // 具有length属性
     const list = v;
     if (list.length !== undefined) {
         const proto = list.constructor.prototype;
         // NodeList/HTMLCollection/CSSRuleList/...
-        if (isFunction$2(proto.item))
+        if (isFunction$3(proto.item))
             return true;
         // arguments
-        if (isFunction$2(list[Symbol.iterator]))
+        if (isFunction$3(list[Symbol.iterator]))
             return true;
     }
     return false;
@@ -704,7 +446,7 @@ function isMap$2(v) {
 function _eachIterator$1(collection, callback, forRight) {
     let values;
     let keys;
-    if (isString$2(collection) || isArrayLike$2(collection)) {
+    if (isString$3(collection) || isArrayLike$3(collection)) {
         let size = collection.length;
         if (forRight) {
             while (size--) {
@@ -761,7 +503,7 @@ function _eachIterator$1(collection, callback, forRight) {
             }
         }
     }
-    else if (isObject$2(collection)) {
+    else if (isObject$3(collection)) {
         keys = Object.keys(collection);
         let size = keys.length;
         if (forRight) {
@@ -872,23 +614,23 @@ function values$2(obj) {
  * @returns 转换后的数组对象
  */
 function toArray$2(collection) {
-    if (isArray$2(collection))
+    if (isArray$3(collection))
         return collection.concat();
-    if (isFunction$2(collection))
+    if (isFunction$3(collection))
         return [collection];
     if (isSet$2(collection)) {
         return Array.from(collection);
     }
-    else if (isString$2(collection)) {
+    else if (isString$3(collection)) {
         return collection.split('');
     }
-    else if (isArrayLike$2(collection)) {
+    else if (isArrayLike$3(collection)) {
         return Array.from(collection);
     }
     else if (isMap$2(collection)) {
         return Array.from(collection.values());
     }
-    else if (isObject$2(collection)) {
+    else if (isObject$3(collection)) {
         return values$2(collection);
     }
     return [collection];
@@ -972,10 +714,10 @@ function slice$1(array, begin, end) {
 function includes(collection, value, fromIndex) {
     let rs = false;
     fromIndex = fromIndex || 0;
-    if (isString$2(collection)) {
+    if (isString$3(collection)) {
         return collection.includes(value, fromIndex);
     }
-    collection = isArrayLike$2(collection)
+    collection = isArrayLike$3(collection)
         ? slice$1(collection, fromIndex)
         : collection;
     each$1(collection, (v) => {
@@ -1030,7 +772,7 @@ function size(collection) {
         return collection.length;
     if (isMap$2(collection) || isSet$2(collection))
         return collection.size;
-    if (isObject$2(collection))
+    if (isObject$3(collection))
         return Object.keys(collection).length;
     return 0;
 }
@@ -1046,6 +788,284 @@ function some(collection, predicate) {
         }
     });
     return rs;
+}
+
+/**
+   * myfx/is v1.1.0
+   * A modular utility library with more utils, higher performance and simpler declarations ...
+   * https://github.com/holyhigh2/myfx
+   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   */
+  /**
+ * 判断参数是否为Array对象的实例
+ *
+ * @example
+ * //true
+ * console.log(_.isArray([]))
+ * //false
+ * console.log(_.isArray(document.body.children))
+ *
+ * @param v
+ * @returns
+ */
+function isArray$2(v) {
+    // 使用 instanceof Array 无法鉴别某些场景，比如
+    // Array.prototype instanceof Array => false
+    // Array.isArray(Array.prototype) => true
+    // typeof new Proxy([],{}) => object
+    // Array.isArray(new Proxy([],{})) => true
+    return Array.isArray(v);
+}
+
+/**
+ * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
+ *
+ * @example
+ * //true
+ * console.log(_.isString(new String('')))
+ * //true
+ * console.log(_.isString(''))
+ *
+ * @param v
+ * @returns
+ */
+function isString$2(v) {
+    return typeof v === 'string' || v instanceof String;
+}
+
+const PRIMITIVE_TYPES$2 = [
+    'string',
+    'number',
+    'bigint',
+    'boolean',
+    'undefined',
+    'symbol',
+];
+/**
+ * 判断值是不是一个非基本类型外的值，如果true则认为值是一个对象
+ * 同样，该方法还可以用来判断一个值是不是基本类型
+ *
+ * @example
+ * //false
+ * console.log(_.isObject(1))
+ * //true
+ * console.log(_.isObject(new String()))
+ * //false
+ * console.log(_.isObject(true))
+ * //false
+ * console.log(_.isObject(null))
+ *
+ * @param v value
+ * @returns 是否对象。如果值是null返回false，即使typeof null === 'object'
+ */
+function isObject$2(v) {
+    return null !== v && PRIMITIVE_TYPES$2.indexOf(typeof v) < 0;
+}
+
+/**
+ * 判断参数是否为函数对象
+ *
+ * @example
+ * //true
+ * console.log(_.isFunction(new Function()))
+ * //true
+ * console.log(_.isFunction(()=>{}))
+ *
+ * @param v
+ * @returns
+ */
+function isFunction$2(v) {
+    return typeof v == 'function' || v instanceof Function;
+}
+
+/**
+ * 判断参数是否为类数组对象
+ *
+ * @example
+ * //true
+ * console.log(_.isArrayLike('abc123'))
+ * //true
+ * console.log(_.isArrayLike([]))
+ * //true
+ * console.log(_.isArrayLike(document.body.children))
+ *
+ * @param v
+ * @returns
+ */
+function isArrayLike$2(v) {
+    if (isString$2(v) && v.length > 0)
+        return true;
+    if (!isObject$2(v))
+        return false;
+    // 具有length属性
+    const list = v;
+    if (list.length !== undefined) {
+        const proto = list.constructor.prototype;
+        // NodeList/HTMLCollection/CSSRuleList/...
+        if (isFunction$2(proto.item))
+            return true;
+        // arguments
+        if (isFunction$2(list[Symbol.iterator]))
+            return true;
+    }
+    return false;
+}
+
+/**
+ * 对字符串进行trim后进行验证。如果非字符串，转为字符串后进行验证
+ * @example
+ * //true
+ * console.log(_.isBlank('  '))
+ * //true
+ * console.log(_.isBlank(null))
+ * //false
+ * console.log(_.isBlank({}))
+ * //false
+ * console.log(_.isBlank('     1'))
+ *
+ * @param v 字符串
+ * @returns 如果字符串是null/undefined/\t \n \f \r或trim后长度为0，返回true
+ * @since 0.16.0
+ */
+function isBlank(v) {
+    return v === null || v === undefined || (v + '').trim().replace(/\t|\n|\f|\r/mg, '').length === 0;
+}
+
+/**
+ * 判断值是不是一个布尔值
+ *
+ * @example
+ * //true
+ * console.log(_.isBoolean(false))
+ * //false
+ * console.log(_.isBoolean('true'))
+ * //false
+ * console.log(_.isBoolean(1))
+ *
+ * @param v
+ * @returns
+ */
+function isBoolean(v) {
+    return typeof v === 'boolean' || v instanceof Boolean;
+}
+
+/**
+ * isUndefined()的反向验证函数，在需要验证是否变量存在的场景下非常有用
+ * @example
+ * //true
+ * console.log(_.isDefined(null))
+ * //false
+ * console.log(_.isDefined(undefined))
+ *
+ * @param v
+ * @returns
+ */
+function isDefined(v) {
+    return v !== undefined;
+}
+
+/**
+ * 判断值是不是Element的实例
+ *
+ * @example
+ * //true
+ * console.log(_.isElement(document.body))
+ * //false
+ * console.log(_.isElement(document))
+ *
+ * @param v
+ * @returns
+ * @since 1.0.0
+ */
+function isElement(v) {
+    return typeof v === 'object' && v instanceof Element;
+}
+
+/**
+ * 判断参数是否为空，包括`null/undefined/空字符串/0/[]/{}`都表示空
+ *
+ * 注意：相比isBlank，isEmpty只判断字符串长度是否为0
+ *
+ * @example
+ * //true
+ * console.log(_.isEmpty(null))
+ * //true
+ * console.log(_.isEmpty([]))
+ * //false
+ * console.log(_.isEmpty({x:1}))
+ *
+ * @param v
+ * @returns
+ */
+function isEmpty(v) {
+    if (null === v)
+        return true;
+    if (undefined === v)
+        return true;
+    if ('' === v)
+        return true;
+    if (0 === v)
+        return true;
+    if (isArrayLike$2(v) && v.length < 1)
+        return true;
+    if (v instanceof Object && Object.keys(v).length < 1)
+        return true;
+    return false;
+}
+
+/**
+ * 判断值是否NaN本身。与全局isNaN函数相比，只有NaN值本身才会返回true
+ * <p>
+ * isNaN(undefined) => true <br>
+ * _.isNaN(undefined) => false
+ * </p>
+ *
+ * @example
+ * //true
+ * console.log(_.isNaN(NaN))
+ * //false
+ * console.log(_.isNaN(null))
+ * //false
+ * console.log(_.isNaN(undefined))
+ *
+ * @param v
+ * @returns
+ */
+function isNaN(v) {
+    return Number.isNaN(v);
+}
+
+/**
+ * 判断参数是否为数字类型值
+ *
+ * @example
+ * //true
+ * console.log(_.isNumber(1))
+ * //true
+ * console.log(_.isNumber(Number.MAX_VALUE))
+ * //false
+ * console.log(_.isNumber('1'))
+ *
+ * @param v
+ * @returns
+ */
+function isNumber(v) {
+    return typeof v === 'number' || v instanceof Number;
+}
+
+/**
+ * 判断参数是否为undefined
+ * @example
+ * //true
+ * console.log(_.isUndefined(undefined))
+ * //false
+ * console.log(_.isUndefined(null))
+ *
+ * @param v
+ * @returns
+ */
+function isUndefined$1(v) {
+    return v === undefined;
 }
 
 /**
@@ -2064,7 +2084,7 @@ function calcVertex(w, h, cx, cy, sx, sy, radian) {
 function parseOxy(ox, oy, w, h, el) {
     let originX = 0, originY = 0;
     let transformOrigin;
-    if (isString$3(ox)) {
+    if (isString$2(ox)) {
         //percent
         originX = (parseFloat(ox) / 100) * w;
     }
@@ -2078,7 +2098,7 @@ function parseOxy(ox, oy, w, h, el) {
         const centerPair = transformOrigin.split(" ");
         originX = parseFloat(centerPair[0]);
     }
-    if (isString$3(oy)) {
+    if (isString$2(oy)) {
         //percent
         originY = (parseFloat(oy) / 100) * h;
     }
@@ -2098,6 +2118,13 @@ function normalizeVector(x, y) {
     let len = Math.sqrt(x * x + y * y);
     return { x: x / len, y: y / len };
 }
+function isVisible(el) {
+    let rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+        return false;
+    }
+    return true;
+}
 
 var _Uii_listeners;
 /**
@@ -2109,9 +2136,9 @@ class Uii {
         _Uii_listeners.set(this, []);
         this.opts = opts || {};
         this.opts.mouseButton = this.opts.mouseButton || 'left';
-        if (isArrayLike$3(ele) && !isString$3(ele)) {
+        if (isArrayLike$2(ele) && !isString$2(ele)) {
             this.ele = map(ele, (el) => {
-                let e = isString$3(el) ? document.querySelector(el) : el;
+                let e = isString$2(el) ? document.querySelector(el) : el;
                 if (!isElement(e)) {
                     console.error('Invalid element "' + el + '"');
                     return false;
@@ -2120,15 +2147,15 @@ class Uii {
             });
         }
         else {
-            if (isString$3(ele)) {
+            if (isString$2(ele)) {
                 this.eleString = ele;
             }
-            const el = isString$3(ele) ? document.querySelectorAll(ele) : ele;
-            if (!isElement(el) && !isArrayLike$3(el)) {
+            const el = isString$2(ele) ? document.querySelectorAll(ele) : ele;
+            if (!isElement(el) && !isArrayLike$2(el)) {
                 console.error('Invalid element "' + ele + '"');
                 return;
             }
-            this.ele = isArrayLike$3(el)
+            this.ele = isArrayLike$2(el)
                 ? toArray$2(el)
                 : [el];
         }
@@ -2359,7 +2386,7 @@ class Splittable extends Uii {
         each$1(this.ele, con => {
             //detect container position
             const pos = window.getComputedStyle(con).position;
-            if (pos === "static") {
+            if (pos === "static" || isBlank(pos)) {
                 con.style.position = "relative";
             }
             con.classList.toggle(CLASS_SPLITTABLE, true);
@@ -2372,7 +2399,7 @@ class Splittable extends Uii {
             const dir = __classPrivateFieldGet(this, _Splittable_instances, "m", _Splittable_checkDirection).call(this, con);
             con.classList.toggle(dir === 'v' ? CLASS_SPLITTABLE_V : CLASS_SPLITTABLE_H, true);
             const minSizeAry = map(children, (c, i) => {
-                if (isArray$3(this.opts.minSize)) {
+                if (isArray$2(this.opts.minSize)) {
                     return this.opts.minSize[i] || 0;
                 }
                 else {
@@ -2380,7 +2407,7 @@ class Splittable extends Uii {
                 }
             });
             const stickyAry = map(children, (c, i) => {
-                if (isArray$3(this.opts.sticky)) {
+                if (isArray$2(this.opts.sticky)) {
                     return this.opts.sticky[i] || false;
                 }
                 else {
@@ -2432,13 +2459,19 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
     });
     return dir;
 }, _Splittable_bindHandle = function _Splittable_bindHandle(minSizeAry, stickyAry, opts, dir, dom1, dom2, handle) {
-    var _a;
+    var _a, _b;
     const handleSize = opts.handleSize;
     if (!handle) {
         handle = document.createElement('div');
         let initPos = 0;
         if (!opts.inside) {
             initPos = (dir === 'v' ? dom2.offsetTop : dom2.offsetLeft);
+        }
+        if (!isVisible(dom2)) {
+            (_a = dom2.parentElement) === null || _a === void 0 ? void 0 : _a.addEventListener('mouseenter', () => {
+                initPos = (dir === 'v' ? dom2.offsetTop : dom2.offsetLeft);
+                handle.style.left = initPos - handleSize / 2 + 'px';
+            }, { once: true });
         }
         const sensorHCss = `width:${handleSize}px;height:100%;top:0;left:${initPos - handleSize / 2}px;z-index:9;`;
         const sensorVCss = `height:${handleSize}px;width:100%;left:0;top:${initPos - handleSize / 2}px;z-index:9;`;
@@ -2447,7 +2480,7 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
         if (opts.inside) {
             dom2.appendChild(handle);
         }
-        (_a = dom2.parentNode) === null || _a === void 0 ? void 0 : _a.insertBefore(handle, dom2);
+        (_b = dom2.parentNode) === null || _b === void 0 ? void 0 : _b.insertBefore(handle, dom2);
     }
     handle.style.cursor = dir === 'v' ? 's-resize' : 'e-resize';
     handle.dataset.cursor = handle.style.cursor;
@@ -2514,7 +2547,7 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
                         ghostNode.className =
                             ghostNode.className.replace(ghostClass, '') + ' ' + ghostClass;
                     }
-                    let ghostParent = ghostTo ? (isString$3(ghostTo) ? document.querySelector(ghostTo) : ghostTo) : currentTarget.parentNode;
+                    let ghostParent = ghostTo ? (isString$2(ghostTo) ? document.querySelector(ghostTo) : ghostTo) : currentTarget.parentNode;
                     ghostParent.appendChild(ghostNode);
                     onClone && onClone({ clone: ghostNode }, ev);
                 }
@@ -2734,7 +2767,7 @@ class Resizable extends Uii {
             let minHeight = 1;
             let maxWidth = 9999;
             let maxHeight = 9999;
-            if (isArray$3(opts.minSize)) {
+            if (isArray$2(opts.minSize)) {
                 minWidth = opts.minSize[0];
                 minHeight = opts.minSize[1];
             }
@@ -2742,7 +2775,7 @@ class Resizable extends Uii {
                 minWidth = opts.minSize;
                 minHeight = opts.minSize;
             }
-            if (isArray$3(opts.maxSize)) {
+            if (isArray$2(opts.maxSize)) {
                 maxWidth = opts.maxSize[0];
                 maxHeight = opts.maxSize[1];
             }
@@ -2776,7 +2809,7 @@ class Resizable extends Uii {
                 const { ev } = args;
                 handle.classList.add(CLASS_RESIZABLE_HANDLE_ACTIVE);
                 if (ghost) {
-                    if (isFunction$3(ghost)) {
+                    if (isFunction$2(ghost)) {
                         ghostNode = ghost(panel);
                     }
                     else {
@@ -3188,17 +3221,17 @@ class Resizable extends Uii {
         const opts = this.opts;
         let handleStr = opts.handle;
         let handles;
-        if (isString$3(handleStr)) {
+        if (isString$2(handleStr)) {
             handles = document.querySelectorAll(handleStr);
         }
-        else if (isFunction$3(handleStr)) {
+        else if (isFunction$2(handleStr)) {
             handles = handleStr(panel);
         }
         if (!handles) {
             console.error('Can not find handles with "' + panel.outerHTML + '"');
             return;
         }
-        handles = isArrayLike$3(handles) ? handles : [handles];
+        handles = isArrayLike$2(handles) ? handles : [handles];
         each$1(handles, (h) => {
             //get dir from handle
             const className = h.getAttribute("class") || "";
@@ -4098,7 +4131,7 @@ class Draggable extends Uii {
             if (isBoolean(this.opts.containment)) {
                 __classPrivateFieldSet(this, _Draggable_container, isEmpty(this.ele) ? null : this.ele[0].parentElement, "f");
             }
-            else if (isString$3(this.opts.containment)) {
+            else if (isString$2(this.opts.containment)) {
                 __classPrivateFieldSet(this, _Draggable_container, document.querySelector(this.opts.containment), "f");
             }
             else if (isElement(this.opts.containment)) {
@@ -4107,7 +4140,7 @@ class Draggable extends Uii {
         }
         if (this.opts.watch && this.eleString) {
             let con;
-            if (isString$3(this.opts.watch)) {
+            if (isString$2(this.opts.watch)) {
                 con = document.querySelector(this.opts.watch);
             }
             else {
@@ -4244,7 +4277,7 @@ class Draggable extends Uii {
                     zIndex = i + 1;
                 }
                 const grid = opts.grid;
-                if (isArray$3(grid)) {
+                if (isArray$2(grid)) {
                     gridX = grid[0];
                     gridY = grid[1];
                 }
@@ -4277,7 +4310,7 @@ class Draggable extends Uii {
                     maxY = 0;
                 ///////////////////////// initial states end;
                 if (ghost) {
-                    if (isFunction$3(ghost)) {
+                    if (isFunction$2(ghost)) {
                         ghostNode = ghost(dragDom);
                     }
                     else {
@@ -4292,7 +4325,7 @@ class Draggable extends Uii {
                     }
                     ghostNode.classList.add(...compact(split(classes, " ")));
                     ghostNode.classList.toggle(CLASS_DRAGGABLE_GHOST, true);
-                    let ghostParent = ghostTo ? (isString$3(ghostTo) ? document.querySelector(ghostTo) : ghostTo) : dragDom.parentNode;
+                    let ghostParent = ghostTo ? (isString$2(ghostTo) ? document.querySelector(ghostTo) : ghostTo) : dragDom.parentNode;
                     ghostParent === null || ghostParent === void 0 ? void 0 : ghostParent.appendChild(ghostNode);
                     transform = wrapper(ghostNode, opts.useTransform);
                     onClone && onClone({ clone: ghostNode }, ev);
@@ -4541,14 +4574,14 @@ class Draggable extends Uii {
      */
     onOptionChanged(opts) {
         const droppable = opts.droppable;
-        if (!isFunction$3(droppable)) {
-            if (isUndefined$2(droppable)) {
+        if (!isFunction$2(droppable)) {
+            if (isUndefined$1(droppable)) {
                 opts.droppable = () => { };
             }
-            else if (isString$3(droppable)) {
+            else if (isString$2(droppable)) {
                 opts.droppable = () => document.querySelectorAll(droppable);
             }
-            else if (isArrayLike$3(droppable)) {
+            else if (isArrayLike$2(droppable)) {
                 opts.droppable = () => droppable;
             }
             else if (isElement(droppable)) {
@@ -4564,7 +4597,7 @@ _Draggable_handleMap = new WeakMap(), _Draggable_container = new WeakMap(), _Dra
         el.classList.toggle(CLASS_DRAGGABLE, true);
         const ee = __classPrivateFieldGet(this, _Draggable_handleMap, "f").get(el) || el;
         ee.classList.toggle(CLASS_DRAGGABLE_HANDLE, true);
-        if (!isUndefined$2(this.opts.cursor)) {
+        if (!isUndefined$1(this.opts.cursor)) {
             el.style.cursor = this.opts.cursor.default || "move";
             if (isDefined(this.opts.cursor.over)) {
                 el.dataset.cursorOver = this.opts.cursor.over;
@@ -4669,10 +4702,10 @@ class Droppable extends Uii {
             this.ele = toArray$2(nodes);
         }
         //check accepts
-        if (isString$3(opts.accepts)) {
+        if (isString$2(opts.accepts)) {
             valid = !!target.dataset.dropType && test(opts.accepts, target.dataset.dropType);
         }
-        else if (isFunction$3(opts.accepts)) {
+        else if (isFunction$2(opts.accepts)) {
             valid = opts.accepts(this.ele, target);
         }
         if (!valid)
@@ -4766,10 +4799,10 @@ class Rotatable extends Uii {
 function initHandle(uiik, el, opts) {
     let handleStr = opts.handle;
     let handles;
-    if (isString$3(handleStr)) {
+    if (isString$2(handleStr)) {
         handles = document.querySelectorAll(handleStr);
     }
-    else if (isFunction$3(handleStr)) {
+    else if (isFunction$2(handleStr)) {
         handles = handleStr(el);
     }
     if (!handles) {
@@ -4867,7 +4900,7 @@ class CollisionDetector {
             container: document.body
         };
         this.opts = assign(this.opts, opts);
-        const domEl = isString$3(el) ? document.querySelector(el) : el;
+        const domEl = isString$2(el) ? document.querySelector(el) : el;
         if (!domEl) {
             console.error('Invalid selector "' + el + '"');
             return;
@@ -4891,10 +4924,10 @@ class CollisionDetector {
      */
     update() {
         let targets;
-        if (isFunction$3(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
+        if (isFunction$2(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
             targets = __classPrivateFieldGet(this, _CollisionDetector__targets, "f").call(this);
         }
-        else if (isString$3(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
+        else if (isString$2(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
             targets = this.opts.container.querySelectorAll(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"));
             targets = reject(targets, t => t === this.el);
         }
@@ -5039,7 +5072,7 @@ _Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap()
         const selectedClassAry = compact(split(opts.selectedClass, " "));
         //check filter
         if (filter) {
-            if (isFunction$3(filter)) {
+            if (isFunction$2(filter)) {
                 if (filter(target))
                     return true;
             }
@@ -5281,7 +5314,7 @@ class Sortable extends Uii {
         var _a;
         //check move
         const moveFrom = (_a = toOpts.move) === null || _a === void 0 ? void 0 : _a.from;
-        const acceptFn = isFunction$3(moveFrom) ? moveFrom : () => !!moveFrom;
+        const acceptFn = isFunction$2(moveFrom) ? moveFrom : () => !!moveFrom;
         //验证移入策略
         const activableContainers = flatMap(toContainers, (el) => {
             const valid = acceptFn(draggingItem, fromContainer, el);
@@ -5351,7 +5384,7 @@ function bindContainer(registerEvent, container, opts) {
         const group = opts.group;
         let moveTo = (_a = opts.move) === null || _a === void 0 ? void 0 : _a.to;
         const toCopy = moveTo === "copy";
-        const toOutFn = isFunction$3(moveTo) ? moveTo : () => !!moveTo;
+        const toOutFn = isFunction$2(moveTo) ? moveTo : () => !!moveTo;
         const moveMode = toOutFn(draggingItem, con);
         const sort = opts.sort;
         opts.scroll;
@@ -5516,7 +5549,7 @@ function bindContainer(registerEvent, container, opts) {
             let valid = true;
             //check move
             const moveFrom = (_a = opts.move) === null || _a === void 0 ? void 0 : _a.from;
-            const acceptFn = isFunction$3(moveFrom) ? moveFrom : () => !!moveFrom;
+            const acceptFn = isFunction$2(moveFrom) ? moveFrom : () => !!moveFrom;
             valid = acceptFn(DraggingData.item, DraggingData.fromContainer, container);
             if (!valid)
                 return;
@@ -5647,7 +5680,7 @@ function newSortable(container, opts) {
     return new Sortable(container, opts);
 }
 
-var version = "1.3.2";
+var version = "1.3.3";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"
@@ -5681,4 +5714,4 @@ var index = {
     newSortable
 };
 
-export { CollisionDetector, DRAGGING_RULE, Draggable, Droppable, EDGE_THRESHOLD, ONE_ANG, ONE_RAD, Resizable, Rotatable, Selectable, Sortable, Splittable, THRESHOLD, Uii, UiiTransform, VERSION, calcVertex, index as default, getBox, getCenterXy, getCenterXySVG, getMatrixInfo, getPointInContainer, getPointOffset, getRectCenter, getRectInContainer, getStyleSize, getStyleXy, getTranslate, getVertex, isSVGEl, lockPage, moveBy, moveTo, newCollisionDetector, newDraggable, newDroppable, newResizable, newRotatable, newSelectable, newSortable, newSplittable, normalizeVector, parseOxy, restoreCursor, rotateTo, saveCursor, setCursor, transformMoveTo, unlockPage, wrapper };
+export { CollisionDetector, DRAGGING_RULE, Draggable, Droppable, EDGE_THRESHOLD, ONE_ANG, ONE_RAD, Resizable, Rotatable, Selectable, Sortable, Splittable, THRESHOLD, Uii, UiiTransform, VERSION, calcVertex, index as default, getBox, getCenterXy, getCenterXySVG, getMatrixInfo, getPointInContainer, getPointOffset, getRectCenter, getRectInContainer, getStyleSize, getStyleXy, getTranslate, getVertex, isSVGEl, isVisible, lockPage, moveBy, moveTo, newCollisionDetector, newDraggable, newDroppable, newResizable, newRotatable, newSelectable, newSortable, newSplittable, normalizeVector, parseOxy, restoreCursor, rotateTo, saveCursor, setCursor, transformMoveTo, unlockPage, wrapper };

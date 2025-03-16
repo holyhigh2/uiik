@@ -3,11 +3,11 @@
  * splitter
  * @author holyhigh
  */
-import { isArray, isEmpty, isString} from 'myfx/is'
-import { each, includes, map, reject } from 'myfx/collection'
-import { assign } from 'myfx/object'
-import { SplittableOptions, Uii } from './types'
-import { THRESHOLD } from './utils';
+import { each, includes, map, reject } from 'myfx/collection';
+import { isArray, isBlank, isEmpty, isString } from 'myfx/is';
+import { assign } from 'myfx/object';
+import { SplittableOptions, Uii } from './types';
+import { isVisible, THRESHOLD } from './utils';
 
 const CLASS_SPLITTABLE = "uii-splittable";
 const CLASS_SPLITTABLE_HANDLE = "uii-splittable-handle";
@@ -16,7 +16,7 @@ const CLASS_SPLITTABLE_HANDLE_ACTIVE = "uii-splittable-handle-active";
 const CLASS_SPLITTABLE_V = "uii-splittable-v";
 const CLASS_SPLITTABLE_H = "uii-splittable-h";
 
-function getRootEl(el:HTMLElement,root:HTMLElement) {
+function getRootEl(el: HTMLElement, root: HTMLElement) {
   let rs = el.parentNode
   while (rs && rs.parentNode !== root) {
     rs = rs.parentNode
@@ -35,7 +35,7 @@ function getRootEl(el:HTMLElement,root:HTMLElement) {
  * - .uii-splittable-h
  * @public
  */
-export class Splittable extends Uii{
+export class Splittable extends Uii {
 
   constructor(
     container: string | HTMLElement,
@@ -48,30 +48,30 @@ export class Splittable extends Uii{
           handleSize: 10,
           minSize: 0,
           sticky: false,
-          inside:false,
-          ghost:false
+          inside: false,
+          ghost: false
         },
         opts
       )
     );
 
-    each(this.ele,con=>{
+    each(this.ele, con => {
       //detect container position
       const pos = window.getComputedStyle(con).position;
-      if (pos === "static") {
+      if (pos === "static" || isBlank(pos)) {
         con.style.position = "relative";
       }
-      con.classList.toggle(CLASS_SPLITTABLE,true)
+      con.classList.toggle(CLASS_SPLITTABLE, true)
       const handleDoms = con.querySelectorAll(this.opts.handle)
-      const children = reject(con.children,c=>{
-        if (includes(handleDoms,c))return true
+      const children = reject(con.children, c => {
+        if (includes(handleDoms, c)) return true
         return false
       })
       const dir = this.#checkDirection(con)
-      
+
       con.classList.toggle(dir === 'v' ? CLASS_SPLITTABLE_V : CLASS_SPLITTABLE_H, true)
 
-      const minSizeAry: Array<number> = map<number,number>(children,(c,i)=>{
+      const minSizeAry: Array<number> = map<number, number>(children, (c, i) => {
         if (isArray(this.opts.minSize)) {
           return this.opts.minSize[i] || 0
         } else {
@@ -86,33 +86,33 @@ export class Splittable extends Uii{
           return this.opts.sticky
         }
       })
-      
 
-      if (isEmpty(handleDoms)){
+
+      if (isEmpty(handleDoms)) {
         const len = children.length - 1
-        for (let i = 0; i < len; i ++) {
+        for (let i = 0; i < len; i++) {
           this.#bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, children[i] as HTMLElement, children[i + 1] as HTMLElement)
         }
-      }else{
-        each(handleDoms,(h,i:number)=>{
+      } else {
+        each(handleDoms, (h, i: number) => {
           const isRoot = h.parentNode.classList.contains(CLASS_SPLITTABLE)
-          let dom1:HTMLElement,dom2:HTMLElement
-          if(isRoot){
+          let dom1: HTMLElement, dom2: HTMLElement
+          if (isRoot) {
             dom1 = h.previousElementSibling
             dom2 = h.nextElementSibling
-          }else{
+          } else {
             let domCon = getRootEl(h, con) as HTMLElement
             let domL = domCon.previousElementSibling;
             let domR = domCon.nextElementSibling;
-            if(domL && !domL.querySelector(this.opts.handle)){
+            if (domL && !domL.querySelector(this.opts.handle)) {
               dom1 = domL as HTMLElement;
               dom2 = domCon;
-            }else{
+            } else {
               dom1 = domCon;
               dom2 = domR as HTMLElement;
             }
           }
-          this.#bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, dom1, dom2,h)
+          this.#bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, dom1, dom2, h)
         })
       }
     })
@@ -121,12 +121,12 @@ export class Splittable extends Uii{
   /**
    * @internal
    */
-  #checkDirection(container:HTMLElement){
+  #checkDirection(container: HTMLElement) {
     let dir = 'h'
     const child = container.children[0] as HTMLElement
     let lastY = child.offsetTop
-    each<HTMLElement>(container.children,c=>{
-      if(c.offsetTop != lastY){
+    each<HTMLElement>(container.children, c => {
+      if (c.offsetTop != lastY) {
         dir = 'v'
         return false
       }
@@ -137,13 +137,19 @@ export class Splittable extends Uii{
   /**
    * @internal
    */
-  #bindHandle(minSizeAry:number[],stickyAry:boolean[],opts:SplittableOptions,dir:string,dom1:HTMLElement,dom2:HTMLElement,handle?:HTMLElement){
+  #bindHandle(minSizeAry: number[], stickyAry: boolean[], opts: SplittableOptions, dir: string, dom1: HTMLElement, dom2: HTMLElement, handle?: HTMLElement) {
     const handleSize = opts.handleSize!
-    if (!handle){
+    if (!handle) {
       handle = document.createElement('div')
       let initPos = 0
       if (!opts.inside) {
         initPos = (dir === 'v' ? dom2.offsetTop : dom2.offsetLeft)
+      }
+      if (!isVisible(dom2)) {
+        dom2.parentElement?.addEventListener('mouseenter', () => {
+          initPos = (dir === 'v' ? dom2.offsetTop : dom2.offsetLeft);
+          handle!.style.left = initPos - handleSize / 2 + 'px'
+        }, { once: true })
       }
       const sensorHCss = `width:${handleSize}px;height:100%;top:0;left:${initPos - handleSize / 2
         }px;z-index:9;`
@@ -176,7 +182,7 @@ export class Splittable extends Uii{
     const updateStart = !oneSideMode || oneSideMode === 'start'
     const updateEnd = !oneSideMode || oneSideMode === 'end'
 
-    this.addPointerDown(handle, ({currentTarget, onPointerStart, onPointerMove, onPointerEnd }) => {
+    this.addPointerDown(handle, ({ currentTarget, onPointerStart, onPointerMove, onPointerEnd }) => {
       // 1. 获取原始高度/宽度;设置宽度/高度
       let originSize = 0
       let originSize1 = 0
@@ -213,7 +219,7 @@ export class Splittable extends Uii{
       } else if (blockSize - originSize - splitterSize < minSize2 / 2) {
         sticked = 'end'
       }
-      
+
       let startPos = dir === 'v' ? dom1.offsetTop : dom1.offsetLeft
       let ds1: number, anotherSize: number
 
@@ -232,7 +238,7 @@ export class Splittable extends Uii{
               ghostNode.className =
                 ghostNode.className.replace(ghostClass, '') + ' ' + ghostClass
             }
-            let ghostParent = ghostTo?(isString(ghostTo) ? document.querySelector(ghostTo) : ghostTo):currentTarget.parentNode;
+            let ghostParent = ghostTo ? (isString(ghostTo) ? document.querySelector(ghostTo) : ghostTo) : currentTarget.parentNode;
             ghostParent.appendChild(ghostNode)
 
             onClone && onClone({ clone: ghostNode }, ev)
