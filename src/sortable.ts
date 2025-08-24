@@ -3,15 +3,16 @@
  * sortable
  * @author holyhigh2
  */
-import {each,map,flatMap,reject,size,toArray} from 'myfx/collection'
-import {alphaId} from 'myfx/utils'
-import {merge} from 'myfx/object'
-import {compact,findIndex} from 'myfx/array'
-import {split} from 'myfx/string'
-import {isEmpty,isFunction} from 'myfx/is'
+import { compact, findIndex } from 'myfx/array'
+import { each, flatMap, map, reject, size, toArray } from 'myfx/collection'
+import { isEmpty, isFunction } from 'myfx/is'
+import { merge } from 'myfx/object'
+import { split } from 'myfx/string'
+import { alphaId } from 'myfx/utils'
 
-import { SortableOptions, Uii } from "./types";
-import { THRESHOLD, lockPage, restoreCursor, saveCursor, unlockPage } from "./utils";
+import { filter, last } from 'myfx'
+import { SortableOptions, Uii } from "./types"
+import { THRESHOLD, lockPage, restoreCursor, saveCursor, unlockPage } from "./utils"
 
 const SORTABLE_GROUPS: Record<string, Array<[Sortable, HTMLElement[]]>> = {};
 const CLASS_SORTABLE_CONTAINER = "uii-sortable-container";
@@ -43,7 +44,7 @@ export class Sortable extends Uii {
             to: true,
           },
           scroll: true,
-          sort:true
+          sort: true
         },
         opts
       )
@@ -135,9 +136,11 @@ export class Sortable extends Uii {
   /**
    * @internal
    */
-  onOptionChanged() {}
+  onOptionChanged() { }
 }
 
+const NextNodeMap = new Map()
+const FilteredNodeMap = new Map()
 let DraggingData: {
   item: HTMLElement;
   fromContainer: HTMLElement;
@@ -191,7 +194,10 @@ function bindContainer(
 
     let dragging = false;
     let ghostNode: HTMLElement | null = null;
-    let removeListenItems:(() => void)|null = null
+    let removeListenItems: (() => void) | null = null
+
+    NextNodeMap.set(draggingItem, draggingItem.nextElementSibling);
+    FilteredNodeMap.set(con, filteredItems);
 
     const dragListener = (ev: MouseEvent) => {
       const newX = ev.clientX;
@@ -219,10 +225,10 @@ function bindContainer(
           ghostNode.classList.toggle(CLASS_SORTABLE_GHOST, true);
           ghostContainer.appendChild(ghostNode);
 
-          if(!toCopy)
+          if (!toCopy)
             draggingItem.classList.toggle(CLASS_SORTABLE_ACTIVE, true);
-          let copy:HTMLElement|undefined = undefined
-          if(toCopy){
+          let copy: HTMLElement | undefined = undefined
+          if (toCopy) {
             copy = draggingItem.cloneNode(true) as HTMLElement
             copy.classList.toggle(CLASS_SORTABLE_ACTIVE, true);
           }
@@ -230,7 +236,7 @@ function bindContainer(
             item: draggingItem,
             fromIndex: i,
             fromContainer: con,
-            toContainer:con,
+            toContainer: con,
             moveTo: toCopy ? "copy" : moveMode,
             spill: opts.spill,
             copy
@@ -240,23 +246,23 @@ function bindContainer(
 
           lockPage();
 
-          if(sort){
+          if (sort) {
             removeListenItems = listenItems(
               opts,
               con,
-              toCopy?draggingItem:copy!,
+              toCopy ? draggingItem : copy!,
               filteredItems,
               i
             );
           }
-          
+
           //active
           if (moveMode && group && SORTABLE_GROUPS[group]) {
             each(SORTABLE_GROUPS[group], ([sortable, ele]) => {
               const filtered = reject(ele, (el) => el === container);
               if (isEmpty(filtered)) return;
               sortable.active(
-                toCopy?draggingItem:copy!,
+                toCopy ? draggingItem : copy!,
                 container,
                 filtered,
                 sortable.getOptions()
@@ -292,8 +298,8 @@ function bindContainer(
 
         DraggingData = null;
 
-      if(removeListenItems)
-        removeListenItems();
+        if (removeListenItems)
+          removeListenItems();
 
         //deactive
         if (group && SORTABLE_GROUPS[group]) {
@@ -309,9 +315,9 @@ function bindContainer(
           });
         }
 
-        onEnd && onEnd({ item: draggingItem, from: container,to:toContainer! }, e);
+        onEnd && onEnd({ item: draggingItem, from: container, to: toContainer! }, e);
       }
-      
+
     };
 
     document.addEventListener("mousemove", dragListener);
@@ -334,17 +340,18 @@ function bindContainer(
         },
         e
       );
-    
-    if(DraggingData.moveTo !== 'copy'){
-      if(DraggingData.spill === 'remove'){
+
+    if (DraggingData.moveTo !== 'copy') {
+      if (DraggingData.spill === 'remove') {
         DraggingData.item.parentElement?.removeChild(DraggingData.item)
-      }else if(DraggingData.spill === 'revert'){
+      } else if (DraggingData.spill === 'revert') {
         DraggingData.item.parentElement?.removeChild(DraggingData.item)
-        const nextSibling = DraggingData.fromContainer.children[DraggingData.fromIndex]
-        DraggingData.fromContainer.insertBefore(DraggingData.item,nextSibling)
+        // const list = PrevNodeMap.get(DraggingData.fromContainer) as NodeListOf<Element>;
+        const nextSibling = NextNodeMap.get(DraggingData.item) as ChildNode;
+        DraggingData.fromContainer.insertBefore(DraggingData.item, nextSibling)
       }
     }
-    
+
   });
 
   //总是先触发容器enter，之后才是itementer
@@ -408,7 +415,7 @@ function bindContainer(
         draggingItem = DraggingData.copy!
       }
 
-      if(draggingItem.parentElement)
+      if (draggingItem.parentElement)
         draggingItem.parentElement.removeChild(draggingItem);
       let toIndex = 0;
       if (dir[0] === "t") {
@@ -423,23 +430,28 @@ function bindContainer(
             item: draggingItem,
             from: DraggingData.fromContainer,
             to: container,
-            index:toIndex,
+            index: toIndex,
           },
           e
         );
     } else if (container === DraggingData.fromContainer) {
-      if (DraggingData.copy) { 
+      if (DraggingData.copy) {
         let parent = DraggingData.copy.parentElement;
         if (parent) parent.removeChild(DraggingData?.copy);
-      }else{
-        if(draggingItem.parentElement)
+      } else {
+        if (draggingItem.parentElement)
           draggingItem.parentElement.removeChild(draggingItem);
-        let toIndex = 0;
+        // let toIndex = 0;
+        const list = filter(FilteredNodeMap.get(container) as NodeListOf<Element>, x => x !== draggingItem)
         if (dir[0] === "t") {
-          container.insertBefore(draggingItem, container.children[0]);
+          container.insertBefore(draggingItem, list[0]);
         } else {
-          container.appendChild(draggingItem);
-          toIndex = container.children.length - 1;
+          if (list.length !== container.children.length) {
+            last(list).after(draggingItem);
+          } else {
+            container.appendChild(draggingItem);
+            // toIndex = container.children.length - 1;
+          }
         }
       }
     }
@@ -463,7 +475,7 @@ function listenItems(
     const toIndex = (ct as any)._uiik_i;
 
     let draggingItem = DraggingData?.copy || DraggingData?.item!
-    if(toContainer === DraggingData?.fromContainer){
+    if (toContainer === DraggingData?.fromContainer) {
       draggingItem = DraggingData?.item
     }
 
@@ -500,12 +512,10 @@ function listenItems(
     const toPos = { x: ct.offsetLeft, y: ct.offsetTop };
     const fromPos = { x: draggingItem.offsetLeft, y: draggingItem.offsetTop };
 
-    ct.style.transform = `translate3d(${fromPos.x - toPos.x}px,${
-      fromPos.y - toPos.y
-    }px,0)`;
-    draggingItem.style.transform = `translate3d(${toPos.x - fromPos.x}px,${
-      toPos.y - fromPos.y
-    }px,0)`;
+    ct.style.transform = `translate3d(${fromPos.x - toPos.x}px,${fromPos.y - toPos.y
+      }px,0)`;
+    draggingItem.style.transform = `translate3d(${toPos.x - fromPos.x}px,${toPos.y - fromPos.y
+      }px,0)`;
 
     draggingItem.offsetHeight;
     ct.offsetHeight;
