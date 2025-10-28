@@ -1,5 +1,5 @@
-/* uiik 1.3.3 @holyhigh2 https://github.com/holyhigh2/uiik */
-(function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35730/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
+/* uiik 1.3.4 @holyhigh2 https://github.com/holyhigh2/uiik */
+(function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -2390,7 +2390,7 @@ class Splittable extends Uii {
                 con.style.position = "relative";
             }
             con.classList.toggle(CLASS_SPLITTABLE, true);
-            const handleDoms = con.querySelectorAll(this.opts.handle);
+            const handleDoms = isString$3(this.opts.handle) ? con.querySelectorAll(this.opts.handle) : isArray$3(this.opts.handle) ? this.opts.handle : this.opts.handle ? [this.opts.handle] : [];
             const children = reject$1(con.children, c => {
                 if (includes$1(handleDoms, c))
                     return true;
@@ -2432,7 +2432,8 @@ class Splittable extends Uii {
                         let domCon = getRootEl(h, con);
                         let domL = domCon.previousElementSibling;
                         let domR = domCon.nextElementSibling;
-                        if (domL && !domL.querySelector(this.opts.handle)) {
+                        let hasDomLHandle = isString$3(this.opts.handle) ? domL === null || domL === void 0 ? void 0 : domL.querySelector(this.opts.handle) : domL === null || domL === void 0 ? void 0 : domL.contains(h);
+                        if (domL && !hasDomLHandle) {
                             dom1 = domL;
                             dom2 = domCon;
                         }
@@ -2449,10 +2450,16 @@ class Splittable extends Uii {
 }
 _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Splittable_checkDirection(container) {
     let dir = 'h';
+    let cStyle = window.getComputedStyle(container);
+    if (cStyle.display === 'inline-flex')
+        return dir;
+    if (cStyle.display === 'flex' && cStyle.flexDirection === 'row')
+        return dir;
     const child = container.children[0];
     let lastY = child.offsetTop;
+    let lastH = child.offsetHeight;
     each$2(container.children, c => {
-        if (c.offsetTop != lastY) {
+        if (c.offsetTop > lastH + lastY) {
             dir = 'v';
             return false;
         }
@@ -12248,7 +12255,7 @@ function newSortable(container, opts) {
     return new Sortable(container, opts);
 }
 
-var version = "1.3.3";
+var version = "1.3.5";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

@@ -387,7 +387,7 @@ export type SplittableOptions = {
   /**
    * 自定义handle选择器，多个使用空格分隔。handle元素可以是与分割元素平级或在分割元素内
    */
-  handle?: string;
+  handle?: string | HTMLElement | HTMLElement[];
   onStart?: (data: { size1: number; size2: number }, event: MouseEvent) => void;
   onSplit?: (data: { size1: number; size2: number }, event: MouseEvent) => void;
   onEnd?: (data: { size1: number; size2: number }, event: MouseEvent) => void;

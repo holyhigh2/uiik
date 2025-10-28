@@ -62,7 +62,7 @@ export class Splittable extends Uii {
         con.style.position = "relative";
       }
       con.classList.toggle(CLASS_SPLITTABLE, true)
-      const handleDoms = con.querySelectorAll(this.opts.handle)
+      const handleDoms = isString(this.opts.handle) ? con.querySelectorAll(this.opts.handle) : isArray(this.opts.handle) ? this.opts.handle : this.opts.handle ? [this.opts.handle] : []
       const children = reject(con.children, c => {
         if (includes(handleDoms, c)) return true
         return false
@@ -104,7 +104,8 @@ export class Splittable extends Uii {
             let domCon = getRootEl(h, con) as HTMLElement
             let domL = domCon.previousElementSibling;
             let domR = domCon.nextElementSibling;
-            if (domL && !domL.querySelector(this.opts.handle)) {
+            let hasDomLHandle = isString(this.opts.handle) ? domL?.querySelector(this.opts.handle) : domL?.contains(h)
+            if (domL && !hasDomLHandle) {
               dom1 = domL as HTMLElement;
               dom2 = domCon;
             } else {
@@ -123,10 +124,15 @@ export class Splittable extends Uii {
    */
   #checkDirection(container: HTMLElement) {
     let dir = 'h'
+    let cStyle = window.getComputedStyle(container)
+    if (cStyle.display === 'inline-flex') return dir
+    if (cStyle.display === 'flex' && cStyle.flexDirection === 'row') return dir
+
     const child = container.children[0] as HTMLElement
     let lastY = child.offsetTop
+    let lastH = child.offsetHeight
     each<HTMLElement>(container.children, c => {
-      if (c.offsetTop != lastY) {
+      if (c.offsetTop > lastH + lastY) {
         dir = 'v'
         return false
       }
