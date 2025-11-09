@@ -556,7 +556,7 @@ export type DraggableOptions = {
     event: MouseEvent
   ) => boolean | void;
   onClone?: (
-    data: { clone: HTMLElement | SVGGraphicsElement },
+    data: { clone: HTMLElement | SVGGraphicsElement, draggable: HTMLElement | SVGGraphicsElement },
     event: MouseEvent
   ) => void;
   onSnap?: (

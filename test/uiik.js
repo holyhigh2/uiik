@@ -1,5 +1,5 @@
-/* uiik 1.3.4 @holyhigh2 https://github.com/holyhigh2/uiik */
-(function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
+/* uiik 1.3.6 @holyhigh2 https://github.com/holyhigh2/uiik */
+(function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35730/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -4335,7 +4335,7 @@ class Draggable extends Uii {
                     let ghostParent = ghostTo ? (isString$3(ghostTo) ? document.querySelector(ghostTo) : ghostTo) : dragDom.parentNode;
                     ghostParent === null || ghostParent === void 0 ? void 0 : ghostParent.appendChild(ghostNode);
                     transform = wrapper(ghostNode, opts.useTransform);
-                    onClone && onClone({ clone: ghostNode }, ev);
+                    onClone && onClone({ clone: ghostNode, draggable: dragDom }, ev);
                 }
                 else {
                     transform = wrapper(dragDom, opts.useTransform);
@@ -4348,9 +4348,11 @@ class Draggable extends Uii {
                 onStart &&
                     onStart({ draggable: dragDom, x: startPointXy.x, y: startPointXy.y, transform }, ev);
                 //notify
-                const customEv = new Event("uii-dragactive", {
+                const customEv = new CustomEvent("uii-dragactive", {
                     bubbles: true,
+                    composed: true,
                     cancelable: false,
+                    detail: { target: dragDom }
                 });
                 dragDom.dispatchEvent(customEv);
             });
@@ -4559,9 +4561,13 @@ class Draggable extends Uii {
                             : true;
                 }
                 //notify
-                const customEv = new Event("uii-dragdeactive", {
+                const customEv = new CustomEvent("uii-dragdeactive", {
                     bubbles: true,
+                    composed: true,
                     cancelable: false,
+                    detail: {
+                        target: dragDom
+                    }
                 });
                 dragDom.dispatchEvent(customEv);
                 if (ghost) {
@@ -4756,13 +4762,15 @@ class Droppable extends Uii {
 _Droppable_active = new WeakMap();
 //uii-drag active
 document.addEventListener("uii-dragactive", (e) => {
+    let { target } = e.detail;
     each$2(Droppables, dpb => {
-        dpb.active(e.target);
+        dpb.active(target);
     });
 });
 document.addEventListener("uii-dragdeactive", (e) => {
+    let { target } = e.detail;
     each$2(Droppables, dpb => {
-        dpb.deactive(e.target);
+        dpb.deactive(target);
     });
 });
 /**
@@ -12255,7 +12263,7 @@ function newSortable(container, opts) {
     return new Sortable(container, opts);
 }
 
-var version = "1.3.5";
+var version = "1.3.6";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"

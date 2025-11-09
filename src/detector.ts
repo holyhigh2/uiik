@@ -3,17 +3,17 @@
  * CollisionDetector
  * @author holyhigh2
  */
+import { flatMap, reject } from "myfx/collection"
 import { isElement, isFunction, isString } from "myfx/is"
-import { flatMap, reject} from "myfx/collection"
-import { assign} from "myfx/object"
+import { assign } from "myfx/object"
 import { CollisionData, CollisionDetectorOptions } from "./types"
 import { getBox, getRectInContainer } from "./utils"
 
 export class CollisionDetector {
-  #_targets: (() => Array<HTMLElement>) | string | HTMLElement | Array<HTMLElement> | NodeList | HTMLCollection
+  #_targets: (() => Array<HTMLElement>) | string | HTMLElement | Array<HTMLElement> | NodeList | HTMLCollection | NodeListOf<Element>
   targetsData: Array<CollisionData>
   el: Element
-  elData:CollisionData
+  elData: CollisionData
   opts: Record<string, any>
 
   constructor(el: string | HTMLElement, targets: (() => Array<HTMLElement>) | string | HTMLElement | Array<HTMLElement> | NodeList | HTMLCollection, opts?: CollisionDetectorOptions) {
@@ -31,7 +31,7 @@ export class CollisionDetector {
     this.el = domEl
 
     //el data
-    const offset = getBox(ele,this.opts.container)
+    const offset = getBox(ele, this.opts.container)
     const rect = { x: offset.x, y: offset.y, width: ele.offsetWidth, height: ele.offsetHeight }
 
     this.elData = {
@@ -54,7 +54,7 @@ export class CollisionDetector {
       targets = this.#_targets()
     } else if (isString(this.#_targets)) {
       targets = this.opts.container.querySelectorAll(this.#_targets)
-      targets = reject(targets,t=>t === this.el)
+      targets = reject(targets, t => t === this.el)
     } else if (isElement(this.#_targets)) {
       targets = [this.#_targets]
     } else {
@@ -64,14 +64,14 @@ export class CollisionDetector {
     this.targetsData = flatMap<HTMLElement, any, CollisionData>(targets, t => {
       if (!t) return []
 
-      const rect = getRectInContainer(t,this.opts.container)
+      const rect = getRectInContainer(t, this.opts.container)
 
       return {
         x1: rect.x,
         y1: rect.y,
         x2: rect.x + rect.w,
         y2: rect.y + rect.h,
-        el:t
+        el: t
       }
     })
   }
@@ -81,24 +81,24 @@ export class CollisionDetector {
    * @returns 
    */
   getOverlaps(): Array<HTMLElement>
-  getOverlaps(x1:number,y1:number,x2:number,y2:number): Array<HTMLElement>
-  getOverlaps(x1?:number,y1?:number,x2?:number,y2?:number): Array<HTMLElement> {
+  getOverlaps(x1: number, y1: number, x2: number, y2: number): Array<HTMLElement>
+  getOverlaps(x1?: number, y1?: number, x2?: number, y2?: number): Array<HTMLElement> {
     let elData = this.elData
-    if(x1 && x2 && y1 && y2){
+    if (x1 && x2 && y1 && y2) {
       elData = {
         x1,
         y1,
         x2,
         y2,
       }
-    }    
-    
-    let overlaps = flatMap<CollisionData,number,HTMLElement>(this.targetsData,(td,i)=>{
-      if(elData.x2 < td.x1 || elData.x1 > td.x2 || elData.y2 < td.y1 || elData.y1 > td.y2)return []
+    }
+
+    let overlaps = flatMap<CollisionData, number, HTMLElement>(this.targetsData, (td, i) => {
+      if (elData.x2 < td.x1 || elData.x1 > td.x2 || elData.y2 < td.y1 || elData.y1 > td.y2) return []
 
       return td.el
     })
-    
+
     return overlaps
   }
 
@@ -107,24 +107,24 @@ export class CollisionDetector {
    * @returns 
    */
   getInclusions(): Array<HTMLElement>
-  getInclusions(x1:number,y1:number,x2:number,y2:number): Array<HTMLElement>
-  getInclusions(x1?:number,y1?:number,x2?:number,y2?:number): Array<HTMLElement> {
+  getInclusions(x1: number, y1: number, x2: number, y2: number): Array<HTMLElement>
+  getInclusions(x1?: number, y1?: number, x2?: number, y2?: number): Array<HTMLElement> {
     let elData = this.elData
-    if(x1 && x2 && y1 && y2){
+    if (x1 && x2 && y1 && y2) {
       elData = {
         x1,
         y1,
         x2,
         y2,
       }
-    }    
-    
-    let contains = flatMap<CollisionData,number,HTMLElement>(this.targetsData,(td,i)=>{
-      if(elData.x2 >= td.x2 && elData.x1 <= td.x1 && elData.y2 >= td.y2 && elData.y1 <= td.y1)return td.el
+    }
+
+    let contains = flatMap<CollisionData, number, HTMLElement>(this.targetsData, (td, i) => {
+      if (elData.x2 >= td.x2 && elData.x1 <= td.x1 && elData.y2 >= td.y2 && elData.y1 <= td.y1) return td.el
 
       return []
     })
-    
+
     return contains
   }
 }
@@ -139,7 +139,7 @@ export class CollisionDetector {
  */
 export function newCollisionDetector(
   el: string | HTMLElement,
-  targets: (() => Array<HTMLElement>) | string | HTMLElement | Array<HTMLElement> | NodeList | HTMLCollection,
+  targets: (() => Array<HTMLElement>) | string | HTMLElement | Array<HTMLElement> | NodeList | HTMLCollection | NodeListOf<Element>,
   opts?: CollisionDetectorOptions
 ): CollisionDetector {
   return new CollisionDetector(el, targets, opts)

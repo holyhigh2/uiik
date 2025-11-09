@@ -56,7 +56,7 @@ export class Draggable extends Uii {
   #container: HTMLElement | null = null;
 
   constructor(
-    els: string | HTMLElement | Array<string | HTMLElement>,
+    els: string | HTMLElement | Array<string | HTMLElement> | NodeListOf<Element>,
     opts?: DraggableOptions
   ) {
     super(
@@ -386,7 +386,7 @@ export class Draggable extends Uii {
 
             transform = wrapper(ghostNode, opts.useTransform);
 
-            onClone && onClone({ clone: ghostNode }, ev);
+            onClone && onClone({ clone: ghostNode, draggable: dragDom }, ev);
           } else {
             transform = wrapper(dragDom, opts.useTransform);
           }
@@ -403,9 +403,11 @@ export class Draggable extends Uii {
             );
 
           //notify
-          const customEv = new Event("uii-dragactive", {
+          const customEv = new CustomEvent("uii-dragactive", {
             bubbles: true,
+            composed: true,
             cancelable: false,
+            detail: { target: dragDom }
           });
           dragDom.dispatchEvent(customEv);
         });
@@ -639,9 +641,13 @@ export class Draggable extends Uii {
                 : true;
           }
           //notify
-          const customEv = new Event("uii-dragdeactive", {
+          const customEv = new CustomEvent("uii-dragdeactive", {
             bubbles: true,
+            composed: true,
             cancelable: false,
+            detail: {
+              target: dragDom
+            }
           });
           dragDom.dispatchEvent(customEv);
 
@@ -689,7 +695,7 @@ export class Draggable extends Uii {
  * @returns Draggable instance
  */
 export function newDraggable(
-  els: string | HTMLElement | Array<string | HTMLElement>,
+  els: string | HTMLElement | Array<string | HTMLElement> | NodeListOf<Element>,
   opts?: DraggableOptions
 ): Draggable {
   return new Draggable(els, opts);
