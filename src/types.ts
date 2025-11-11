@@ -283,9 +283,9 @@ export abstract class Uii {
 
 export type ResizableOptions = {
   /**
-   * 控制器元素选择器(1-n个元素)，如果为空表示点击任意元素即可触发
+   * 控制器元素选择器(1-n个元素)，每个handle通过 uii-resizable-handle-xx 样式控制方向，支持 ["n", "s", "e", "w", "ne", "nw", "se", "sw"]
    */
-  handle?:
+  handle:
   | ((
     target: HTMLElement | SVGGraphicsElement
   ) =>
@@ -308,10 +308,6 @@ export type ResizableOptions = {
    * 拖动元素的最大size，如果是数组，表示 [width,height]
    */
   maxSize?: number | Array<number>;
-  /**
-   * resizable方向，默认[n,s,e,w,ne,nw,se,sw]
-   */
-  dir?: string[];
   /**
    * 宽高比，小数
    */

@@ -4,7 +4,6 @@
  * @author holyhigh2
  */
 import { each } from "myfx/collection";
-import { assign } from "myfx/object";
 import {
   isArray,
   isArrayLike,
@@ -13,6 +12,8 @@ import {
   isNumber,
   isString,
 } from "myfx/is";
+import { assign } from "myfx/object";
+import { UiiTransform, wrapper } from "./transform";
 import { ResizableOptions, Uii } from "./types";
 import {
   ONE_ANG,
@@ -27,12 +28,10 @@ import {
   normalizeVector,
   parseOxy,
 } from "./utils";
-import { UiiTransform, moveTo, wrapper } from "./transform";
 
 const CLASS_RESIZABLE_HANDLE = "uii-resizable-handle";
 const CLASS_RESIZABLE_HANDLE_DIR = "uii-resizable-handle-";
 const CLASS_RESIZABLE_HANDLE_ACTIVE = "uii-resizable-handle-active";
-["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 const EXP_DIR = new RegExp(CLASS_RESIZABLE_HANDLE_DIR + "(?<dir>[nesw]+)");
 
 /**
@@ -51,7 +50,6 @@ export class Resizable extends Uii {
         {
           handleSize: 8,
           minSize: 50,
-          dir: ["n", "s", "e", "w", "ne", "nw", "se", "sw"],
           ghost: false,
           offset: 0,
         },
@@ -513,7 +511,7 @@ export class Resizable extends Uii {
 
               let invalid =
                 (wp2.x - wp1.x) * (newY - wp1.y) -
-                  (wp2.y - wp1.y) * (newX - wp1.x) >
+                (wp2.y - wp1.y) * (newX - wp1.x) >
                 0;
               if (invalid) {
                 let v20n = normalizeVector(
@@ -546,7 +544,7 @@ export class Resizable extends Uii {
 
               invalid =
                 (hp2.x - hp1.x) * (newY - hp1.y) -
-                  (hp2.y - hp1.y) * (newX - hp1.x) >
+                (hp2.y - hp1.y) * (newX - hp1.x) >
                 0;
               if (invalid) {
                 let v10n = normalizeVector(
@@ -638,6 +636,7 @@ export class Resizable extends Uii {
 
           lastX = x;
           lastY = y;
+          console.log(lastX, lastY)
 
           currentW = w;
           currentH = h;
@@ -677,11 +676,13 @@ export class Resizable extends Uii {
         onPointerEnd((args: Record<string, any>) => {
           const { ev } = args;
           if (ghost && ghostNode) {
-            panel.parentNode?.contains(ghostNode) &&
-              panel.parentNode?.removeChild(ghostNode);
             panelStyle.left = ghostNode.style.left;
             panelStyle.top = ghostNode.style.top;
-            moveTo(panel, lastX / matrixInfo.scale, lastY / matrixInfo.scale);
+            transform = wrapper(panel);
+            transform.moveTo((lastX + sX), (lastY + sY))
+
+            panel.parentNode?.contains(ghostNode) &&
+              panel.parentNode?.removeChild(ghostNode);
 
             resize(
               transform,
@@ -720,9 +721,9 @@ export class Resizable extends Uii {
               } else {
                 transform.moveTo(
                   transform.x -
-                    (currentVertex[0].x - vertexBeforeTransform[0].x),
+                  (currentVertex[0].x - vertexBeforeTransform[0].x),
                   transform.y -
-                    (currentVertex[0].y - vertexBeforeTransform[0].y)
+                  (currentVertex[0].y - vertexBeforeTransform[0].y)
                 );
               }
             }
@@ -750,7 +751,7 @@ export class Resizable extends Uii {
       handles = handleStr(panel);
     }
     if (!handles) {
-      console.error('Can not find handles with "' + panel.outerHTML + '"');
+      console.error('Can not find handles in "' + panel.outerHTML + '"');
       return;
     }
 
@@ -767,7 +768,7 @@ export class Resizable extends Uii {
 
       h.classList.add(CLASS_RESIZABLE_HANDLE);
 
-      this.bindHandle(h as any, dir, panel, opts);
+      this.bindHandle(h as any, dir, panel, opts as ResizableOptions);
 
       h.style.cursor = `${dir}-resize`;
       h.dataset.cursor = `${dir}-resize`;

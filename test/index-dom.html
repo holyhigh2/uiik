@@ -447,6 +447,7 @@
         <div class="handle uii-resizable-handle-se" style="bottom:5px;right:5px;"></div>
         <div class="handle uii-resizable-handle-s" style="left:50%;bottom:-5px;"></div>
         <div class="handle uii-resizable-handle-e" style="top:50%;right:-5px;"></div>
+        <div class="handle uii-resizable-handle-w" style="top:50%;left:-5px;"></div>
 
         <section class="resizer" id="resizer2_c" style="margin-top: 100px;">
           子
@@ -698,6 +699,7 @@
         return target.querySelectorAll('.handle')
       },
       offset: 10,
+      ghost: true,
       // ghost: (dom)=>{
       //   const copy = dom.cloneNode(false)
       //   copy.style.border = '1px solid green'
@@ -730,21 +732,21 @@
     uii.newResizable("#resizer2", {
       handle: '#resizer2>.handle',
       offset: 10,
-      // ghost: true,
+      ghost: true,
       ghostClass: "resizer-ghost",
-      dir: ["se"],
+      dir: ["se", 'e'],
     });
     uii.newResizable("#resizer2_c", {
       handle: '#resizer2_c>.handle',
       offset: 10,
-      // ghost: true,
+      ghost: true,
       ghostClass: "resizer-ghost",
-      dir: ["se"],
+      // dir: ["e"],
     });
-    uii.newDraggable("#resizer2_c", {
-      filter: '.handle',
-      useTransform: false
-    });
+    // uii.newDraggable("#resizer2_c", {
+    //   filter: '.handle',
+    //   useTransform: false
+    // });
 
     uii.newDroppable(".drag-targets div", {
       accepts: "yyy",

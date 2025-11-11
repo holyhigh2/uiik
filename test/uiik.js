@@ -1,5 +1,5 @@
 /* uiik 1.3.6 @holyhigh2 https://github.com/holyhigh2/uiik */
-(function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35730/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
+(function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -2692,7 +2692,6 @@ class Resizable extends Uii {
         super(els, assign$1({
             handleSize: 8,
             minSize: 50,
-            dir: ["n", "s", "e", "w", "ne", "nw", "se", "sw"],
             ghost: false,
             offset: 0,
         }, opts));
@@ -3160,6 +3159,7 @@ class Resizable extends Uii {
                 }
                 lastX = x;
                 lastY = y;
+                console.log(lastX, lastY);
                 currentW = w;
                 currentH = h;
                 if (onResize && onResize.call) {
@@ -3188,11 +3188,12 @@ class Resizable extends Uii {
                 var _a, _b;
                 const { ev } = args;
                 if (ghost && ghostNode) {
-                    ((_a = panel.parentNode) === null || _a === void 0 ? void 0 : _a.contains(ghostNode)) &&
-                        ((_b = panel.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(ghostNode));
                     panelStyle.left = ghostNode.style.left;
                     panelStyle.top = ghostNode.style.top;
-                    moveTo(panel, lastX / matrixInfo.scale, lastY / matrixInfo.scale);
+                    transform = wrapper(panel);
+                    transform.moveTo((lastX + sX), (lastY + sY));
+                    ((_a = panel.parentNode) === null || _a === void 0 ? void 0 : _a.contains(ghostNode)) &&
+                        ((_b = panel.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(ghostNode));
                     resize(transform, panelStyle, parseFloat(ghostNode.style.width), parseFloat(ghostNode.style.height));
                 }
                 if (setOrigin)
@@ -3235,7 +3236,7 @@ class Resizable extends Uii {
             handles = handleStr(panel);
         }
         if (!handles) {
-            console.error('Can not find handles with "' + panel.outerHTML + '"');
+            console.error('Can not find handles in "' + panel.outerHTML + '"');
             return;
         }
         handles = isArrayLike$3(handles) ? handles : [handles];
@@ -12263,7 +12264,7 @@ function newSortable(container, opts) {
     return new Sortable(container, opts);
 }
 
-var version = "1.3.6";
+var version = "1.3.7";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"
