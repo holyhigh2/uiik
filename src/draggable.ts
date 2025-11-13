@@ -254,7 +254,7 @@ export class Draggable extends Uii {
         let maxX: number = 0;
         let maxY: number = 0;
 
-        let ghostNode: HTMLElement;
+        let ghostNode: HTMLElement | SVGGraphicsElement;
         let transform: UiiTransform;
 
         let timer: any = null;

@@ -3,6 +3,7 @@
  * dom resizer
  * @author holyhigh2
  */
+import { filter, isElement } from "myfx";
 import { each } from "myfx/collection";
 import {
   isArray,
@@ -32,6 +33,7 @@ import {
 const CLASS_RESIZABLE_HANDLE = "uii-resizable-handle";
 const CLASS_RESIZABLE_HANDLE_DIR = "uii-resizable-handle-";
 const CLASS_RESIZABLE_HANDLE_ACTIVE = "uii-resizable-handle-active";
+const CLASS_RESIZABLE_GHOST = "uii-resizable-ghost";
 const EXP_DIR = new RegExp(CLASS_RESIZABLE_HANDLE_DIR + "(?<dir>[nesw]+)");
 
 /**
@@ -175,7 +177,7 @@ export class Resizable extends Uii {
         //ghost
         const ghost = opts.ghost;
         const ghostClass = opts.ghostClass;
-        let ghostNode: HTMLElement | null = null;
+        let ghostNode: HTMLElement | SVGGraphicsElement | null = null;
 
         //aspectRatio
         const aspectRatio = opts.aspectRatio;
@@ -221,11 +223,9 @@ export class Resizable extends Uii {
             }
             if (ghostNode) {
               if (ghostClass) {
-                ghostNode.className =
-                  ghostNode.className.replace(ghostClass, "") +
-                  " " +
-                  ghostClass;
+                ghostNode.classList.add(ghostClass)
               }
+              ghostNode.classList.toggle(CLASS_RESIZABLE_GHOST, true);
               panel.parentNode?.appendChild(ghostNode);
               transform = wrapper(ghostNode);
 
@@ -321,7 +321,7 @@ export class Resizable extends Uii {
           );
 
           onStart &&
-            onStart.call(uiik, { w: originW, h: originH, transform }, ev);
+            onStart.call(uiik, { w: originW, h: originH, transform, handle, ghost: ghostNode }, ev);
         });
         onPointerMove((args: Record<string, any>) => {
           const { ev, offX, offY } = args;
@@ -604,43 +604,15 @@ export class Resizable extends Uii {
 
               break;
           }
-
           if (aspectRatio) {
-            if (changeW) {
-              style.width = w + "px";
-              style.height = w / aspectRatio + "px";
-            }
-
             if (changeH && dir !== "sw") {
               if (dir === "nw") {
                 y = originY - w / aspectRatio + originH;
-              } else {
-                style.width = h * aspectRatio + "px";
-                style.height = h + "px";
               }
             }
-          } else {
-            if (changeW) {
-              resize(transform, style, w);
-            }
-            if (changeH) {
-              resize(transform, style, undefined, h);
-            }
-          }
-          if (changeY) {
-            transform.moveTo(x, y + sY);
-          }
-          if (changeX) {
-            transform.moveTo(x + sX, y);
           }
 
-          lastX = x;
-          lastY = y;
-          console.log(lastX, lastY)
-
-          currentW = w;
-          currentH = h;
-
+          let canResize = true
           if (onResize && onResize.call) {
             onResize.call;
 
@@ -654,7 +626,7 @@ export class Resizable extends Uii {
             let sx = Math.round(centerX - originW / 2);
             let sy = Math.round(centerY - originH / 2);
 
-            onResize.call(
+            canResize = onResize.call(
               uiik,
               {
                 w,
@@ -668,27 +640,76 @@ export class Resizable extends Uii {
                 sy: sy,
                 deg: matrixInfo.angle,
                 transform,
+                handle
               },
               ev
             );
           }
+
+          if (canResize !== false) {
+            if (aspectRatio) {
+              if (changeW) {
+                style.width = w + "px";
+                style.height = w / aspectRatio + "px";
+              }
+              if (changeH && dir !== "sw" && dir !== "nw") {
+                style.width = h * aspectRatio + "px";
+                style.height = h + "px";
+              }
+            } else {
+              if (changeW) {
+                resize(transform, style, w);
+              }
+              if (changeH) {
+                resize(transform, style, undefined, h);
+              }
+            }
+            if (changeY) {
+              transform.moveTo(x, y + sY);
+            }
+            if (changeX) {
+              transform.moveTo(x + sX, y);
+            }
+          }
+
+          lastX = x;
+          lastY = y;
+
+          currentW = w;
+          currentH = h;
         });
         onPointerEnd((args: Record<string, any>) => {
           const { ev } = args;
+          let doDefault = true
+          handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
+          let ghostLeft = '0'
+          let ghostTop = '0'
+          let ghostWidth = '0'
+          let ghostHeight = '0'
           if (ghost && ghostNode) {
-            panelStyle.left = ghostNode.style.left;
-            panelStyle.top = ghostNode.style.top;
-            transform = wrapper(panel);
-            transform.moveTo((lastX + sX), (lastY + sY))
-
+            ghostLeft = ghostNode.style.left
+            ghostTop = ghostNode.style.top
+            ghostWidth = ghostNode.style.width
+            ghostHeight = ghostNode.style.height
             panel.parentNode?.contains(ghostNode) &&
               panel.parentNode?.removeChild(ghostNode);
+          }
+          if (onEnd) {
+            doDefault = onEnd.call(uiik, { w: currentW, h: currentH, transform, handle, ghost: ghostNode }, ev);
+          }
+          if (doDefault === false) return
+
+          if (ghost && ghostNode) {
+            panelStyle.left = ghostLeft
+            panelStyle.top = ghostTop
+            transform = wrapper(panel);
+            transform.moveTo((lastX + sX), (lastY + sY))
 
             resize(
               transform,
               panelStyle,
-              parseFloat(ghostNode.style.width),
-              parseFloat(ghostNode.style.height)
+              parseFloat(ghostWidth),
+              parseFloat(ghostHeight)
             );
           }
 
@@ -729,9 +750,6 @@ export class Resizable extends Uii {
             }
           } //if setOrigin
 
-          handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
-          onEnd &&
-            onEnd.call(uiik, { w: currentW, h: currentH, transform }, ev);
         });
       },
       {
@@ -749,6 +767,13 @@ export class Resizable extends Uii {
       handles = document.querySelectorAll(handleStr);
     } else if (isFunction(handleStr)) {
       handles = handleStr(panel);
+    } else if (isElement(handleStr)) {
+      handles = [handleStr];
+    } else if (isArrayLike(handleStr)) {
+      let eles = filter(handleStr, h => isElement(h))
+      if (eles.length > 0) {
+        handles = eles
+      }
     }
     if (!handles) {
       console.error('Can not find handles in "' + panel.outerHTML + '"');

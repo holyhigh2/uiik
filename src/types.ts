@@ -315,7 +315,7 @@ export type ResizableOptions = {
   /**
    * 开启ghost模式后，拖动元素时会自动创建元素副本并拖动副本，当拖动结束后，副本销毁并且元素移动到最后位置。默认false
    */
-  ghost?: boolean | Function;
+  ghost?: ((panel: HTMLElement | SVGGraphicsElement) => HTMLElement | SVGGraphicsElement) | boolean;
   ghostClass?: string;
   //相对于图形左上角的圆心偏移，支持数字/百分比
   //仅对SVG元素有效，对于非SVG元素使用transform-origin属性
@@ -328,9 +328,17 @@ export type ResizableOptions = {
    */
   onPointerDown?: (event: MouseEvent) => boolean;
   onStart?: (
-    data: { w: number; h: number; transform: UiiTransform },
+    data: { w: number; h: number; transform: UiiTransform; handle: HTMLElement | SVGGraphicsElement; ghost: HTMLElement | SVGGraphicsElement },
     event: MouseEvent
   ) => void;
+  /**
+   * 拖动中调用，返回false阻止resize操作
+   * @param dragDom
+   * @param ev
+   * @param offsetX
+   * @param offsetY
+   * @returns
+   */
   onResize?: (
     data: {
       w: number;
@@ -340,14 +348,15 @@ export type ResizableOptions = {
       target: HTMLElement | SVGGraphicsElement;
       vertex: Array<{ x: number; y: number }>;
       transform: UiiTransform;
+      handle: HTMLElement | SVGGraphicsElement;
     },
     event: MouseEvent
-  ) => void;
+  ) => boolean | void;
   onEnd?: (
-    data: { w: number; h: number; transform: UiiTransform },
+    data: { w: number; h: number; transform: UiiTransform; handle: HTMLElement | SVGGraphicsElement; ghost: HTMLElement | SVGGraphicsElement },
     event: MouseEvent
-  ) => void;
-  onClone?: (data: { clone: HTMLElement }, event: MouseEvent) => void;
+  ) => boolean | void;
+  onClone?: (data: { clone: HTMLElement | SVGGraphicsElement }, event: MouseEvent) => void;
 };
 
 export type SplittableOptions = {
@@ -443,7 +452,7 @@ export type DraggableOptions = {
   /**
    * 开启ghost模式后，拖动元素时会自动创建元素副本并拖动副本，当拖动结束后，副本销毁并且元素移动到最后位置。默认false，支持函数返回副本元素
    */
-  ghost?: ((el: HTMLElement) => HTMLElement) | boolean;
+  ghost?: ((panel: HTMLElement | SVGGraphicsElement) => HTMLElement | SVGGraphicsElement) | boolean;
   ghostClass?: string;
   /**
    * ghost元素创建与指定元素下，默认与handle元素平级

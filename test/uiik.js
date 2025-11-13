@@ -1,5 +1,5 @@
-/* uiik 1.3.6 @holyhigh2 https://github.com/holyhigh2/uiik */
-(function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
+/* uiik 1.3.7 @holyhigh2 https://github.com/holyhigh2/uiik */
+(function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35730/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -2674,679 +2674,430 @@ function newSplittable(container, opts) {
     return new Splittable(container, opts);
 }
 
-/* eslint-disable max-len */
-const CLASS_RESIZABLE_HANDLE = "uii-resizable-handle";
-const CLASS_RESIZABLE_HANDLE_DIR = "uii-resizable-handle-";
-const CLASS_RESIZABLE_HANDLE_ACTIVE = "uii-resizable-handle-active";
-const EXP_DIR = new RegExp(CLASS_RESIZABLE_HANDLE_DIR + "(?<dir>[nesw]+)");
 /**
- * 用于表示一个或多个可改变尺寸元素的定义
- * > 可用CSS接口
- * - .uii-resizable-handle
- * - .uii-resizable-handle-[n/s/e/w/ne/nw/se/sw]
- * - .uii-resizable-handle-active
- * @public
- */
-class Resizable extends Uii {
-    constructor(els, opts) {
-        super(els, assign$1({
-            handleSize: 8,
-            minSize: 50,
-            ghost: false,
-            offset: 0,
-        }, opts));
-        each$2(this.ele, (el) => {
-            let tmp = el;
-            if (tmp._uiik_resizable) {
-                tmp._uiik_resizable.destroy();
-                return false;
-            }
-        });
-        each$2(this.ele, (el) => {
-            el._uiik_resizable = this;
-            this.initHandle(el);
-        });
-    }
-    bindHandle(handle, dir, panel, opts) {
-        const onStart = opts.onStart;
-        const onResize = opts.onResize;
-        const onEnd = opts.onEnd;
-        const onClone = opts.onClone;
-        const uiik = this;
-        this.addPointerDown(handle, ({ ev, onPointerStart, onPointerMove, onPointerEnd }) => {
-            //检测
-            const onPointerDown = opts.onPointerDown;
-            if (onPointerDown && onPointerDown(ev) === false)
-                return true;
-            let container = panel.parentElement;
-            // 获取panel当前信息
-            let matrixInfo = getMatrixInfo(panel, true);
-            const offset = getRectInContainer(panel, container, matrixInfo);
-            const offsetParentRect = container.getBoundingClientRect();
-            const offsetParentCStyle = window.getComputedStyle(container);
-            let setOrigin = !(panel instanceof SVGGraphicsElement) && matrixInfo.angle != 0;
-            const { w, h } = getStyleSize(panel);
-            const originW = w;
-            const originH = h;
-            const originX = offset.x;
-            const originY = offset.y;
-            let changeW = false;
-            let changeH = false;
-            let changeX = false;
-            let changeY = false;
-            let toTransformOrigin = "";
-            switch (dir) {
-                case "s":
-                    changeH = true;
-                    break;
-                case "e":
-                    changeW = true;
-                    break;
-                case "se":
-                    changeW = true;
-                    changeH = true;
-                    break;
-                case "n":
-                    changeX = true;
-                    changeY = true;
-                    changeH = true;
-                    toTransformOrigin = "0 0";
-                    break;
-                case "w":
-                    changeX = true;
-                    changeY = true;
-                    changeW = true;
-                    toTransformOrigin = "0 0";
-                    break;
-                case "sw":
-                case "ne":
-                case "nw":
-                    changeX = true;
-                    changeY = true;
-                    changeW = true;
-                    changeH = true;
-                    toTransformOrigin = "0 0";
-                    break;
-            }
-            // boundary
-            let minWidth = 1;
-            let minHeight = 1;
-            let maxWidth = 9999;
-            let maxHeight = 9999;
-            if (isArray$3(opts.minSize)) {
-                minWidth = opts.minSize[0];
-                minHeight = opts.minSize[1];
-            }
-            else if (isNumber$1(opts.minSize)) {
-                minWidth = opts.minSize;
-                minHeight = opts.minSize;
-            }
-            if (isArray$3(opts.maxSize)) {
-                maxWidth = opts.maxSize[0];
-                maxHeight = opts.maxSize[1];
-            }
-            else if (isNumber$1(opts.maxSize)) {
-                maxWidth = opts.maxSize;
-                maxHeight = opts.maxSize;
-            }
-            //ghost
-            const ghost = opts.ghost;
-            const ghostClass = opts.ghostClass;
-            let ghostNode = null;
-            //aspectRatio
-            const aspectRatio = opts.aspectRatio;
-            const panelStyle = panel.style;
-            let style = panelStyle;
-            let currentW = originW;
-            let currentH = originH;
-            let transform;
-            let lastX = 0, lastY = 0;
-            let originalTransformOrigin = "";
-            let vertexBeforeTransform;
-            let currentVertex;
-            let refPoint;
-            //slope
-            let k1;
-            let sX = 0, sY = 0;
-            let startPointXy;
-            //bind events
-            onPointerStart(function (args) {
-                var _a;
-                const { ev } = args;
-                handle.classList.add(CLASS_RESIZABLE_HANDLE_ACTIVE);
-                if (ghost) {
-                    if (isFunction$3(ghost)) {
-                        ghostNode = ghost(panel);
-                    }
-                    else {
-                        ghostNode = panel.cloneNode(true);
-                        ghostNode.style.opacity = "0.3";
-                        ghostNode.style.pointerEvents = "none";
-                    }
-                    if (ghostNode) {
-                        if (ghostClass) {
-                            ghostNode.className =
-                                ghostNode.className.replace(ghostClass, "") +
-                                    " " +
-                                    ghostClass;
-                        }
-                        (_a = panel.parentNode) === null || _a === void 0 ? void 0 : _a.appendChild(ghostNode);
-                        transform = wrapper(ghostNode);
-                        onClone && onClone({ clone: ghostNode }, ev);
-                    }
-                    style = ghostNode === null || ghostNode === void 0 ? void 0 : ghostNode.style;
-                }
-                else {
-                    transform = wrapper(panel);
-                }
-                const cStyle = window.getComputedStyle(panel);
-                const w = parseFloat(cStyle.width);
-                const h = parseFloat(cStyle.height);
-                const oxy = parseOxy(opts.ox, opts.oy, w, h);
-                oxy.originX;
-                oxy.originY;
-                //计算sx及cx
-                const panelRect = getRectInContainer(panel, panel.parentElement, matrixInfo);
-                let centerX = Math.round(panelRect.x + panelRect.w / 2);
-                let centerY = Math.round(panelRect.y + panelRect.h / 2);
-                let sx = Math.round(centerX - originW / 2);
-                let sy = Math.round(centerY - originH / 2);
-                transform.x = sx;
-                transform.y = sy;
-                const deg = matrixInfo.angle * ONE_ANG;
-                currentVertex = vertexBeforeTransform = calcVertex(originW, originH, centerX, centerY, sx, sy, deg);
-                //计算参考点及斜率
-                switch (dir) {
-                    case "s":
-                    case "e":
-                    case "se":
-                        refPoint = currentVertex[0];
-                        break;
-                    case "n":
-                    case "w":
-                    case "nw":
-                        refPoint = currentVertex[3];
-                        break;
-                    case "sw":
-                        refPoint = currentVertex[1];
-                        break;
-                    case "ne":
-                        refPoint = currentVertex[2];
-                        break;
-                }
-                //水平斜率
-                k1 =
-                    (currentVertex[1].y - refPoint.y) /
-                        (currentVertex[1].x - refPoint.x); //w
-                //change trans origin
-                style.transition = "none";
-                originalTransformOrigin = style.transformOrigin;
-                if (setOrigin) {
-                    if (toTransformOrigin) {
-                        style.transformOrigin = toTransformOrigin;
-                    }
-                    else {
-                        style.transformOrigin = `${centerX - sx}px ${centerY - sy}px`;
-                    }
-                }
-                if (panel instanceof SVGGraphicsElement) {
-                    sX = matrixInfo.x - currentVertex[0].x;
-                    sY = matrixInfo.y - currentVertex[0].y;
-                }
-                startPointXy = getPointInContainer(ev, container, offsetParentRect, offsetParentCStyle, matrixInfo);
-                onStart &&
-                    onStart.call(uiik, { w: originW, h: originH, transform }, ev);
-            });
-            onPointerMove((args) => {
-                const { ev, offX, offY } = args;
-                let newX = startPointXy.x + offX;
-                let newY = startPointXy.y + offY;
-                const rpx = refPoint.x;
-                const rpy = refPoint.y;
-                ////////////////////////////////////////// 计算边长
-                //1. calc angle
-                let angle = Math.atan2(newY - rpy, newX - rpx) * ONE_RAD - matrixInfo.angle;
-                //2. hypotenuse length
-                let hyLen = Math.sqrt((newX - rpx) * (newX - rpx) + (newY - rpy) * (newY - rpy));
-                //3. h&v projection length
-                let pl1 = Math.abs(k1 === Infinity
-                    ? newY - refPoint.y / matrixInfo.scale
-                    : hyLen * Math.cos(angle * ONE_ANG));
-                let pl2 = Math.sqrt(hyLen * hyLen - pl1 * pl1);
-                let w = originW;
-                let h = originH;
-                let y = originY;
-                let x = originX;
-                let angl = 0;
-                switch (dir) {
-                    case "w":
-                    case "sw":
-                        angl =
-                            Math.atan2(currentVertex[0].y - currentVertex[1].y, currentVertex[0].x - currentVertex[1].x) * ONE_RAD;
-                        break;
-                    case "n":
-                    case "ne":
-                    case "nw":
-                        angl =
-                            Math.atan2(currentVertex[0].y - currentVertex[2].y, currentVertex[0].x - currentVertex[2].x) * ONE_RAD;
-                }
-                //w & h
-                switch (dir) {
-                    case "s":
-                        h = pl2;
-                        break;
-                    case "e":
-                        w = pl1;
-                        break;
-                    case "n":
-                        h = pl2;
-                        if (angl === 90) {
-                            h = newY - currentVertex[2].y;
-                        }
-                        break;
-                    case "w":
-                        w = pl1;
-                        if (angl === 0) {
-                            w = newX - currentVertex[1].x;
-                        }
-                        break;
-                    case "nw":
-                        w = pl1;
-                        h = pl2;
-                        if (matrixInfo.angle === 180) {
-                            w = newX - currentVertex[3].x;
-                            h = newY - currentVertex[3].y;
-                        }
-                        break;
-                    case "se":
-                    case "sw":
-                    case "ne":
-                        w = pl1;
-                        h = pl2;
-                        break;
-                }
-                //w & h boundary
-                if (minHeight && h < minHeight)
-                    h = minHeight;
-                if (maxHeight && h > maxHeight)
-                    h = maxHeight;
-                if (minWidth && w < minWidth) {
-                    w = minWidth;
-                }
-                if (maxWidth && w > maxWidth)
-                    w = maxWidth;
-                let hLine, wLine;
-                // x & y
-                switch (dir) {
-                    case "s":
-                        hLine = { p1: currentVertex[1], p2: currentVertex[0] };
-                        h = limitWH(newX, newY, hLine, h, minHeight);
-                        break;
-                    case "e":
-                        wLine = { p1: currentVertex[0], p2: currentVertex[2] };
-                        w = limitWH(newX, newY, wLine, w, minWidth);
-                        break;
-                    case "se":
-                        wLine = { p1: currentVertex[0], p2: currentVertex[2] };
-                        hLine = { p1: currentVertex[1], p2: currentVertex[0] };
-                        w = limitWH(newX, newY, wLine, w, minWidth);
-                        h = limitWH(newX, newY, hLine, h, minHeight);
-                        break;
-                    case "n":
-                        hLine = { p1: currentVertex[2], p2: currentVertex[3] };
-                        h = limitWH(newX, newY, hLine, h, minHeight);
-                        let plh;
-                        //1&2 quad
-                        if (angl === 90) {
-                            x = currentVertex[2].x;
-                            y = newY;
-                        }
-                        else if (currentVertex[2].y > currentVertex[0].y) {
-                            plh = h * Math.cos(angl * ONE_ANG);
-                            x = currentVertex[2].x + plh;
-                            y = currentVertex[2].y - Math.sqrt(h * h - plh * plh);
-                        }
-                        else {
-                            plh = h * Math.cos((180 - angl) * ONE_ANG);
-                            x = currentVertex[2].x - plh;
-                            y = currentVertex[2].y + Math.sqrt(h * h - plh * plh);
-                        }
-                        break;
-                    case "w":
-                        wLine = { p1: currentVertex[3], p2: currentVertex[1] };
-                        w = limitWH(newX, newY, wLine, w, minWidth);
-                        let plw;
-                        //1&4 quad
-                        if (angl === 0) {
-                            x = newX;
-                            y = currentVertex[1].y;
-                        }
-                        else if (currentVertex[1].y > currentVertex[0].y) {
-                            plw = w * Math.cos((180 - angl) * ONE_ANG);
-                            x = currentVertex[1].x - plw;
-                            y = currentVertex[1].y - Math.sqrt(w * w - plw * plw);
-                        }
-                        else {
-                            plw = w * Math.cos(angl * ONE_ANG);
-                            x = currentVertex[1].x + plw;
-                            y = currentVertex[1].y + Math.sqrt(w * w - plw * plw);
-                        }
-                        break;
-                    case "nw":
-                        wLine = { p1: currentVertex[3], p2: currentVertex[1] };
-                        hLine = { p1: currentVertex[2], p2: currentVertex[3] };
-                        w = limitWH(newX, newY, wLine, w, minWidth);
-                        h = limitWH(newX, newY, hLine, h, minHeight);
-                        x = newX;
-                        y = newY;
-                        let cv2x = currentVertex[2].x;
-                        let cv2y = currentVertex[2].y;
-                        let cv1x = currentVertex[1].x;
-                        let cv1y = currentVertex[1].y;
-                        //W boundary
-                        let v32n = normalizeVector(cv2x - currentVertex[3].x, cv2y - currentVertex[3].y);
-                        v32n.x *= minWidth;
-                        v32n.y *= minWidth;
-                        let v10n = normalizeVector(currentVertex[0].x - cv1x, currentVertex[0].y - cv1y);
-                        v10n.x *= minWidth;
-                        v10n.y *= minWidth;
-                        let wp1 = { x: wLine.p1.x + v32n.x, y: wLine.p1.y + v32n.y };
-                        let wp2 = { x: wLine.p2.x + v10n.x, y: wLine.p2.y + v10n.y };
-                        let invalid = (wp2.x - wp1.x) * (newY - wp1.y) -
-                            (wp2.y - wp1.y) * (newX - wp1.x) >
-                            0;
-                        if (invalid) {
-                            let v20n = normalizeVector(currentVertex[0].x - cv2x, currentVertex[0].y - cv2y);
-                            v20n.x *= h;
-                            v20n.y *= h;
-                            x = wp1.x + v20n.x;
-                            y = wp1.y + v20n.y;
-                        }
-                        //H boundary
-                        let v31n = normalizeVector(cv1x - currentVertex[3].x, cv1y - currentVertex[3].y);
-                        v31n.x *= minHeight;
-                        v31n.y *= minHeight;
-                        let v20n = normalizeVector(currentVertex[0].x - cv2x, currentVertex[0].y - cv2y);
-                        v20n.x *= minHeight;
-                        v20n.y *= minHeight;
-                        let hp1 = { x: hLine.p1.x + v31n.x, y: hLine.p1.y + v31n.y };
-                        let hp2 = { x: hLine.p2.x + v20n.x, y: hLine.p2.y + v20n.y };
-                        invalid =
-                            (hp2.x - hp1.x) * (newY - hp1.y) -
-                                (hp2.y - hp1.y) * (newX - hp1.x) >
-                                0;
-                        if (invalid) {
-                            let v10n = normalizeVector(currentVertex[0].x - cv1x, currentVertex[0].y - cv1y);
-                            v10n.x *= w;
-                            v10n.y *= w;
-                            x = hp2.x + v10n.x;
-                            y = hp2.y + v10n.y;
-                        }
-                        break;
-                    case "sw":
-                        wLine = { p1: currentVertex[3], p2: currentVertex[1] };
-                        hLine = { p1: currentVertex[1], p2: currentVertex[0] };
-                        w = limitWH(newX, newY, wLine, w, minWidth);
-                        h = limitWH(newX, newY, hLine, h, minHeight);
-                        let plw1;
-                        //1&4 quad
-                        if (angl === 0) {
-                            x = newX;
-                            y = currentVertex[0].y;
-                        }
-                        else if (currentVertex[1].y > currentVertex[0].y) {
-                            plw1 = w * Math.cos((180 - angl) * ONE_ANG);
-                            x = currentVertex[1].x - plw1;
-                            y = currentVertex[1].y - Math.sqrt(w * w - plw1 * plw1);
-                        }
-                        else {
-                            plw1 = w * Math.cos((180 - angl) * ONE_ANG);
-                            x = currentVertex[1].x - plw1;
-                            y = currentVertex[1].y + Math.sqrt(w * w - plw1 * plw1);
-                        }
-                        break;
-                    case "ne":
-                        wLine = { p1: currentVertex[0], p2: currentVertex[2] };
-                        hLine = { p1: currentVertex[2], p2: currentVertex[3] };
-                        w = limitWH(newX, newY, wLine, w, minWidth);
-                        h = limitWH(newX, newY, hLine, h, minHeight);
-                        let plne;
-                        if (angl === 0) {
-                            x = newX;
-                            y = currentVertex[0].y;
-                        }
-                        else if (currentVertex[1].x > currentVertex[0].x) {
-                            //1&2 quad
-                            plne = h * Math.cos((180 - angl) * ONE_ANG);
-                            x = currentVertex[2].x - plne;
-                            y = currentVertex[2].y - Math.sqrt(h * h - plne * plne);
-                        }
-                        else {
-                            plne = h * Math.cos(angl * ONE_ANG);
-                            x = currentVertex[2].x + plne;
-                            y = currentVertex[2].y + Math.sqrt(h * h - plne * plne);
-                        }
-                        break;
-                }
-                if (aspectRatio) {
-                    if (changeW) {
-                        style.width = w + "px";
-                        style.height = w / aspectRatio + "px";
-                    }
-                    if (changeH && dir !== "sw") {
-                        if (dir === "nw") {
-                            y = originY - w / aspectRatio + originH;
-                        }
-                        else {
-                            style.width = h * aspectRatio + "px";
-                            style.height = h + "px";
-                        }
-                    }
-                }
-                else {
-                    if (changeW) {
-                        resize(transform, style, w);
-                    }
-                    if (changeH) {
-                        resize(transform, style, undefined, h);
-                    }
-                }
-                if (changeY) {
-                    transform.moveTo(x, y + sY);
-                }
-                if (changeX) {
-                    transform.moveTo(x + sX, y);
-                }
-                lastX = x;
-                lastY = y;
-                console.log(lastX, lastY);
-                currentW = w;
-                currentH = h;
-                if (onResize && onResize.call) {
-                    onResize.call;
-                    const panelRect = getRectInContainer(panel, panel.parentElement, matrixInfo);
-                    let centerX = Math.round(panelRect.x + panelRect.w / 2);
-                    let centerY = Math.round(panelRect.y + panelRect.h / 2);
-                    let sx = Math.round(centerX - originW / 2);
-                    let sy = Math.round(centerY - originH / 2);
-                    onResize.call(uiik, {
-                        w,
-                        h,
-                        ow: w - originW,
-                        oh: h - originH,
-                        target: panel,
-                        cx: x,
-                        cy: y,
-                        sx: sx,
-                        sy: sy,
-                        deg: matrixInfo.angle,
-                        transform,
-                    }, ev);
-                }
-            });
-            onPointerEnd((args) => {
-                var _a, _b;
-                const { ev } = args;
-                if (ghost && ghostNode) {
-                    panelStyle.left = ghostNode.style.left;
-                    panelStyle.top = ghostNode.style.top;
-                    transform = wrapper(panel);
-                    transform.moveTo((lastX + sX), (lastY + sY));
-                    ((_a = panel.parentNode) === null || _a === void 0 ? void 0 : _a.contains(ghostNode)) &&
-                        ((_b = panel.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(ghostNode));
-                    resize(transform, panelStyle, parseFloat(ghostNode.style.width), parseFloat(ghostNode.style.height));
-                }
-                if (setOrigin)
-                    panel.style.transformOrigin = originalTransformOrigin;
-                let { x: centerX, y: centerY } = getRectCenter(panel, matrixInfo);
-                let sx = Math.round(centerX - currentW / 2);
-                let sy = Math.round(centerY - currentH / 2);
-                const deg = matrixInfo.angle * ONE_ANG;
-                const currentVertex = calcVertex(currentW, currentH, centerX, centerY, sx, sy, deg);
-                //修正偏移
-                if (setOrigin) {
-                    if (panel instanceof HTMLElement) {
-                        if (changeX || changeY) {
-                            transform.moveTo(transform.x - (currentVertex[0].x - lastX), transform.y - (currentVertex[0].y - lastY));
-                        }
-                        else {
-                            transform.moveTo(transform.x -
-                                (currentVertex[0].x - vertexBeforeTransform[0].x), transform.y -
-                                (currentVertex[0].y - vertexBeforeTransform[0].y));
-                        }
-                    }
-                } //if setOrigin
-                handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
-                onEnd &&
-                    onEnd.call(uiik, { w: currentW, h: currentH, transform }, ev);
-            });
-        }, {
-            threshold: THRESHOLD,
-            lockPage: true,
-        });
-    }
-    initHandle(panel) {
-        const opts = this.opts;
-        let handleStr = opts.handle;
-        let handles;
-        if (isString$3(handleStr)) {
-            handles = document.querySelectorAll(handleStr);
-        }
-        else if (isFunction$3(handleStr)) {
-            handles = handleStr(panel);
-        }
-        if (!handles) {
-            console.error('Can not find handles in "' + panel.outerHTML + '"');
-            return;
-        }
-        handles = isArrayLike$3(handles) ? handles : [handles];
-        each$2(handles, (h) => {
-            //get dir from handle
-            const className = h.getAttribute("class") || "";
-            const matchRs = className.match(EXP_DIR);
-            let dir = "se";
-            if (matchRs) {
-                dir = matchRs.groups.dir;
-            }
-            h.classList.add(CLASS_RESIZABLE_HANDLE);
-            this.bindHandle(h, dir, panel, opts);
-            h.style.cursor = `${dir}-resize`;
-            h.dataset.cursor = `${dir}-resize`;
-            h.setAttribute("name", "handle");
-        });
-    }
-}
-function limitWH(newX, newY, line, value, minValue) {
-    let p1 = line.p1;
-    let p2 = line.p2;
-    let invalid = (p2.x - p1.x) * (newY - p1.y) - (p2.y - p1.y) * (newX - p1.x) > 0;
-    if (invalid) {
-        return minValue;
-    }
-    return value;
-}
-function resize(transform, style, w, h) {
-    //svg
-    if (transform.el instanceof SVGGraphicsElement) {
-        if (isDefined$1(w))
-            transform.el.setAttribute("width", w + "");
-        if (isDefined$1(h))
-            transform.el.setAttribute("height", h + "");
-    }
-    else {
-        if (isDefined$1(w))
-            style.width = w + "px";
-        if (isDefined$1(h))
-            style.height = h + "px";
-    }
-}
-/**
- * Make els resizable
- * @param els selector string / html element
- * @param opts
- * @returns
- */
-function newResizable(els, opts) {
-    return new Resizable(els, opts);
-}
-
-/**
-   * myfx/array v1.1.0
+   * myfx v1.1.0
    * A modular utility library with more utils, higher performance and simpler declarations ...
    * https://github.com/holyhigh2/myfx
    * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
    */
-  /**
- * 判断参数是否为Array对象的实例
- *
- * @example
- * //true
- * console.log(_.isArray([]))
- * //false
- * console.log(_.isArray(document.body.children))
- *
- * @param v
- * @returns
- */
-function isArray$1(v) {
-    // 使用 instanceof Array 无法鉴别某些场景，比如
-    // Array.prototype instanceof Array => false
-    // Array.isArray(Array.prototype) => true
-    // typeof new Proxy([],{}) => object
-    // Array.isArray(new Proxy([],{})) => true
-    return Array.isArray(v);
+  function _getGrouped(str) {
+    return (str.match(/[A-Z]{2,}|([^\s-_]([^\s-_A-Z]+)?(?=[\s-_A-Z]))|([^\s-_]+(?=$))/g) || []);
 }
 
 /**
- * 判断参数是否为函数对象
+ * 判断值是否为null或undefined
  *
  * @example
  * //true
- * console.log(_.isFunction(new Function()))
+ * console.log(_.isNil(undefined))
+ * //false
+ * console.log(_.isNil(0))
  * //true
- * console.log(_.isFunction(()=>{}))
+ * console.log(_.isNil(null))
+ * //false
+ * console.log(_.isNil(NaN))
  *
  * @param v
  * @returns
+ * @since 1.0.0
  */
-function isFunction$1(v) {
-    return typeof v == 'function' || v instanceof Function;
+function isNil$2(v) {
+    return v === null || v === undefined;
 }
 
 /**
- * 判断值是不是一个Set对象
+ * 转换任何对象为字符串。如果对象本身为string类型的值/对象，则返回该对象的字符串形式。否则返回对象的toString()方法的返回值
  *
  * @example
- * //false
- * console.log(_.isSet(new WeakSet))
+ * //''
+ * console.log(_.toString(null))
+ * //1
+ * console.log(_.toString(1))
+ * //3,6,9
+ * console.log(_.toString([3,6,9]))
+ * //-0
+ * console.log(_.toString(-0))
+ * //[object Set]
+ * console.log(_.toString(new Set([3,6,9])))
+ * //{a:1}
+ * console.log(_.toString({a:1,toString:()=>'{a:1}'}))
+ *
+ * @param v 任何值
+ * @returns 对于null/undefined会返回空字符串
+ */
+function toString$1(v) {
+    if (isNil$2(v))
+        return '';
+    if (v === 0 && 1 / v < 0)
+        return '-0';
+    return v.toString();
+}
+
+/**
+ * 转换字符串第一个字符为大写并返回
+ *
+ * @example
+ * //'First'
+ * console.log(_.upperFirst('first'))//mixCase
+ * //'GetMyURL'
+ * console.log(_.upperFirst('getMyURL'))//camelCase
+ *
+ * @param str
+ * @returns 返回新字符串
+ */
+function upperFirst(str) {
+    str = toString$1(str);
+    if (str.length < 1)
+        return str;
+    return str[0].toUpperCase() + str.substring(1);
+}
+
+/**
+ * 返回帕斯卡风格的字符串
+ *
+ * @example
+ * //'LoveLovesToLoveLove'
+ * console.log(_.pascalCase('Love loves to love Love'))//spaces
+ * //'ABC'
+ * console.log(_.pascalCase('a B-c'))//mixCase
+ * //'GetMyUrl'
+ * console.log(_.pascalCase('getMyURL'))//camelCase
+ * //'AbCdEf'
+ * console.log(_.pascalCase('AB_CD_EF'))//snakeCase
+ * //'ABcDEfGhXy'
+ * console.log(_.pascalCase('aBc   D__EF_GH----XY_'))//mixCase
+ *
+ * @param str
+ * @returns 返回新字符串
+ */
+function pascalCase(str) {
+    return _getGrouped(toString$1(str)).reduce((acc, v) => acc + upperFirst(v.toLowerCase()), '');
+}
+
+/**
+ * 转换字符串第一个字符为小写并返回
+ *
+ * @example
+ * //'fIRST'
+ * console.log(_.lowerFirst('FIRST'))//mixCase
+ * //'love loves to love Love'
+ * console.log(_.lowerFirst('Love loves to love Love'))//spaces
+ *
+ * @param str
+ * @returns 返回新字符串
+ */
+function lowerFirst(str) {
+    str = toString$1(str);
+    if (str.length < 1)
+        return str;
+    return str[0].toLowerCase() + str.substring(1);
+}
+
+/**
+ * 返回驼峰风格的字符串
+ *
+ * @example
+ * //'aBC'
+ * console.log(_.camelCase('a-b c'))//mixCase
+ * //'loveLovesToLoveLove'
+ * console.log(_.camelCase('Love loves to love Love'))//spaces
+ * //'aBC'
+ * console.log(_.camelCase('a B-c'))//camelCase
+ * //'getMyUrl'
+ * console.log(_.camelCase('getMyURL'))//camelCase
+ *
+ * @param str
+ * @returns 返回新字符串
+ */
+function camelCase(str) {
+    return lowerFirst(pascalCase(toString$1(str)));
+}
+
+/**
+ * 把字符串的首字母大写，如果首字母不是ascii中的a-z则返回原值
+ *
+ * @example
+ * //Abc
+ * console.log(_.capitalize('abc'))
+ * //''
+ * console.log(_.capitalize(null))
+ * //1
+ * console.log(_.capitalize(1))
+ *
+ *
+ * @param str 字符串
+ * @returns 对于null/undefined会返回空字符串
+ */
+function capitalize(str) {
+    str = toString$1(str);
+    if (str.length < 1)
+        return str;
+    return str[0].toUpperCase() + toString$1(str.substring(1)).toLowerCase();
+}
+
+/**
+ * 验证字符串是否以查询子字符串结尾
+ *
+ * @example
  * //true
- * console.log(_.isSet(new Set))
+ * console.log(_.endsWith('func.js','js'))
+ * //true
+ * console.log(_.endsWith('func.js','c',4))
+ *
+ * @param str
+ * @param searchStr 查询字符串
+ * @param position 索引
+ * @returns 如果以查询子字符串开头返回true，否则返回false
+ */
+function endsWith(str, searchStr, position) {
+    return toString$1(str).endsWith(searchStr, position);
+}
+
+const REG_EXP_KEYWORDS = [
+    '\\',
+    '$',
+    '(',
+    ')',
+    '*',
+    '+',
+    '.',
+    '[',
+    ']',
+    '?',
+    '^',
+    '{',
+    '}',
+    '|',
+];
+/**
+ * 转义正则字符串中的特殊字符，包括 '\', '$', '(', ')', '*', '+', '.', '[', ']', '?', '^', '\{', '\}', '|'
+ *
+ * @example
+ * //\^\[func\.js\] \+ \{crud-vue\} = \.\*\?\$
+ * console.log(_.escapeRegExp('^[func.js] + {crud-vue} = .*?$'))
+ *
+ * @param str 需要转义的字符串
+ * @returns 转义后的新字符串
+ * @since 1.0.0
+ */
+function escapeRegExp(str) {
+    return toString$1(str)
+        .split('')
+        .reduce((a, b) => a + (REG_EXP_KEYWORDS.includes(b) ? '\\' + b : b), '');
+}
+
+/**
+ * 查找指定值在字符串中首次出现的位置索引
+ *
+ * @example
+ * //10
+ * console.log(_.indexOf('cyberfunc.js','js'))
+ * //10
+ * console.log(_.indexOf('cyberfunc.js','js',5))
+ *
+ * @param str
+ * @param search 指定字符串
+ * @param [fromIndex=0] 起始索引
+ * @returns 第一个匹配搜索字符串的位置索引或-1
+ */
+function indexOf(str, search, fromIndex) {
+    str = toString$1(str);
+    return str.indexOf(search, fromIndex || 0);
+}
+
+/**
+ * 返回所有字母是小写格式的字符串
+ *
+ * @example
+ * //''
+ * console.log(_.lowerCase())
+ * //'func.js'
+ * console.log(_.lowerCase('FUNC.JS'))
+ *
+ * @param str
+ * @returns 返回新字符串
+ */
+function lowerCase(str) {
+    return toString$1(str).toLowerCase();
+}
+
+/**
+ * 返回短横线风格的字符串
+ *
+ * @example
+ * //'a-b-c'
+ * console.log(_.kebabCase('a_b_c'))//snakeCase
+ * //'webkit-perspective-origin-x'
+ * console.log(_.kebabCase('webkitPerspectiveOriginX'))//camelCase
+ * //'a-b-c'
+ * console.log(_.kebabCase('a B-c'))//mixCase
+ * //'get-my-url'
+ * console.log(_.kebabCase('getMyURL'))//camelCase
+ *
+ * @param str
+ * @returns 返回新字符串
+ */
+function kebabCase(str) {
+    return lowerCase(_getGrouped(toString$1(str)).join('-'));
+}
+
+/**
+ * 查找指定值在字符串中最后出现的位置索引
+ *
+ * @example
+ * //10
+ * console.log(_.lastIndexOf('cyberfunc.js','js'))
+ * //-1
+ * console.log(_.lastIndexOf('cyberfunc.js','js',5))
+ *
+ * @param str
+ * @param search 指定字符串
+ * @param [fromIndex=Infinity] 起始索引，从起始索引位置向左查找指定字符串
+ * @returns 最后一个匹配搜索字符串的位置索引或-1
+ */
+function lastIndexOf(str, search, fromIndex) {
+    str = toString$1(str);
+    return str.lastIndexOf(search, fromIndex || Infinity);
+}
+
+/**
+ * 使用填充字符串填充原字符串达到指定长度。从原字符串末尾开始填充。
+ *
+ * @example
+ * //100
+ * console.log(_.padEnd('1',3,'0'))
+ * //1-0-0-
+ * console.log(_.padEnd('1',6,'-0'))
+ * //1
+ * console.log(_.padEnd('1',0,'-0'))
+ *
+ * @param str 原字符串
+ * @param len 填充后的字符串长度，如果长度小于原字符串长度，返回原字符串
+ * @param [padString=' '] 填充字符串，如果填充后超出指定长度，会自动截取并保留左侧字符串
+ * @returns 在原字符串末尾填充至指定长度后的字符串
+ */
+function padEnd(str, len, padString) {
+    str = toString$1(str);
+    if (str.padEnd)
+        return str.padEnd(len, padString);
+    padString = padString || ' ';
+    const diff = len - str.length;
+    if (diff < 1)
+        return str;
+    let fill = '';
+    let i = Math.ceil(diff / padString.length);
+    while (i--) {
+        fill += padString;
+    }
+    return str + fill.substring(0, diff);
+}
+
+/**
+ * 使用填充字符串填充原字符串达到指定长度。从原字符串起始开始填充。
+ *
+ * @example
+ * //001
+ * console.log(_.padStart('1',3,'0'))
+ *
+ * @param str 原字符串。如果非字符串则会自动转换成字符串
+ * @param len 填充后的字符串长度，如果长度小于原字符串长度，返回原字符串
+ * @param [padString=' '] 填充字符串，如果填充后超出指定长度，会自动截取并保留右侧字符串
+ * @returns 在原字符串起始填充至指定长度后的字符串
+ */
+function padStart(str, len, padString) {
+    str = toString$1(str);
+    if (str.padStart)
+        return str.padStart(len, padString);
+    padString = padString || ' ';
+    const diff = len - str.length;
+    if (diff < 1)
+        return str;
+    let fill = '';
+    let i = Math.ceil(diff / padString.length);
+    while (i--) {
+        fill += padString;
+    }
+    return fill.substring(fill.length - diff, fill.length) + str;
+}
+
+/**
+ * 使用字符0填充原字符串达到指定长度。从原字符串起始位置开始填充。
+ *
+ * @example
+ * //001
+ * console.log(_.padZ('1',3))
+ *
+ * @param str 原字符串
+ * @param len 填充后的字符串长度
+ * @returns 填充后的字符串
+ */
+function padZ(str, len) {
+    return padStart(str, len, '0');
+}
+
+/**
+ * 创建一个以原字符串为模板，重复指定次数的新字符串
+ *
+ * @example
+ * //funcfuncfunc
+ * console.log(_.repeat('func',3))
+ *
+ * @param str 原字符串
+ * @param count 重复次数
+ * @returns 对于null/undefined会返回空字符串
+ */
+function repeat(str, count) {
+    str = toString$1(str);
+    count = Number.isFinite(count) ? count : 0;
+    if (count < 1)
+        return '';
+    if (str.repeat)
+        return str.repeat(count);
+    let i = count;
+    let rs = '';
+    while (i--) {
+        rs += str;
+    }
+    return rs;
+}
+
+/**
+ * 使用<code>replaceValue</code>替换<code>str</code>中的首个<code>searchValue</code>部分
+ *
+ * @example
+ * //'func-js'
+ * console.log(_.replace('func.js','.','-'))
+ * //''
+ * console.log(_.replace(null,'.','-'))
+ * //'kelikeli'
+ * console.log(_.replace('geligeli',/ge/g,'ke'))
+ * //'geligeli'
+ * console.log(_.replace('kelikeli',/ke/g,()=>'ge'))
+ *
+ * @param str 字符串。非字符串值会自动转换成字符串
+ * @param searchValue 查找内容，正则或者字符串
+ * @param replaceValue 替换内容，字符串或处理函数。函数的返回值将用于替换
+ * @returns 替换后的新字符串
+ */
+function replace(str, searchValue, replaceValue) {
+    return toString$1(str).replace(searchValue, replaceValue);
+}
+
+/**
+ * 判断值是不是一个正则对象
+ *
+ * @example
+ * //true
+ * console.log(_.isRegExp(new RegExp))
+ * //true
+ * console.log(_.isRegExp(/1/))
  *
  * @param v
  * @returns
+ * @since 0.19.0
  */
-function isSet$1(v) {
-    return v instanceof Set;
+function isRegExp$1(v) {
+    return typeof v === 'object' && v instanceof RegExp;
 }
 
 /**
@@ -3394,2378 +3145,21 @@ function isObject$1(v) {
     return null !== v && PRIMITIVE_TYPES$1.indexOf(typeof v) < 0;
 }
 
-/**
- * 判断参数是否为类数组对象
- *
- * @example
- * //true
- * console.log(_.isArrayLike('abc123'))
- * //true
- * console.log(_.isArrayLike([]))
- * //true
- * console.log(_.isArrayLike(document.body.children))
- *
- * @param v
- * @returns
- */
-function isArrayLike$1(v) {
-    if (isString$1(v) && v.length > 0)
-        return true;
-    if (!isObject$1(v))
-        return false;
-    // 具有length属性
-    const list = v;
-    if (list.length !== undefined) {
-        const proto = list.constructor.prototype;
-        // NodeList/HTMLCollection/CSSRuleList/...
-        if (isFunction$1(proto.item))
-            return true;
-        // arguments
-        if (isFunction$1(list[Symbol.iterator]))
-            return true;
-    }
-    return false;
-}
-
-/**
- * 判断值是不是一个Map对象
- *
- * @example
- * //true
- * console.log(_.isMap(new Map()))
- * //false
- * console.log(_.isMap(new WeakMap()))
- *
- * @param v
- * @returns
- */
-function isMap$1(v) {
-    return v instanceof Map;
-}
-
-/**
- * 返回对象的所有key数组
- *
- * > 只返回对象的自身可枚举属性
- *
- * @example
- * let f = new Function("this.a=1;this.b=2;");
- * f.prototype.c = 3;
- * //[a,b]
- * console.log(_.keys(new f()))
- *
- * @param obj
- * @returns 对象的key
- */
-function keys$1(obj) {
-    if (obj === null || obj === undefined)
-        return [];
-    return Object.keys(obj);
-}
-
-/**
- * 返回对象的所有value数组
- * <div class="alert alert-secondary">
-      只返回对象的自身可枚举属性
-    </div>
- *
- *
- * @example
- * let f = new Function("this.a=1;this.b=2;");
- * f.prototype.c = 3;
- * //[1,2]
- * console.log(_.values(new f()))
- *
- * @param obj
- * @returns 对象根属性对应的值列表
- */
-function values$1(obj) {
-    return keys$1(obj).map((k) => obj[k]);
-}
-
-/**
- * 把一个集合对象转为array对象。对于非集合对象，
- * <ul>
- * <li>字符串 - 每个字符都会变成数组的元素</li>
- * <li>其他情况 - 返回包含一个collection元素的数组</li>
- * </ul>
- *
- * @example
- * //[1,2,3]
- * console.log(_.toArray(new Set([1,2,3])))
- * //['a','b','c']
- * console.log(_.toArray('abc'))
- * //[1,2,'b']
- * console.log(_.toArray({x:1,y:2,z:'b'}))
- * //[[1, 'a'], [3, 'b'], ['a', 5]]
- * console.log(_.toArray(new Map([[1,'a'],[3,'b'],['a',5]])))
- *
- * @param collection 如果是Map/Object对象会转换为值列表
- *
- * @returns 转换后的数组对象
- */
-function toArray$1(collection) {
-    if (isArray$1(collection))
-        return collection.concat();
-    if (isFunction$1(collection))
-        return [collection];
-    if (isSet$1(collection)) {
-        return Array.from(collection);
-    }
-    else if (isString$1(collection)) {
-        return collection.split('');
-    }
-    else if (isArrayLike$1(collection)) {
-        return Array.from(collection);
-    }
-    else if (isMap$1(collection)) {
-        return Array.from(collection.values());
-    }
-    else if (isObject$1(collection)) {
-        return values$1(collection);
-    }
-    return [collection];
-}
-
-function identity$1(v) {
-    return v;
-}
-
-/**
- * 对集合内的假值进行剔除，并返回剔除后的新数组。假值包括 null/undefined/NaN/0/''/false
- * @example
- * //[1,2,4,'a','1']
- * console.log(_.compact([0,1,false,2,4,undefined,'a','1','',null]))
- *
- * @param array 数组
- * @returns 转换后的新数组对象
- */
-function compact$1(array) {
-    return toArray$1(array).filter(identity$1);
-}
-
-function _eachIterator$1(collection, callback, forRight) {
-    let values;
-    let keys;
-    if (isString$1(collection) || isArrayLike$1(collection)) {
-        let size = collection.length;
-        if (forRight) {
-            while (size--) {
-                const r = callback(collection[size], size, collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            for (let i = 0; i < size; i++) {
-                const r = callback(collection[i], i, collection);
-                if (r === false)
-                    return;
-            }
-        }
-    }
-    else if (isSet$1(collection)) {
-        let size = collection.size;
-        if (forRight) {
-            values = Array.from(collection);
-            while (size--) {
-                const r = callback(values[size], size, collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            values = collection.values();
-            for (let i = 0; i < size; i++) {
-                const r = callback(values.next().value, i, collection);
-                if (r === false)
-                    return;
-            }
-        }
-    }
-    else if (isMap$1(collection)) {
-        let size = collection.size;
-        keys = collection.keys();
-        values = collection.values();
-        if (forRight) {
-            keys = Array.from(keys);
-            values = Array.from(values);
-            while (size--) {
-                const r = callback(values[size], keys[size], collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            for (let i = 0; i < size; i++) {
-                const r = callback(values.next().value, keys.next().value, collection);
-                if (r === false)
-                    return;
-            }
-        }
-    }
-    else if (isObject$1(collection)) {
-        keys = Object.keys(collection);
-        let size = keys.length;
-        if (forRight) {
-            while (size--) {
-                const k = keys[size];
-                const r = callback(collection[k], k, collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            for (let i = 0; i < size; i++) {
-                const k = keys[i];
-                const r = callback(collection[k], k, collection);
-                if (r === false)
-                    return;
-            }
-        }
-    }
-}
-
-function each$1(collection, callback) {
-    _eachIterator$1(collection, callback, false);
-}
-
-/**
- * 判断参数是否为undefined
- * @example
- * //true
- * console.log(_.isUndefined(undefined))
- * //false
- * console.log(_.isUndefined(null))
- *
- * @param v
- * @returns
- */
-function isUndefined$1(v) {
-    return v === undefined;
-}
-
-function toPath$1$1(path) {
-    let chain = path;
-    if (isArray$1(chain)) {
-        chain = chain.join('.');
-    }
-    else {
-        chain += '';
-    }
-    const rs = (chain + '')
-        .replace(/\[([^\]]+)\]/gm, '.$1')
-        .replace(/^\./g, '')
-        .split('.');
-    return rs;
-}
-
-/**
- * 通过path获取对象属性值
- *
- * @example
- * //2
- * console.log(_.get([1,2,3],1))
- * //Holyhigh
- * console.log(_.get({a:{b:[{x:'Holyhigh'}]}},['a','b',0,'x']))
- * //Holyhigh2
- * console.log(_.get({a:{b:[{x:'Holyhigh2'}]}},'a.b.0.x'))
- * //Holyhigh
- * console.log(_.get({a:{b:[{x:'Holyhigh'}]}},'a.b[0].x'))
- * //hi
- * console.log(_.get([[null,[null,null,'hi']]],'[0][1][2]'))
- * //not find
- * console.log(_.get({},'a.b[0].x','not find'))
- *
- * @param obj 需要获取属性值的对象，如果obj不是对象(isObject返回false)，则返回defaultValue
- * @param path 属性路径，可以是索引数字，字符串key，或者多级属性数组
- * @param [defaultValue] 如果path未定义，返回默认值
- * @returns 属性值或默认值
- */
-function get$1(obj, path, defaultValue) {
-    if (!isObject$1(obj))
-        return defaultValue;
-    const chain = toPath$1$1(path);
-    let target = obj;
-    for (let i = 0; i < chain.length; i++) {
-        const seg = chain[i];
-        target = target[seg];
-        if (!target)
-            break;
-    }
-    if (target === undefined)
-        target = defaultValue;
-    return target;
-}
-
-/**
- * 创建一个函数，该函数返回指定对象的path属性值
- * @example
- * const libs = [
- *  {name:'func.js',platform:['web','nodejs'],tags:{utils:true},js:false},
- *  {name:'juth2',platform:['web','java'],tags:{utils:false,middleware:true},js:true},
- *  {name:'soya2d',platform:['web'],tags:{utils:true},js:true}
- * ];
- * //[true,false,true]
- * console.log(_.map(libs,_.prop('tags.utils')))
- * //nodejs
- * console.log(_.prop(['platform',1])(libs[0]))
- *
- * @param path
- * @returns 接收一个对象作为参数的函数
- * @since 0.17.0
- */
-function prop$1(path) {
-    return (obj) => {
-        return get$1(obj, path);
-    };
-}
-
-/**
- * 解析path并返回数组
- * @example
- * //['a', 'b', '2', 'c']
- * console.log(_.toPath('a.b[2].c'))
- * //['a', 'b', 'c', '1']
- * console.log(_.toPath(['a','b','c[1]']))
- * //['1']
- * console.log(_.toPath(1))
- *
- * @param path 属性路径，可以是数字索引，字符串key，或者多级属性数组
- * @returns path数组
- * @since 0.16.0
- */
-function toPath$2(path) {
-    return toPath$1$1(path);
-}
-
-/**
- * 判断值是否为null或undefined
- *
- * @example
- * //true
- * console.log(_.isNil(undefined))
- * //false
- * console.log(_.isNil(0))
- * //true
- * console.log(_.isNil(null))
- * //false
- * console.log(_.isNil(NaN))
- *
- * @param v
- * @returns
- * @since 1.0.0
- */
-function isNil$2(v) {
-    return v === null || v === undefined;
-}
-
-function eq$2(a, b) {
-    if (Number.isNaN(a) && Number.isNaN(b))
-        return true;
-    return a === b;
-}
-
-/**
- * 检测props对象中的所有属性是否在object中存在并使用自定义比较器对属性值进行对比。可以用于对象的深度对比。
- * 当comparator参数是默认值时，与<code>isMath</code>函数相同
- *
- * @example
- * let target = {a:{x:1,y:2},b:1}
- * //true
- * console.log(_.isMatchWith(target,{b:1}))
- * //false
- * console.log(_.isMatchWith(target,{b:'1'}))
- *
- * target = {a:null,b:0}
- * //true
- * console.log(_.isMatchWith(target,{a:'',b:'0'},(a,b)=>_.isEmpty(a) && _.isEmpty(b)?true:a==b))
- *
- * @param target 如果不是对象类型，返回false
- * @param props 对比属性对象，如果是nil，返回true
- * @param [comparator=eq] 比较器，参数(object[k],props[k],k,object,props)，返回true表示匹配
- * @returns 匹配所有props返回true
- * @since 0.18.1
- */
-function isMatchWith$1(target, props, comparator = eq$2) {
-    if (isNil$2(props))
-        return true;
-    const ks = Object.keys(props);
-    if (!isObject$1(target))
-        return false;
-    let rs = true;
-    for (let i = ks.length; i--;) {
-        const k = ks[i];
-        const v1 = target[k];
-        const v2 = props[k];
-        if (isObject$1(v1) && isObject$1(v2)) {
-            if (!isMatchWith$1(v1, v2, comparator)) {
-                rs = false;
-                break;
-            }
-        }
-        else {
-            if (!comparator(v1, v2, k, target, props)) {
-                rs = false;
-                break;
-            }
-        }
-    }
-    return rs;
-}
-
-/**
- * 检测props对象中的所有属性是否在object中存在，可用于对象的深度对比。
- * 使用<code>eq</code>作为值对比逻辑
- *
- * @example
- * let target = {a:{x:1,y:2},b:1}
- * //true
- * console.log(_.isMatch(target,{b:1}))
- * //true
- * console.log(_.isMatch(target,{a:{x:1}}))
- *
- * target = [{x:1,y:2},{b:1}]
- * //true
- * console.log(_.isMatch(target,{1:{b:1}}))
- * //true
- * console.log(_.isMatch(target,[{x:1}]))
- *
- * @param object
- * @param props 对比属性对象，如果是null，返回true
- * @returns 匹配所有props返回true
- * @since 0.17.0
- */
-function isMatch$1(object, props) {
-    return isMatchWith$1(object, props, eq$2);
-}
-
-/**
- * 创建一个函数，该函数接收一个对象为参数并返回对该对象使用props进行验证的的断言结果。
- *
- *
- * @example
- * const libs = [
- *  {name:'func.js',platform:['web','nodejs'],tags:{utils:true},js:true},
- *  {name:'juth2',platform:['web','java'],tags:{utils:false,middleware:true},js:false},
- *  {name:'soya2d',platform:['web'],tags:{utils:true},js:false}
- * ];
- *
- * //[{func.js...}]
- * console.log(_.filter(libs,_.matcher({tags:{utils:true},js:true})))
- *
- * @param props 断言条件对象
- * @returns matcher(v)函数
- * @since 0.17.0
- */
-function matcher$1(props) {
-    return (obj) => {
-        return isMatch$1(obj, props);
-    };
-}
-
-function iteratee$1(value) {
-    if (isUndefined$1(value)) {
-        return identity$1;
-    }
-    else if (isFunction$1(value)) {
-        return value;
-    }
-    else if (isString$1(value)) {
-        return prop$1(value);
-    }
-    else if (isArray$1(value)) {
-        return prop$1(toPath$2(value));
-    }
-    else if (isObject$1(value)) {
-        return matcher$1(value);
-    }
-    return () => false;
-}
-
-/**
- * 对数组进行切片，并返回切片后的新数组，原数组不变。新数组内容是对原数组内容的浅拷贝
- *
- * @example
- * //[2,3,4]
- * console.log(_.slice([1,2,3,4,5],1,4))
- * //[2,3,4,5]
- * console.log(_.slice([1,2,3,4,5],1))
- *
- *
- * @param array 数组
- * @param [begin=0] 切片起始下标，包含下标位置元素
- * @param [end] 切片结束下标，<b>不包含</b>下标位置元素
- * @returns 切片元素组成的新数组
- */
-function slice$1(array, begin, end) {
-    return toArray$1(array).slice(begin || 0, end);
-}
-
-/**
- * 对集合内的所有元素进行断言并返回第一个匹配的元素索引
- *
- * @example
- * //3 查询数组的索引
- * console.log(_.findIndex(['a','b','c',1,3,6],_.isNumber))
- * //0
- * console.log(_.findIndex([{a:1},{a:2},{a:3}],'a'))
- * //2
- * console.log(_.findIndex([{a:1},{a:2},{a:3}],{a:3}))
- *
- * @param array 数组
- * @param predicate (value[,index[,array]]);断言
- * <br>当断言是函数时回调参数见定义
- * <br>其他类型请参考 {@link utils!iteratee}
- * @param fromIndex 从0开始的起始索引，设置该参数可以减少实际遍历次数。默认0
- * @returns 第一个匹配断言的元素索引或-1
- */
-function findIndex$1(array, predicate, fromIndex) {
-    let rs = -1;
-    let fromIndexNum = fromIndex || 0;
-    const itee = iteratee$1(predicate);
-    each$1(slice$1(array, fromIndexNum), (v, k, c) => {
-        const r = itee(v, k, c);
-        if (r) {
-            rs = k + fromIndexNum;
-            return false;
-        }
-    });
-    return rs;
-}
-
-/**
-   * myfx/string v1.1.0
-   * A modular utility library with more utils, higher performance and simpler declarations ...
-   * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
-   */
-
-/**
- * 判断值是否为null或undefined
- *
- * @example
- * //true
- * console.log(_.isNil(undefined))
- * //false
- * console.log(_.isNil(0))
- * //true
- * console.log(_.isNil(null))
- * //false
- * console.log(_.isNil(NaN))
- *
- * @param v
- * @returns
- * @since 1.0.0
- */
-function isNil$1(v) {
-    return v === null || v === undefined;
-}
-
-/**
- * 转换任何对象为字符串。如果对象本身为string类型的值/对象，则返回该对象的字符串形式。否则返回对象的toString()方法的返回值
- *
- * @example
- * //''
- * console.log(_.toString(null))
- * //1
- * console.log(_.toString(1))
- * //3,6,9
- * console.log(_.toString([3,6,9]))
- * //-0
- * console.log(_.toString(-0))
- * //[object Set]
- * console.log(_.toString(new Set([3,6,9])))
- * //{a:1}
- * console.log(_.toString({a:1,toString:()=>'{a:1}'}))
- *
- * @param v 任何值
- * @returns 对于null/undefined会返回空字符串
- */
-function toString$1(v) {
-    if (isNil$1(v))
-        return '';
-    if (v === 0 && 1 / v < 0)
-        return '-0';
-    return v.toString();
-}
-
-/**
- * 判断值是不是一个正则对象
- *
- * @example
- * //true
- * console.log(_.isRegExp(new RegExp))
- * //true
- * console.log(_.isRegExp(/1/))
- *
- * @param v
- * @returns
- * @since 0.19.0
- */
-function isRegExp$1(v) {
-    return typeof v === 'object' && v instanceof RegExp;
-}
-
-/**
- * 使用分隔符将字符串分割为多段数组
- *
- * @example
- * //["func", "js"]
- * console.log(_.split('func.js','.'))
- * //["func"]
- * console.log(_.split('func.js','.',1))
- *
- * @param str 原字符串。如果非字符串则会自动转换成字符串
- * @param separator 分隔符
- * @param [limit] 限制返回的结果数量，为空返回所有结果
- * @returns 分割后的数组
- */
-function split$1(str, separator, limit) {
-    return toString$1(str).split(separator, limit);
-}
-
-/**
- * 检测字符串是否与指定的正则匹配
- *
- * @example
- * //true 忽略大小写包含判断
- * console.log(_.test('func.js','Func','i'))
- * //true 忽略大小写相等判断
- * console.log(_.test('func.js',/^FUNC\.js$/i))
- * //false
- * console.log(_.test('func.js',/FUNC/))
- *
- * @param str
- * @param pattern 指定正则。如果非正则类型会自动转换为正则再进行匹配
- * @param [flags] 如果pattern参数不是正则类型，会使用该标记作为正则构造的第二个参数
- * @returns 匹配返回true
- * @since 0.19.0
- */
-function test$1(str, pattern, flags) {
-    let regExp = pattern;
-    if (!isRegExp$1(regExp)) {
-        regExp = new RegExp(pattern, flags);
-    }
-    return regExp.test(str);
-}
-
-/**
-   * myfx/tree v1.1.0
-   * A modular utility library with more utils, higher performance and simpler declarations ...
-   * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
-   */
-
-/**
- * 根据指定的node及parentKey属性，查找最近的祖先节点
- * @param node Element节点或普通对象节点
- * @param predicate (node,times,cancel)断言函数，如果返回true表示节点匹配。或调用cancel中断查找
- * @param parentKey 父节点引用属性名
- * @returns 断言为true的最近一个祖先节点
- * @since 1.0.0
- */
-function closest$1(node, predicate, parentKey) {
-    let p = node;
-    let t = null;
-    let k = true;
-    let i = 0;
-    while (k && p) {
-        if (predicate(p, i++, () => { k = false; })) {
-            t = p;
-            break;
-        }
-        p = p[parentKey];
-    }
-    return t;
-}
-
-var _Draggable_instances, _Draggable_handleMap, _Draggable_container, _Draggable_initStyle;
-const DRAGGER_GROUPS = {};
-const CLASS_DRAGGABLE = "uii-draggable";
-const CLASS_DRAGGABLE_HANDLE = "uii-draggable-handle";
-const CLASS_DRAGGABLE_ACTIVE = "uii-draggable-active";
-const CLASS_DRAGGABLE_GHOST = "uii-draggable-ghost";
-/**
- * 用于表示一个或多个可拖动元素的定义
- * 每个拖动元素可以有独立handle，也可以公用一个handle
- * 可拖动元素拖动时自动剔除left/top/x/y/cx/cy属性，而使用transform:translate替代
- * > 可用CSS接口
- * - .uii-draggable
- * - .uii-draggable-handle
- * - .uii-draggable-active
- * - .uii-draggable-ghost
- * @public
- */
-class Draggable extends Uii {
-    constructor(els, opts) {
-        super(els, assign$1({
-            containment: false,
-            watch: true,
-            threshold: THRESHOLD,
-            ghost: false,
-            direction: "",
-            scroll: true,
-            useTransform: true,
-            snapOptions: {
-                tolerance: 10,
-            },
-            self: false,
-        }, opts));
-        _Draggable_instances.add(this);
-        _Draggable_handleMap.set(this, new WeakMap());
-        _Draggable_container.set(this, null);
-        if (this.opts.handle) {
-            each$2(this.ele, (el) => {
-                const h = el.querySelector(this.opts.handle);
-                if (!h) {
-                    console.error('No handle found "' + this.opts.handle + '"');
-                    return false;
-                }
-                __classPrivateFieldGet(this, _Draggable_handleMap, "f").set(el, h);
-            });
-        }
-        this.onOptionChanged(this.opts);
-        //put into group
-        if (this.opts.group) {
-            if (!DRAGGER_GROUPS[this.opts.group]) {
-                DRAGGER_GROUPS[this.opts.group] = [];
-            }
-            DRAGGER_GROUPS[this.opts.group].push(...this.ele);
-        }
-        __classPrivateFieldGet(this, _Draggable_instances, "m", _Draggable_initStyle).call(this, this.ele);
-        //containment
-        if (this.opts.containment) {
-            if (isBoolean$1(this.opts.containment)) {
-                __classPrivateFieldSet(this, _Draggable_container, isEmpty$1(this.ele) ? null : this.ele[0].parentElement, "f");
-            }
-            else if (isString$3(this.opts.containment)) {
-                __classPrivateFieldSet(this, _Draggable_container, document.querySelector(this.opts.containment), "f");
-            }
-            else if (isElement$1(this.opts.containment)) {
-                __classPrivateFieldSet(this, _Draggable_container, this.opts.containment, "f");
-            }
-        }
-        if (this.opts.watch && this.eleString) {
-            let con;
-            if (isString$3(this.opts.watch)) {
-                con = document.querySelector(this.opts.watch);
-            }
-            else {
-                con = isEmpty$1(this.ele) ? null : this.ele[0].parentElement;
-            }
-            this.bindEvent(con || document.body, this.opts, __classPrivateFieldGet(this, _Draggable_handleMap, "f"));
-        }
-        else {
-            each$2(this.ele, (el) => {
-                this.bindEvent(el, this.opts, __classPrivateFieldGet(this, _Draggable_handleMap, "f"));
-            });
-        }
-    }
-    bindEvent(bindTarget, opts, handleMap) {
-        const container = __classPrivateFieldGet(this, _Draggable_container, "f");
-        let draggableList = this.ele;
-        const eleString = this.eleString;
-        const initStyle = __classPrivateFieldGet(this, _Draggable_instances, "m", _Draggable_initStyle).bind(this);
-        this.addPointerDown(bindTarget, ({ ev, currentCStyle, onPointerStart, onPointerMove, onPointerEnd, }) => {
-            var _a;
-            let t = ev.target;
-            if (!t)
-                return true;
-            //refresh draggableList
-            if (opts.watch && eleString) {
-                draggableList = bindTarget.querySelectorAll(eleString);
-                initStyle(draggableList);
-            }
-            //find drag dom & handle
-            let findRs = closest$1(t, (node) => includes$1(draggableList, node), "parentNode");
-            if (!findRs)
-                return true;
-            const dragDom = findRs;
-            let handle = handleMap.get(dragDom);
-            if (handle && !handle.contains(t)) {
-                return true;
-            }
-            if (opts.self && dragDom !== t)
-                return true;
-            //检测
-            const onPointerDown = opts.onPointerDown;
-            if (onPointerDown &&
-                onPointerDown({ draggable: dragDom }, ev) === false)
-                return true;
-            const filter = opts.filter;
-            //check filter
-            if (filter) {
-                if (some$1(dragDom.querySelectorAll(filter), (ele) => ele.contains(t)))
-                    return true;
-            }
-            //用于计算鼠标移动时当前位置
-            let offsetParent;
-            let offsetParentRect;
-            let offsetParentCStyle;
-            let offsetPointX = 0;
-            let offsetPointY = 0;
-            const inContainer = !!container;
-            const ghost = opts.ghost;
-            const ghostClass = opts.ghostClass;
-            const ghostTo = opts.ghostTo;
-            const direction = opts.direction;
-            const onStart = opts.onStart;
-            const onDrag = opts.onDrag;
-            const onEnd = opts.onEnd;
-            const onClone = opts.onClone;
-            const originalZIndex = currentCStyle.zIndex;
-            let zIndex = opts.zIndex || originalZIndex;
-            const classes = opts.classes || "";
-            const group = opts.group;
-            const scroll = opts.scroll;
-            const scrollSpeed = opts.scrollSpeed || 10;
-            let gridX, gridY;
-            const snapOn = opts.snap;
-            let snappable;
-            const snapTolerance = ((_a = opts.snapOptions) === null || _a === void 0 ? void 0 : _a.tolerance) || 10;
-            const onSnap = opts.onSnap;
-            let lastSnapDirY = "", lastSnapDirX = "";
-            let lastSnapping = "";
-            const dragDomRect = dragDom.getBoundingClientRect();
-            let originW;
-            let originH;
-            // boundary
-            let minX = 0;
-            let minY = 0;
-            let maxX = 0;
-            let maxY = 0;
-            let ghostNode;
-            let transform;
-            let timer = null;
-            let toLeft = false;
-            let toTop = false;
-            let toRight = false;
-            let toBottom = false;
-            let endX = 0, endY = 0;
-            let startMatrixInfo;
-            let startPointXy;
-            //bind events
-            onPointerStart(function (args) {
-                const { ev } = args;
-                ///////////////////////// initial states start;
-                offsetParent =
-                    dragDom instanceof HTMLElement
-                        ? dragDom.offsetParent || document.body
-                        : dragDom.ownerSVGElement;
-                offsetParentRect = offsetParent.getBoundingClientRect();
-                offsetParentCStyle = window.getComputedStyle(offsetParent);
-                startMatrixInfo = getMatrixInfo(dragDom, true);
-                const offsetXy = getPointInContainer(ev, dragDom, undefined, undefined, startMatrixInfo);
-                offsetPointX = offsetXy.x;
-                offsetPointY = offsetXy.y;
-                startPointXy = getPointInContainer(ev, offsetParent, offsetParentRect, offsetParentCStyle, startMatrixInfo);
-                originW =
-                    dragDomRect.width;
-                originH =
-                    dragDomRect.height;
-                //svg group el
-                if (dragDom instanceof SVGGElement || dragDom instanceof SVGSVGElement) {
-                    let bbox = dragDom.getBBox();
-                    offsetPointX += bbox.x;
-                    offsetPointY += bbox.y;
-                }
-                if (startMatrixInfo.angle != 0) {
-                    let { sx, sy } = getCenterXy(dragDom);
-                    offsetPointX = startPointXy.x - sx;
-                    offsetPointY = startPointXy.y - sy;
-                }
-                if (group) {
-                    let i = -1;
-                    each$2(DRAGGER_GROUPS[group], (el) => {
-                        const z = parseInt(currentCStyle.zIndex) || 0;
-                        if (z > i)
-                            i = z;
-                    });
-                    zIndex = i + 1;
-                }
-                const grid = opts.grid;
-                if (isArray$3(grid)) {
-                    gridX = grid[0];
-                    gridY = grid[1];
-                }
-                else if (isNumber$1(grid)) {
-                    gridX = gridY = grid;
-                }
-                if (snapOn) {
-                    //获取拖动元素所在容器内的可吸附对象
-                    snappable = map$1((container || document).querySelectorAll(snapOn), (el) => {
-                        //计算相对容器xy
-                        const { x, y, w, h } = getRectInContainer(el, offsetParent);
-                        return {
-                            x1: x,
-                            y1: y,
-                            x2: x + w,
-                            y2: y + h,
-                            el: el,
-                        };
-                    });
-                }
-                if (inContainer) {
-                    maxX =
-                        container.scrollWidth - originW / startMatrixInfo.scale;
-                    maxY =
-                        container.scrollHeight - originH / startMatrixInfo.scale;
-                }
-                if (maxX < 0)
-                    maxX = 0;
-                if (maxY < 0)
-                    maxY = 0;
-                ///////////////////////// initial states end;
-                if (ghost) {
-                    if (isFunction$3(ghost)) {
-                        ghostNode = ghost(dragDom);
-                    }
-                    else {
-                        ghostNode = dragDom.cloneNode(true);
-                        ghostNode.style.opacity = "0.3";
-                        ghostNode.style.pointerEvents = "none";
-                        ghostNode.style.position = "absolute";
-                    }
-                    ghostNode.style.zIndex = zIndex + "";
-                    if (ghostClass) {
-                        ghostNode.classList.add(...compact$1(split$1(ghostClass, " ")));
-                    }
-                    ghostNode.classList.add(...compact$1(split$1(classes, " ")));
-                    ghostNode.classList.toggle(CLASS_DRAGGABLE_GHOST, true);
-                    let ghostParent = ghostTo ? (isString$3(ghostTo) ? document.querySelector(ghostTo) : ghostTo) : dragDom.parentNode;
-                    ghostParent === null || ghostParent === void 0 ? void 0 : ghostParent.appendChild(ghostNode);
-                    transform = wrapper(ghostNode, opts.useTransform);
-                    onClone && onClone({ clone: ghostNode, draggable: dragDom }, ev);
-                }
-                else {
-                    transform = wrapper(dragDom, opts.useTransform);
-                }
-                //apply classes
-                dragDom.classList.add(...compact$1(split$1(classes, " ")));
-                if (!ghostNode)
-                    dragDom.style.zIndex = zIndex + "";
-                dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE, true);
-                onStart &&
-                    onStart({ draggable: dragDom, x: startPointXy.x, y: startPointXy.y, transform }, ev);
-                //notify
-                const customEv = new CustomEvent("uii-dragactive", {
-                    bubbles: true,
-                    composed: true,
-                    cancelable: false,
-                    detail: { target: dragDom }
-                });
-                dragDom.dispatchEvent(customEv);
-            });
-            onPointerMove((args) => {
-                const { ev, pointX, pointY, offX, offY } = args;
-                let newX = startPointXy.x + offX;
-                let newY = startPointXy.y + offY;
-                //edge detect
-                if (scroll) {
-                    const lX = pointX - offsetParentRect.x;
-                    const lY = pointY - offsetParentRect.y;
-                    const rX = offsetParentRect.x + offsetParentRect.width - pointX;
-                    const rY = offsetParentRect.y + offsetParentRect.height - pointY;
-                    toLeft = lX < EDGE_THRESHOLD;
-                    toTop = lY < EDGE_THRESHOLD;
-                    toRight = rX < EDGE_THRESHOLD;
-                    toBottom = rY < EDGE_THRESHOLD;
-                    if (toLeft || toTop || toRight || toBottom) {
-                        if (!timer) {
-                            timer = setInterval(() => {
-                                if (toLeft) {
-                                    offsetParent.scrollLeft -= scrollSpeed;
-                                }
-                                else if (toRight) {
-                                    offsetParent.scrollLeft += scrollSpeed;
-                                }
-                                if (toTop) {
-                                    offsetParent.scrollTop -= scrollSpeed;
-                                }
-                                else if (toBottom) {
-                                    offsetParent.scrollTop += scrollSpeed;
-                                }
-                            }, 20);
-                        }
-                    }
-                    else {
-                        if (timer) {
-                            clearInterval(timer);
-                            timer = null;
-                        }
-                    }
-                }
-                let x = newX - offsetPointX;
-                let y = newY - offsetPointY;
-                //grid
-                if (isNumber$1(gridX) && isNumber$1(gridY)) {
-                    x = ((x / gridX) >> 0) * gridX;
-                    y = ((y / gridY) >> 0) * gridY;
-                }
-                if (inContainer) {
-                    if (x < minX) {
-                        x = 0;
-                    }
-                    if (y < minY) {
-                        y = 0;
-                    }
-                    if (x > maxX) {
-                        x = maxX;
-                    }
-                    if (y > maxY) {
-                        y = maxY;
-                    }
-                }
-                let canDrag = true;
-                let emitSnap = false;
-                if (snapOn) {
-                    const currPageX1 = x;
-                    const currPageY1 = y;
-                    const currPageX2 = currPageX1 + originW;
-                    const currPageY2 = currPageY1 + originH;
-                    //check snappable
-                    let snapX = NaN, snapY = NaN;
-                    let targetX, targetY;
-                    let snapDirX, snapDirY;
-                    if (!direction || direction === "v") {
-                        each$2(snappable, (data) => {
-                            if (Math.abs(data.y1 - currPageY1) <= snapTolerance) {
-                                //top parallel
-                                snapY = data.y1;
-                                snapDirY = "t2t";
-                            }
-                            else if (Math.abs(data.y2 - currPageY1) <= snapTolerance) {
-                                //b2t
-                                snapY = data.y2;
-                                snapDirY = "t2b";
-                            }
-                            else if (Math.abs(data.y1 - currPageY2) <= snapTolerance) {
-                                //t2b
-                                snapY = data.y1 - originH;
-                                snapDirY = "b2t";
-                            }
-                            else if (Math.abs(data.y2 - currPageY2) <= snapTolerance) {
-                                //bottom parallel
-                                snapY = data.y2 - originH;
-                                snapDirY = "b2b";
-                            }
-                            if (snapY) {
-                                lastSnapDirY = snapDirY;
-                                targetY = data.el;
-                                return false;
-                            }
-                        });
-                    }
-                    if (!direction || direction === "h") {
-                        each$2(snappable, (data) => {
-                            if (Math.abs(data.x1 - currPageX1) <= snapTolerance) {
-                                //left parallel
-                                snapX = data.x1;
-                                snapDirX = "l2l";
-                            }
-                            else if (Math.abs(data.x2 - currPageX1) <= snapTolerance) {
-                                //r2l
-                                snapX = data.x2;
-                                snapDirX = "l2r";
-                            }
-                            else if (Math.abs(data.x1 - currPageX2) <= snapTolerance) {
-                                //l2r
-                                snapX = data.x1 - originW;
-                                snapDirX = "r2l";
-                            }
-                            else if (Math.abs(data.x2 - currPageX2) <= snapTolerance) {
-                                //right parallel
-                                snapX = data.x2 - originW;
-                                snapDirX = "r2r";
-                            }
-                            if (snapX) {
-                                lastSnapDirX = snapDirX;
-                                targetX = data.el;
-                                return false;
-                            }
-                        });
-                    }
-                    if (snapX || snapY) {
-                        if (snapX) {
-                            x = snapX;
-                        }
-                        if (snapY) {
-                            y = snapY;
-                        }
-                        if (onSnap && lastSnapping !== lastSnapDirX + "" + lastSnapDirY) {
-                            setTimeout(() => {
-                                //emit after relocate
-                                onSnap({
-                                    el: ghostNode || dragDom,
-                                    targetH: targetX,
-                                    targetV: targetY,
-                                    dirH: snapDirX,
-                                    dirV: snapDirY,
-                                }, ev);
-                            }, 0);
-                            lastSnapping = lastSnapDirX + "" + lastSnapDirY;
-                        }
-                        emitSnap = true;
-                    }
-                    else {
-                        lastSnapDirX = lastSnapDirY = lastSnapping = "";
-                    }
-                }
-                if (onDrag && !emitSnap) {
-                    if (onDrag({
-                        draggable: dragDom,
-                        ox: offX,
-                        oy: offY,
-                        x: x,
-                        y: y,
-                        transform,
-                    }, ev) === false) {
-                        canDrag = false;
-                        endX = x;
-                        endY = y;
-                    }
-                }
-                if (canDrag) {
-                    if (direction === "v") {
-                        transform.moveToY(y);
-                    }
-                    else if (direction === "h") {
-                        transform.moveToX(x);
-                    }
-                    else {
-                        transform.moveTo(x, y);
-                    }
-                    endX = x;
-                    endY = y;
-                }
-            });
-            onPointerEnd((args) => {
-                var _a;
-                const { ev, currentStyle } = args;
-                if (scroll) {
-                    if (timer) {
-                        clearInterval(timer);
-                        timer = null;
-                    }
-                }
-                //restore classes
-                dragDom.classList.remove(...compact$1(split$1(classes, " ")));
-                currentStyle.zIndex = originalZIndex;
-                dragDom.classList.remove(CLASS_DRAGGABLE_ACTIVE);
-                let moveToGhost = true;
-                if (onEnd) {
-                    moveToGhost =
-                        onEnd({ draggable: dragDom, x: endX, y: endY, transform }, ev) ===
-                            false
-                            ? false
-                            : true;
-                }
-                //notify
-                const customEv = new CustomEvent("uii-dragdeactive", {
-                    bubbles: true,
-                    composed: true,
-                    cancelable: false,
-                    detail: {
-                        target: dragDom
-                    }
-                });
-                dragDom.dispatchEvent(customEv);
-                if (ghost) {
-                    (_a = ghostNode.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(ghostNode);
-                    if (moveToGhost !== false) {
-                        wrapper(dragDom, opts.useTransform).moveTo(transform.x, transform.y);
-                    }
-                }
-            });
-        }, {
-            threshold: this.opts.threshold || 0,
-            lockPage: true,
-        });
-    }
-    /**
-     * @internal
-     */
-    onOptionChanged(opts) {
-        const droppable = opts.droppable;
-        if (!isFunction$3(droppable)) {
-            if (isUndefined$2(droppable)) {
-                opts.droppable = () => { };
-            }
-            else if (isString$3(droppable)) {
-                opts.droppable = () => document.querySelectorAll(droppable);
-            }
-            else if (isArrayLike$3(droppable)) {
-                opts.droppable = () => droppable;
-            }
-            else if (isElement$1(droppable)) {
-                opts.droppable = () => [droppable];
-            }
-        }
-    }
-}
-_Draggable_handleMap = new WeakMap(), _Draggable_container = new WeakMap(), _Draggable_instances = new WeakSet(), _Draggable_initStyle = function _Draggable_initStyle(draggableList) {
-    each$2(draggableList, (el) => {
-        if (isDefined$1(this.opts.type))
-            el.dataset.dropType = this.opts.type;
-        el.classList.toggle(CLASS_DRAGGABLE, true);
-        const ee = __classPrivateFieldGet(this, _Draggable_handleMap, "f").get(el) || el;
-        ee.classList.toggle(CLASS_DRAGGABLE_HANDLE, true);
-        if (!isUndefined$2(this.opts.cursor)) {
-            el.style.cursor = this.opts.cursor.default || "move";
-            if (isDefined$1(this.opts.cursor.over)) {
-                el.dataset.cursorOver = this.opts.cursor.over;
-                el.dataset.cursorActive = this.opts.cursor.active || "move";
-            }
-        }
-    });
-};
-/**
- * create a draggable pattern for one or more elements with opts
- * @param els selector string / html element
- * @param opts
- * @returns Draggable instance
- */
-function newDraggable(els, opts) {
-    return new Draggable(els, opts);
-}
-
-var _Droppable_active;
-const Droppables = [];
-const CLASS_DROPPABLE = "uii-droppable";
-/**
- * 用于表示一个或多个可响应拖动元素的定义
- * > 可用CSS接口
- * - .uii-droppable
- * @public
- */
-class Droppable extends Uii {
-    constructor(el, opts) {
-        super(el, assign$1({
-            watch: true
-        }, opts));
-        _Droppable_active.set(this, void 0);
-        Droppables.push(this);
-    }
-    /**
-     * @internal
-     */
-    bindEvent(droppable, opts) {
-        //dragenter
-        this.registerEvent(droppable, "mouseenter", (e) => {
-            if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
-                return;
-            if (__classPrivateFieldGet(this, _Droppable_active, "f") === droppable)
-                return;
-            if (opts.hoverClass) {
-                each$2(split$1(opts.hoverClass, ' '), cls => {
-                    droppable.classList.toggle(cls, true);
-                });
-            }
-            if (__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver) {
-                setCursor(__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver);
-            }
-            opts.onEnter && opts.onEnter({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
-        });
-        //dragleave
-        this.registerEvent(droppable, "mouseleave", (e) => {
-            if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
-                return;
-            if (__classPrivateFieldGet(this, _Droppable_active, "f") === droppable)
-                return;
-            if (opts.hoverClass) {
-                each$2(split$1(opts.hoverClass, ' '), cls => {
-                    droppable.classList.toggle(cls, false);
-                });
-            }
-            if (__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver) {
-                setCursor(__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorActive || '');
-            }
-            opts.onLeave && opts.onLeave({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
-        });
-        //dragover
-        this.registerEvent(droppable, "mousemove", (e) => {
-            if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
-                return;
-            if (__classPrivateFieldGet(this, _Droppable_active, "f") === droppable)
-                return;
-            opts.onOver && opts.onOver({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
-        });
-        //drop
-        this.registerEvent(droppable, "mouseup", (e) => {
-            if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
-                return;
-            if (__classPrivateFieldGet(this, _Droppable_active, "f") === droppable)
-                return;
-            if (opts.hoverClass) {
-                each$2(split$1(opts.hoverClass, ' '), cls => {
-                    droppable.classList.toggle(cls, false);
-                });
-            }
-            opts.onDrop && opts.onDrop({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
-        });
-    }
-    /**
-     * @internal
-     */
-    active(target) {
-        let valid = true;
-        const opts = this.opts;
-        if (opts.watch && this.eleString) {
-            let nodes = document.querySelectorAll(this.eleString);
-            this.ele = toArray$3(nodes);
-        }
-        //check accepts
-        if (isString$3(opts.accepts)) {
-            valid = !!target.dataset.dropType && test$1(opts.accepts, target.dataset.dropType);
-        }
-        else if (isFunction$3(opts.accepts)) {
-            valid = opts.accepts(this.ele, target);
-        }
-        if (!valid)
-            return;
-        __classPrivateFieldSet(this, _Droppable_active, target, "f");
-        if (opts.activeClass) {
-            each$2(this.ele, el => {
-                each$2(split$1(opts.activeClass || '', ' '), cls => {
-                    el.classList.toggle(cls, true);
-                });
-            });
-        }
-        opts.onActive && opts.onActive({ draggable: target, droppables: this.ele });
-        //bind events
-        each$2(this.ele, (el) => {
-            el.classList.toggle(CLASS_DROPPABLE, true);
-            el.style.pointerEvents = 'initial';
-            this.bindEvent(el, opts);
-        });
-    }
-    /**
-     * @internal
-     */
-    deactive(target) {
-        if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
-            return;
-        __classPrivateFieldSet(this, _Droppable_active, null, "f");
-        const opts = this.opts;
-        if (opts.activeClass) {
-            each$2(this.ele, el => {
-                each$2(split$1(opts.activeClass || '', ' '), cls => {
-                    el.classList.toggle(cls, false);
-                });
-            });
-        }
-        opts.onDeactive && opts.onDeactive({ draggable: target, droppables: this.ele });
-        //unbind events
-        this.destroy();
-    }
-}
-_Droppable_active = new WeakMap();
-//uii-drag active
-document.addEventListener("uii-dragactive", (e) => {
-    let { target } = e.detail;
-    each$2(Droppables, dpb => {
-        dpb.active(target);
-    });
-});
-document.addEventListener("uii-dragdeactive", (e) => {
-    let { target } = e.detail;
-    each$2(Droppables, dpb => {
-        dpb.deactive(target);
-    });
-});
-/**
- * Enable els to response to draggable objects
- * @param els selector string / html element
- * @param opts
- * @returns
- */
-function newDroppable(els, opts) {
-    return new Droppable(els, opts);
-}
-
-/* eslint-disable max-len */
-const CLASS_ROTATABLE = "uii-rotatable";
-const CLASS_ROTATABLE_HANDLE = "uii-rotatable-handle";
-const CLASS_ROTATABLE_ACTIVE = "uii-rotatable-active";
-/**
- * 用于表示一个或多个可旋转元素的定义
- * > 可用CSS接口
- * - .uii-rotatable
- * - .uii-rotatable-handle
- * - .uii-rotatable-active
- * @public
- */
-class Rotatable extends Uii {
-    constructor(els, opts) {
-        super(els, opts);
-        each$2(this.ele, (el) => {
-            let tmp = el;
-            if (tmp._uiik_rotatable) {
-                tmp._uiik_rotatable.destroy();
-                return false;
-            }
-        });
-        each$2(this.ele, (el) => {
-            el._uiik_rotatable = this;
-            initHandle(this, el, this.opts);
-        });
-    }
-}
-function initHandle(uiik, el, opts) {
-    let handleStr = opts.handle;
-    let handles;
-    if (isString$3(handleStr)) {
-        handles = document.querySelectorAll(handleStr);
-    }
-    else if (isFunction$3(handleStr)) {
-        handles = handleStr(el);
-    }
-    if (!handles) {
-        console.error('Can not find handles with "' + el.outerHTML + '"');
-        return;
-    }
-    each$2(handles, (h) => {
-        var _a;
-        h.classList.add(CLASS_ROTATABLE_HANDLE);
-        h.style.cursor = ((_a = opts.cursor) === null || _a === void 0 ? void 0 : _a.default) || "crosshair";
-        bindHandle(uiik, h, el, opts);
-    });
-    el.classList.toggle(CLASS_ROTATABLE, true);
-}
-function bindHandle(uiik, handle, el, opts) {
-    const onStart = opts.onStart;
-    const onRotate = opts.onRotate;
-    const onEnd = opts.onEnd;
-    let deg = 0;
-    uiik.addPointerDown(handle, ({ onPointerStart, onPointerMove, onPointerEnd }) => {
-        let centerX = 0, centerY = 0;
-        let startOx = 0;
-        let startOy = 0;
-        let startDeg = 0;
-        let container;
-        let startPointXy;
-        //bind events
-        onPointerStart(function (args) {
-            const { ev } = args;
-            const { w, h } = getStyleSize(el);
-            const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h, el);
-            startOx = originX;
-            startOy = originY;
-            let centerXy = getRectCenter(el);
-            centerX = centerXy.x;
-            centerY = centerXy.y;
-            container = el.parentElement;
-            startPointXy = getPointInContainer(ev, container);
-            startDeg =
-                Math.atan2(startPointXy.y - centerY, startPointXy.x - centerX) * ONE_RAD +
-                    90;
-            if (startDeg < 0)
-                startDeg = 360 + startDeg;
-            let matrixInfo = getMatrixInfo(el);
-            startDeg -= matrixInfo.angle;
-            //apply classes
-            el.classList.toggle(CLASS_ROTATABLE_ACTIVE, true);
-            onStart && onStart({ deg, cx: centerX, cy: centerY }, ev);
-        });
-        onPointerMove((args) => {
-            const { ev, offX, offY } = args;
-            let newX = startPointXy.x + offX;
-            let newY = startPointXy.y + offY;
-            deg =
-                Math.atan2(newY - centerY, newX - centerX) * ONE_RAD +
-                    90 -
-                    startDeg;
-            onRotate &&
-                onRotate({
-                    deg,
-                    cx: centerX,
-                    cy: centerY,
-                    target: el,
-                    ox: startOx,
-                    oy: startOy,
-                }, ev);
-            rotateTo(el, deg, startOx, startOy);
-        });
-        onPointerEnd((args) => {
-            const { ev } = args;
-            el.classList.toggle(CLASS_ROTATABLE_ACTIVE, false);
-            onEnd && onEnd({ deg }, ev);
-        });
-    }, {
-        threshold: THRESHOLD,
-        lockPage: true,
-    });
-}
-/**
- * Make els rotatable
- * @param els selector string / html element
- * @param opts
- * @returns
- */
-function newRotatable(els, opts) {
-    return new Rotatable(els, opts);
-}
-
-var _CollisionDetector__targets;
-class CollisionDetector {
-    constructor(el, targets, opts) {
-        _CollisionDetector__targets.set(this, void 0);
-        __classPrivateFieldSet(this, _CollisionDetector__targets, targets, "f");
-        this.opts = {
-            container: document.body
-        };
-        this.opts = assign$1(this.opts, opts);
-        const domEl = isString$3(el) ? document.querySelector(el) : el;
-        if (!domEl) {
-            console.error('Invalid selector "' + el + '"');
-            return;
-        }
-        const ele = domEl;
-        this.el = domEl;
-        //el data
-        const offset = getBox(ele, this.opts.container);
-        const rect = { x: offset.x, y: offset.y, width: ele.offsetWidth, height: ele.offsetHeight };
-        this.elData = {
-            x1: rect.x,
-            y1: rect.y,
-            x2: rect.x + rect.width,
-            y2: rect.y + rect.height,
-        };
-        //targets data
-        this.update();
-    }
-    /**
-     * update targets data if them changed
-     */
-    update() {
-        let targets;
-        if (isFunction$3(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
-            targets = __classPrivateFieldGet(this, _CollisionDetector__targets, "f").call(this);
-        }
-        else if (isString$3(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
-            targets = this.opts.container.querySelectorAll(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"));
-            targets = reject$1(targets, t => t === this.el);
-        }
-        else if (isElement$1(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
-            targets = [__classPrivateFieldGet(this, _CollisionDetector__targets, "f")];
-        }
-        else {
-            targets = __classPrivateFieldGet(this, _CollisionDetector__targets, "f");
-        }
-        this.targetsData = flatMap$1(targets, t => {
-            if (!t)
-                return [];
-            const rect = getRectInContainer(t, this.opts.container);
-            return {
-                x1: rect.x,
-                y1: rect.y,
-                x2: rect.x + rect.w,
-                y2: rect.y + rect.h,
-                el: t
-            };
-        });
-    }
-    getOverlaps(x1, y1, x2, y2) {
-        let elData = this.elData;
-        if (x1 && x2 && y1 && y2) {
-            elData = {
-                x1,
-                y1,
-                x2,
-                y2,
-            };
-        }
-        let overlaps = flatMap$1(this.targetsData, (td, i) => {
-            if (elData.x2 < td.x1 || elData.x1 > td.x2 || elData.y2 < td.y1 || elData.y1 > td.y2)
-                return [];
-            return td.el;
-        });
-        return overlaps;
-    }
-    getInclusions(x1, y1, x2, y2) {
-        let elData = this.elData;
-        if (x1 && x2 && y1 && y2) {
-            elData = {
-                x1,
-                y1,
-                x2,
-                y2,
-            };
-        }
-        let contains = flatMap$1(this.targetsData, (td, i) => {
-            if (elData.x2 >= td.x2 && elData.x1 <= td.x1 && elData.y2 >= td.y2 && elData.y1 <= td.y1)
-                return td.el;
-            return [];
-        });
-        return contains;
-    }
-}
-_CollisionDetector__targets = new WeakMap();
-/**
- * create a detector for the el and return
- * @param el element to be detected
- * @param targets
- * @param opts CollisionDetectorOptions
- * @param opts.container a root element of targets
- * @returns
- */
-function newCollisionDetector(el, targets, opts) {
-    return new CollisionDetector(el, targets, opts);
-}
-
-var _Selectable_instances, _Selectable__detector, _Selectable__lastSelected, _Selectable_bindEvent;
-const CLASS_SELECTOR = "uii-selector";
-const CLASS_SELECTING = "uii-selecting";
-const CLASS_SELECTED = "uii-selected";
-/**
- * 用于表示一个元素选择器的定义
- * > 可用CSS接口
- * - .uii-selector
- * - .uii-selecting
- * - .uii-selected
- * @public
- */
-class Selectable extends Uii {
-    constructor(container, opts) {
-        super(container, assign$1({
-            targets: [],
-            scroll: true,
-        }, opts));
-        _Selectable_instances.add(this);
-        _Selectable__detector.set(this, void 0);
-        _Selectable__lastSelected.set(this, void 0);
-        const domEl = this.ele[0];
-        //create selector
-        let selector = document.createElement("div");
-        if (domEl instanceof SVGElement) {
-            selector = document.createElementNS('http://www.w3.org/2000/svg', "rect");
-        }
-        selector.setAttribute('class', CLASS_SELECTOR);
-        selector.style.cssText = `
-      position:absolute;
-      left:0;top:0;
-    `;
-        if (this.opts.class) {
-            selector.setAttribute('class', selector.getAttribute('class') + " " + this.opts.class);
-        }
-        else {
-            selector.style.cssText += "border:1px dashed #000;stroke:#000;";
-        }
-        selector.style.display = 'none';
-        domEl.appendChild(selector);
-        //create detector
-        __classPrivateFieldSet(this, _Selectable__detector, newCollisionDetector(selector, this.opts.targets, {
-            container: domEl,
-        }), "f");
-        __classPrivateFieldGet(this, _Selectable_instances, "m", _Selectable_bindEvent).call(this, selector, domEl);
-    }
-    /**
-     *  更新targets
-     */
-    updateTargets() {
-        __classPrivateFieldGet(this, _Selectable__detector, "f").update();
-    }
-    /**
-     * @internal
-     */
-    onOptionChanged() {
-        this.updateTargets();
-    }
-}
-_Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap(), _Selectable_instances = new WeakSet(), _Selectable_bindEvent = function _Selectable_bindEvent(selector, con) {
-    const that = this;
-    const opts = this.opts;
-    this.addPointerDown(con, ({ ev, target, currentRect, currentCStyle, currentTarget, onPointerStart, onPointerMove, onPointerEnd }) => {
-        const onStart = opts.onStart;
-        const onSelect = opts.onSelect;
-        const onEnd = opts.onEnd;
-        const mode = opts.mode || "overlap";
-        const scroll = opts.scroll;
-        const scrollSpeed = opts.scrollSpeed || 10;
-        const filter = opts.filter;
-        const selectingClassAry = compact$1(split$1(opts.selectingClass, " "));
-        const selectedClassAry = compact$1(split$1(opts.selectedClass, " "));
-        //check filter
-        if (filter) {
-            if (isFunction$3(filter)) {
-                if (filter(target))
-                    return true;
-            }
-            else if (some$1(con.querySelectorAll(filter), (el) => el.contains(target)))
-                return true;
-        }
-        //检测
-        const onPointerDown = opts.onPointerDown;
-        if (onPointerDown && onPointerDown(ev) === false)
-            return true;
-        let originPos = "";
-        let startPointXy = getPointInContainer(ev, con, currentRect, currentCStyle);
-        let hitPosX = startPointXy.x;
-        let hitPosY = startPointXy.y;
-        const style = selector.style;
-        let selection = [];
-        let lastSelection = [];
-        let x1 = hitPosX, y1 = hitPosY;
-        let timer = null;
-        let toLeft = false;
-        let toTop = false;
-        let toRight = false;
-        let toBottom = false;
-        //bind events
-        onPointerStart(function (args) {
-            const { ev } = args;
-            //update targets count & positions
-            __classPrivateFieldGet(that, _Selectable__detector, "f").update();
-            //detect container position
-            const pos = currentCStyle.position;
-            if (pos === "static") {
-                originPos = con.style.position;
-                con.style.position = "relative";
-            }
-            //clear _lastSelected
-            each$2(__classPrivateFieldGet(that, _Selectable__lastSelected, "f"), t => {
-                target.classList.toggle(CLASS_SELECTED, false);
-            });
-            style.display = 'block';
-            onStart && onStart({ selection: __classPrivateFieldGet(that, _Selectable__lastSelected, "f"), selectable: con }, ev);
-        });
-        onPointerMove(({ ev, offX, offY }) => {
-            let pointX = startPointXy.x + offX;
-            let pointY = startPointXy.y + offY;
-            //edge detect
-            if (scroll) {
-                const ltX = ev.clientX - currentRect.x;
-                const ltY = ev.clientY - currentRect.y;
-                const rbX = currentRect.x + currentRect.width - ev.clientX;
-                const rbY = currentRect.y + currentRect.height - ev.clientY;
-                toLeft = ltX < EDGE_THRESHOLD;
-                toTop = ltY < EDGE_THRESHOLD;
-                toRight = rbX < EDGE_THRESHOLD;
-                toBottom = rbY < EDGE_THRESHOLD;
-                if (toLeft || toTop || toRight || toBottom) {
-                    if (!timer) {
-                        timer = setInterval(() => {
-                            if (toLeft) {
-                                con.scrollLeft -= scrollSpeed;
-                            }
-                            else if (toRight) {
-                                con.scrollLeft += scrollSpeed;
-                            }
-                            if (toTop) {
-                                con.scrollTop -= scrollSpeed;
-                            }
-                            else if (toBottom) {
-                                con.scrollTop += scrollSpeed;
-                            }
-                        }, 20);
-                    }
-                }
-                else {
-                    if (timer) {
-                        clearInterval(timer);
-                        timer = null;
-                    }
-                }
-            }
-            let x = hitPosX, y = hitPosY, w = Math.abs(offX), h = Math.abs(offY);
-            if (offX > 0 && offY > 0) {
-                x1 = hitPosX;
-                y1 = hitPosY;
-            }
-            else if (offX < 0 && offY < 0) {
-                x = x1 = pointX;
-                y = y1 = pointY;
-            }
-            else if (offX < 0) {
-                x = x1 = pointX;
-            }
-            else if (offY < 0) {
-                y = y1 = pointY;
-            }
-            style.width = w + "px";
-            style.height = h + "px";
-            style.transform = `translate3d(${x}px,${y}px,0)`;
-            //detect collision
-            if (mode === "overlap") {
-                selection = __classPrivateFieldGet(that, _Selectable__detector, "f").getOverlaps(x1, y1, x1 + w, y1 + h);
-            }
-            else if (mode === "inclusion") {
-                selection = __classPrivateFieldGet(that, _Selectable__detector, "f").getInclusions(x1, y1, x1 + w, y1 + h);
-            }
-            each$2(lastSelection, (t) => {
-                if (!includes$1(selection, t)) {
-                    t.classList.toggle(CLASS_SELECTING, false);
-                    each$2(selectingClassAry, (cls) => {
-                        t.classList.toggle(cls, false);
-                    });
-                }
-            });
-            each$2(selection, (t) => {
-                t.classList.toggle(CLASS_SELECTING, true);
-                each$2(selectingClassAry, (cls) => {
-                    t.classList.toggle(cls, true);
-                });
-            });
-            const changed = lastSelection.length != selection.length;
-            lastSelection = selection;
-            if (changed && onSelect)
-                onSelect({ selection, selectable: con }, ev);
-        });
-        onPointerEnd((args) => {
-            const { ev, currentStyle } = args;
-            style.display = 'none';
-            if (scroll) {
-                if (timer) {
-                    clearInterval(timer);
-                    timer = null;
-                }
-            }
-            //restore container position
-            if (originPos) {
-                con.style.position = originPos;
-            }
-            each$2(selection, (t) => {
-                each$2(selectingClassAry, (cls) => {
-                    t.classList.toggle(cls, false);
-                });
-                each$2(selectedClassAry, (cls) => {
-                    t.classList.toggle(cls, true);
-                });
-                t.classList.toggle(CLASS_SELECTING, false);
-                t.classList.toggle(CLASS_SELECTED, true);
-            });
-            __classPrivateFieldSet(that, _Selectable__lastSelected, selection, "f");
-            if (onEnd)
-                onEnd({ selection, selectable: con }, ev);
-        });
-    }, {
-        threshold: THRESHOLD,
-        lockPage: true
-    });
-};
-/**
- * Add a selector into the container
- * @param container css selector or html element
- * @param opts
- * @returns
- */
-function newSelectable(container, opts) {
-    return new Selectable(container, opts);
-}
-
-/**
-   * myfx/utils v1.1.0
-   * A modular utility library with more utils, higher performance and simpler declarations ...
-   * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
-   */
-  const ALPHABET$1 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'.split('');
-/**
- * 生成一个指定长度的alphaId并返回。id内容由随机字母表字符组成
- * @example
- * // urN-k0mpetBwboeQ
- * console.log(_.alphaId())
- * // Ii6cPyfw-Ql5YC8OIhVwH1lpGY9x
- * console.log(_.alphaId(28))
- *
- * @param [len=16] id长度
- * @returns alphaId
- * @since 1.0.0
- */
-function alphaId$1(len) {
-    const bytes = self.crypto.getRandomValues(new Uint8Array(len || 16));
-    let rs = '';
-    bytes.forEach(b => rs += ALPHABET$1[b % ALPHABET$1.length]);
-    return rs;
-}
-
-/**
-   * myfx v1.1.0
-   * A modular utility library with more utils, higher performance and simpler declarations ...
-   * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
-   */
-  function _getGrouped(str) {
-    return (str.match(/[A-Z]{2,}|([^\s-_]([^\s-_A-Z]+)?(?=[\s-_A-Z]))|([^\s-_]+(?=$))/g) || []);
-}
-
-/**
- * 判断值是否为null或undefined
- *
- * @example
- * //true
- * console.log(_.isNil(undefined))
- * //false
- * console.log(_.isNil(0))
- * //true
- * console.log(_.isNil(null))
- * //false
- * console.log(_.isNil(NaN))
- *
- * @param v
- * @returns
- * @since 1.0.0
- */
-function isNil(v) {
-    return v === null || v === undefined;
-}
-
-/**
- * 转换任何对象为字符串。如果对象本身为string类型的值/对象，则返回该对象的字符串形式。否则返回对象的toString()方法的返回值
- *
- * @example
- * //''
- * console.log(_.toString(null))
- * //1
- * console.log(_.toString(1))
- * //3,6,9
- * console.log(_.toString([3,6,9]))
- * //-0
- * console.log(_.toString(-0))
- * //[object Set]
- * console.log(_.toString(new Set([3,6,9])))
- * //{a:1}
- * console.log(_.toString({a:1,toString:()=>'{a:1}'}))
- *
- * @param v 任何值
- * @returns 对于null/undefined会返回空字符串
- */
-function toString(v) {
-    if (isNil(v))
-        return '';
-    if (v === 0 && 1 / v < 0)
-        return '-0';
-    return v.toString();
-}
-
-/**
- * 转换字符串第一个字符为大写并返回
- *
- * @example
- * //'First'
- * console.log(_.upperFirst('first'))//mixCase
- * //'GetMyURL'
- * console.log(_.upperFirst('getMyURL'))//camelCase
- *
- * @param str
- * @returns 返回新字符串
- */
-function upperFirst(str) {
-    str = toString(str);
-    if (str.length < 1)
-        return str;
-    return str[0].toUpperCase() + str.substring(1);
-}
-
-/**
- * 返回帕斯卡风格的字符串
- *
- * @example
- * //'LoveLovesToLoveLove'
- * console.log(_.pascalCase('Love loves to love Love'))//spaces
- * //'ABC'
- * console.log(_.pascalCase('a B-c'))//mixCase
- * //'GetMyUrl'
- * console.log(_.pascalCase('getMyURL'))//camelCase
- * //'AbCdEf'
- * console.log(_.pascalCase('AB_CD_EF'))//snakeCase
- * //'ABcDEfGhXy'
- * console.log(_.pascalCase('aBc   D__EF_GH----XY_'))//mixCase
- *
- * @param str
- * @returns 返回新字符串
- */
-function pascalCase(str) {
-    return _getGrouped(toString(str)).reduce((acc, v) => acc + upperFirst(v.toLowerCase()), '');
-}
-
-/**
- * 转换字符串第一个字符为小写并返回
- *
- * @example
- * //'fIRST'
- * console.log(_.lowerFirst('FIRST'))//mixCase
- * //'love loves to love Love'
- * console.log(_.lowerFirst('Love loves to love Love'))//spaces
- *
- * @param str
- * @returns 返回新字符串
- */
-function lowerFirst(str) {
-    str = toString(str);
-    if (str.length < 1)
-        return str;
-    return str[0].toLowerCase() + str.substring(1);
-}
-
-/**
- * 返回驼峰风格的字符串
- *
- * @example
- * //'aBC'
- * console.log(_.camelCase('a-b c'))//mixCase
- * //'loveLovesToLoveLove'
- * console.log(_.camelCase('Love loves to love Love'))//spaces
- * //'aBC'
- * console.log(_.camelCase('a B-c'))//camelCase
- * //'getMyUrl'
- * console.log(_.camelCase('getMyURL'))//camelCase
- *
- * @param str
- * @returns 返回新字符串
- */
-function camelCase(str) {
-    return lowerFirst(pascalCase(toString(str)));
-}
-
-/**
- * 把字符串的首字母大写，如果首字母不是ascii中的a-z则返回原值
- *
- * @example
- * //Abc
- * console.log(_.capitalize('abc'))
- * //''
- * console.log(_.capitalize(null))
- * //1
- * console.log(_.capitalize(1))
- *
- *
- * @param str 字符串
- * @returns 对于null/undefined会返回空字符串
- */
-function capitalize(str) {
-    str = toString(str);
-    if (str.length < 1)
-        return str;
-    return str[0].toUpperCase() + toString(str.substring(1)).toLowerCase();
-}
-
-/**
- * 验证字符串是否以查询子字符串结尾
- *
- * @example
- * //true
- * console.log(_.endsWith('func.js','js'))
- * //true
- * console.log(_.endsWith('func.js','c',4))
- *
- * @param str
- * @param searchStr 查询字符串
- * @param position 索引
- * @returns 如果以查询子字符串开头返回true，否则返回false
- */
-function endsWith(str, searchStr, position) {
-    return toString(str).endsWith(searchStr, position);
-}
-
-const REG_EXP_KEYWORDS = [
-    '\\',
-    '$',
-    '(',
-    ')',
-    '*',
-    '+',
-    '.',
-    '[',
-    ']',
-    '?',
-    '^',
-    '{',
-    '}',
-    '|',
-];
-/**
- * 转义正则字符串中的特殊字符，包括 '\', '$', '(', ')', '*', '+', '.', '[', ']', '?', '^', '\{', '\}', '|'
- *
- * @example
- * //\^\[func\.js\] \+ \{crud-vue\} = \.\*\?\$
- * console.log(_.escapeRegExp('^[func.js] + {crud-vue} = .*?$'))
- *
- * @param str 需要转义的字符串
- * @returns 转义后的新字符串
- * @since 1.0.0
- */
-function escapeRegExp(str) {
-    return toString(str)
-        .split('')
-        .reduce((a, b) => a + (REG_EXP_KEYWORDS.includes(b) ? '\\' + b : b), '');
-}
-
-/**
- * 查找指定值在字符串中首次出现的位置索引
- *
- * @example
- * //10
- * console.log(_.indexOf('cyberfunc.js','js'))
- * //10
- * console.log(_.indexOf('cyberfunc.js','js',5))
- *
- * @param str
- * @param search 指定字符串
- * @param [fromIndex=0] 起始索引
- * @returns 第一个匹配搜索字符串的位置索引或-1
- */
-function indexOf(str, search, fromIndex) {
-    str = toString(str);
-    return str.indexOf(search, fromIndex || 0);
-}
-
-/**
- * 返回所有字母是小写格式的字符串
- *
- * @example
- * //''
- * console.log(_.lowerCase())
- * //'func.js'
- * console.log(_.lowerCase('FUNC.JS'))
- *
- * @param str
- * @returns 返回新字符串
- */
-function lowerCase(str) {
-    return toString(str).toLowerCase();
-}
-
-/**
- * 返回短横线风格的字符串
- *
- * @example
- * //'a-b-c'
- * console.log(_.kebabCase('a_b_c'))//snakeCase
- * //'webkit-perspective-origin-x'
- * console.log(_.kebabCase('webkitPerspectiveOriginX'))//camelCase
- * //'a-b-c'
- * console.log(_.kebabCase('a B-c'))//mixCase
- * //'get-my-url'
- * console.log(_.kebabCase('getMyURL'))//camelCase
- *
- * @param str
- * @returns 返回新字符串
- */
-function kebabCase(str) {
-    return lowerCase(_getGrouped(toString(str)).join('-'));
-}
-
-/**
- * 查找指定值在字符串中最后出现的位置索引
- *
- * @example
- * //10
- * console.log(_.lastIndexOf('cyberfunc.js','js'))
- * //-1
- * console.log(_.lastIndexOf('cyberfunc.js','js',5))
- *
- * @param str
- * @param search 指定字符串
- * @param [fromIndex=Infinity] 起始索引，从起始索引位置向左查找指定字符串
- * @returns 最后一个匹配搜索字符串的位置索引或-1
- */
-function lastIndexOf(str, search, fromIndex) {
-    str = toString(str);
-    return str.lastIndexOf(search, fromIndex || Infinity);
-}
-
-/**
- * 使用填充字符串填充原字符串达到指定长度。从原字符串末尾开始填充。
- *
- * @example
- * //100
- * console.log(_.padEnd('1',3,'0'))
- * //1-0-0-
- * console.log(_.padEnd('1',6,'-0'))
- * //1
- * console.log(_.padEnd('1',0,'-0'))
- *
- * @param str 原字符串
- * @param len 填充后的字符串长度，如果长度小于原字符串长度，返回原字符串
- * @param [padString=' '] 填充字符串，如果填充后超出指定长度，会自动截取并保留左侧字符串
- * @returns 在原字符串末尾填充至指定长度后的字符串
- */
-function padEnd(str, len, padString) {
-    str = toString(str);
-    if (str.padEnd)
-        return str.padEnd(len, padString);
-    padString = padString || ' ';
-    const diff = len - str.length;
-    if (diff < 1)
-        return str;
-    let fill = '';
-    let i = Math.ceil(diff / padString.length);
-    while (i--) {
-        fill += padString;
-    }
-    return str + fill.substring(0, diff);
-}
-
-/**
- * 使用填充字符串填充原字符串达到指定长度。从原字符串起始开始填充。
- *
- * @example
- * //001
- * console.log(_.padStart('1',3,'0'))
- *
- * @param str 原字符串。如果非字符串则会自动转换成字符串
- * @param len 填充后的字符串长度，如果长度小于原字符串长度，返回原字符串
- * @param [padString=' '] 填充字符串，如果填充后超出指定长度，会自动截取并保留右侧字符串
- * @returns 在原字符串起始填充至指定长度后的字符串
- */
-function padStart(str, len, padString) {
-    str = toString(str);
-    if (str.padStart)
-        return str.padStart(len, padString);
-    padString = padString || ' ';
-    const diff = len - str.length;
-    if (diff < 1)
-        return str;
-    let fill = '';
-    let i = Math.ceil(diff / padString.length);
-    while (i--) {
-        fill += padString;
-    }
-    return fill.substring(fill.length - diff, fill.length) + str;
-}
-
-/**
- * 使用字符0填充原字符串达到指定长度。从原字符串起始位置开始填充。
- *
- * @example
- * //001
- * console.log(_.padZ('1',3))
- *
- * @param str 原字符串
- * @param len 填充后的字符串长度
- * @returns 填充后的字符串
- */
-function padZ(str, len) {
-    return padStart(str, len, '0');
-}
-
-/**
- * 创建一个以原字符串为模板，重复指定次数的新字符串
- *
- * @example
- * //funcfuncfunc
- * console.log(_.repeat('func',3))
- *
- * @param str 原字符串
- * @param count 重复次数
- * @returns 对于null/undefined会返回空字符串
- */
-function repeat(str, count) {
-    str = toString(str);
-    count = Number.isFinite(count) ? count : 0;
-    if (count < 1)
-        return '';
-    if (str.repeat)
-        return str.repeat(count);
-    let i = count;
-    let rs = '';
-    while (i--) {
-        rs += str;
-    }
-    return rs;
-}
-
-/**
- * 使用<code>replaceValue</code>替换<code>str</code>中的首个<code>searchValue</code>部分
- *
- * @example
- * //'func-js'
- * console.log(_.replace('func.js','.','-'))
- * //''
- * console.log(_.replace(null,'.','-'))
- * //'kelikeli'
- * console.log(_.replace('geligeli',/ge/g,'ke'))
- * //'geligeli'
- * console.log(_.replace('kelikeli',/ke/g,()=>'ge'))
- *
- * @param str 字符串。非字符串值会自动转换成字符串
- * @param searchValue 查找内容，正则或者字符串
- * @param replaceValue 替换内容，字符串或处理函数。函数的返回值将用于替换
- * @returns 替换后的新字符串
- */
-function replace(str, searchValue, replaceValue) {
-    return toString(str).replace(searchValue, replaceValue);
-}
-
-/**
- * 判断值是不是一个正则对象
- *
- * @example
- * //true
- * console.log(_.isRegExp(new RegExp))
- * //true
- * console.log(_.isRegExp(/1/))
- *
- * @param v
- * @returns
- * @since 0.19.0
- */
-function isRegExp(v) {
-    return typeof v === 'object' && v instanceof RegExp;
-}
-
-/**
- * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
- *
- * @example
- * //true
- * console.log(_.isString(new String('')))
- * //true
- * console.log(_.isString(''))
- *
- * @param v
- * @returns
- */
-function isString(v) {
-    return typeof v === 'string' || v instanceof String;
-}
-
-const PRIMITIVE_TYPES = [
-    'string',
-    'number',
-    'bigint',
-    'boolean',
-    'undefined',
-    'symbol',
-];
-/**
- * 判断值是不是一个非基本类型外的值，如果true则认为值是一个对象
- * 同样，该方法还可以用来判断一个值是不是基本类型
- *
- * @example
- * //false
- * console.log(_.isObject(1))
- * //true
- * console.log(_.isObject(new String()))
- * //false
- * console.log(_.isObject(true))
- * //false
- * console.log(_.isObject(null))
- *
- * @param v value
- * @returns 是否对象。如果值是null返回false，即使typeof null === 'object'
- */
-function isObject(v) {
-    return null !== v && PRIMITIVE_TYPES.indexOf(typeof v) < 0;
-}
-
 function replaceAll(str, searchValue, replaceValue) {
     let searchExp;
-    let strRs = toString(str);
-    if (isRegExp(searchValue)) {
+    let strRs = toString$1(str);
+    if (isRegExp$1(searchValue)) {
         searchExp = searchValue;
         if (!searchValue.global) {
             searchExp = new RegExp(searchValue, searchValue.flags + 'g');
         }
         return strRs.replace(searchExp, replaceValue);
     }
-    else if (isString(searchValue)) {
+    else if (isString$1(searchValue)) {
         searchExp = new RegExp(escapeRegExp(searchValue), 'g');
         return strRs.replace(searchExp, replaceValue);
     }
-    else if (isObject(searchValue)) {
+    else if (isObject$1(searchValue)) {
         const ks = Object.keys(searchValue);
         for (let i = ks.length; i--;) {
             const k = ks[i];
@@ -5795,7 +3189,7 @@ function replaceAll(str, searchValue, replaceValue) {
  * @returns 返回新字符串
  */
 function snakeCase(str) {
-    return lowerCase(_getGrouped(toString(str)).join('_'));
+    return lowerCase(_getGrouped(toString$1(str)).join('_'));
 }
 
 /**
@@ -5812,8 +3206,8 @@ function snakeCase(str) {
  * @param [limit] 限制返回的结果数量，为空返回所有结果
  * @returns 分割后的数组
  */
-function split(str, separator, limit) {
-    return toString(str).split(separator, limit);
+function split$1(str, separator, limit) {
+    return toString$1(str).split(separator, limit);
 }
 
 /**
@@ -5833,7 +3227,7 @@ function split(str, separator, limit) {
  * @returns 如果以查询子字符串开头返回true，否则返回false
  */
 function startsWith(str, searchStr, position) {
-    return toString(str).startsWith(searchStr, position);
+    return toString$1(str).startsWith(searchStr, position);
 }
 
 /**
@@ -5853,7 +3247,7 @@ function startsWith(str, searchStr, position) {
  * @returns
  */
 function substring(str, indexStart, indexEnd) {
-    str = toString(str);
+    str = toString$1(str);
     indexStart = indexStart || 0;
     return str.substring(indexStart, indexEnd);
 }
@@ -5875,9 +3269,9 @@ function substring(str, indexStart, indexEnd) {
  * @returns 匹配返回true
  * @since 0.19.0
  */
-function test(str, pattern, flags) {
+function test$1(str, pattern, flags) {
     let regExp = pattern;
-    if (!isRegExp(regExp)) {
+    if (!isRegExp$1(regExp)) {
         regExp = new RegExp(pattern, flags);
     }
     return regExp.test(str);
@@ -5960,7 +3354,7 @@ function toFixed(v, scale) {
  * @returns 对于null/undefined会返回空字符串
  */
 function trim(str) {
-    str = toString(str);
+    str = toString$1(str);
     return str.trim();
 }
 
@@ -5975,7 +3369,7 @@ function trim(str) {
  * @returns 对于null/undefined会返回空字符串
  */
 function trimEnd(str) {
-    str = toString(str);
+    str = toString$1(str);
     if (str.trimEnd)
         return str.trimEnd();
     return str.replace(/\s*$/, '');
@@ -5992,7 +3386,7 @@ function trimEnd(str) {
  * @returns 对于null/undefined会返回空字符串
  */
 function trimStart(str) {
-    str = toString(str);
+    str = toString$1(str);
     if (str.trimStart)
         return str.trimStart();
     return str.replace(/^\s*/, '');
@@ -6022,17 +3416,17 @@ function trimStart(str) {
  * @since 1.0.0
  */
 function truncate(str, len, options) {
-    str = toString(str);
+    str = toString$1(str);
     if (str.length <= len)
         return str;
-    if (!isObject(options)) {
+    if (!isObject$1(options)) {
         options = { omission: '...' };
     }
     options.omission = options.omission || '...';
     str = str.substring(0, len);
     if (options.separator) {
         let separator = options.separator;
-        if (!isObject(separator)) {
+        if (!isObject$1(separator)) {
             separator = new RegExp(escapeRegExp(separator), 'g');
         }
         else if (!separator.global) {
@@ -6063,7 +3457,7 @@ function truncate(str, len, options) {
  * @returns 返回新字符串
  */
 function upperCase(str) {
-    return toString(str).toUpperCase();
+    return toString$1(str).toUpperCase();
 }
 
 var str = /*#__PURE__*/Object.freeze({
@@ -6085,12 +3479,12 @@ var str = /*#__PURE__*/Object.freeze({
   replace: replace,
   replaceAll: replaceAll,
   snakeCase: snakeCase,
-  split: split,
+  split: split$1,
   startsWith: startsWith,
   substring: substring,
-  test: test,
+  test: test$1,
   toFixed: toFixed,
-  toString: toString,
+  toString: toString$1,
   trim: trim,
   trimEnd: trimEnd,
   trimStart: trimStart,
@@ -6579,7 +3973,7 @@ function isInteger(v) {
  * @param v
  * @returns
  */
-function isArray(v) {
+function isArray$1(v) {
     // 使用 instanceof Array 无法鉴别某些场景，比如
     // Array.prototype instanceof Array => false
     // Array.isArray(Array.prototype) => true
@@ -6628,7 +4022,7 @@ function toDate(value) {
         }
         rs = new Date(value);
     }
-    else if (isArray(value)) {
+    else if (isArray$1(value)) {
         rs = new Date(...value);
     }
     else {
@@ -6976,7 +4370,7 @@ var datetime = /*#__PURE__*/Object.freeze({
  * @param v
  * @returns
  */
-function isFunction(v) {
+function isFunction$1(v) {
     return typeof v == 'function' || v instanceof Function;
 }
 
@@ -6994,20 +4388,20 @@ function isFunction(v) {
  * @param v
  * @returns
  */
-function isArrayLike(v) {
-    if (isString(v) && v.length > 0)
+function isArrayLike$1(v) {
+    if (isString$1(v) && v.length > 0)
         return true;
-    if (!isObject(v))
+    if (!isObject$1(v))
         return false;
     // 具有length属性
     const list = v;
     if (list.length !== undefined) {
         const proto = list.constructor.prototype;
         // NodeList/HTMLCollection/CSSRuleList/...
-        if (isFunction(proto.item))
+        if (isFunction$1(proto.item))
             return true;
         // arguments
-        if (isFunction(list[Symbol.iterator]))
+        if (isFunction$1(list[Symbol.iterator]))
             return true;
     }
     return false;
@@ -7124,7 +4518,7 @@ function isEmpty(v) {
         return true;
     if (0 === v)
         return true;
-    if (isArrayLike(v) && v.length < 1)
+    if (isArrayLike$1(v) && v.length < 1)
         return true;
     if (v instanceof Object && Object.keys(v).length < 1)
         return true;
@@ -7152,7 +4546,7 @@ function eq$1(a, b) {
  */
 function isEqualWith(a, b, comparator) {
     let cptor = comparator;
-    if (!isObject(a) || !isObject(b)) {
+    if (!isObject$1(a) || !isObject$1(b)) {
         return (cptor || eq$1)(a, b);
     }
     let keys = [];
@@ -7160,7 +4554,7 @@ function isEqualWith(a, b, comparator) {
         return false;
     if (isDate(a) && isDate(b))
         return cptor ? cptor(a, b) : a.getTime() === b.getTime();
-    if (isRegExp(a) && isRegExp(b))
+    if (isRegExp$1(a) && isRegExp$1(b))
         return cptor ? cptor(a, b) : a.toString() === b.toString();
     for (let i = keys.length; i--;) {
         const k = keys[i];
@@ -7250,7 +4644,7 @@ function isFinite(v) {
  * @param v
  * @returns
  */
-function isMap(v) {
+function isMap$1(v) {
     return v instanceof Map;
 }
 
@@ -7275,19 +4669,19 @@ function isMap(v) {
  * @returns 匹配所有props返回true
  * @since 0.18.1
  */
-function isMatchWith(target, props, comparator = eq$1) {
-    if (isNil(props))
+function isMatchWith$1(target, props, comparator = eq$1) {
+    if (isNil$2(props))
         return true;
     const ks = Object.keys(props);
-    if (!isObject(target))
+    if (!isObject$1(target))
         return false;
     let rs = true;
     for (let i = ks.length; i--;) {
         const k = ks[i];
         const v1 = target[k];
         const v2 = props[k];
-        if (isObject(v1) && isObject(v2)) {
-            if (!isMatchWith(v1, v2, comparator)) {
+        if (isObject$1(v1) && isObject$1(v2)) {
+            if (!isMatchWith$1(v1, v2, comparator)) {
                 rs = false;
                 break;
             }
@@ -7324,8 +4718,8 @@ function isMatchWith(target, props, comparator = eq$1) {
  * @returns 匹配所有props返回true
  * @since 0.17.0
  */
-function isMatch(object, props) {
-    return isMatchWith(object, props, eq$1);
+function isMatch$1(object, props) {
+    return isMatchWith$1(object, props, eq$1);
 }
 
 /**
@@ -7407,7 +4801,7 @@ function isNumber(v) {
  * @since 0.19.0
  */
 function isPlainObject(v) {
-    return isObject(v) && v.constructor === Object.prototype.constructor;
+    return isObject$1(v) && v.constructor === Object.prototype.constructor;
 }
 
 /**
@@ -7448,7 +4842,7 @@ function isSafeInteger(v) {
  * @param v
  * @returns
  */
-function isSet(v) {
+function isSet$1(v) {
     return v instanceof Set;
 }
 
@@ -7478,7 +4872,7 @@ function isSymbol(v) {
  * @param v
  * @returns
  */
-function isUndefined(v) {
+function isUndefined$1(v) {
     return v === undefined;
 }
 
@@ -7516,8 +4910,8 @@ function isWeakSet(v) {
 
 var is = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  isArray: isArray,
-  isArrayLike: isArrayLike,
+  isArray: isArray$1,
+  isArrayLike: isArrayLike$1,
   isBlank: isBlank,
   isBoolean: isBoolean,
   isDate: isDate,
@@ -7528,34 +4922,34 @@ var is = /*#__PURE__*/Object.freeze({
   isEqualWith: isEqualWith,
   isError: isError,
   isFinite: isFinite,
-  isFunction: isFunction,
+  isFunction: isFunction$1,
   isInteger: isInteger,
-  isMap: isMap,
-  isMatch: isMatch,
-  isMatchWith: isMatchWith,
+  isMap: isMap$1,
+  isMatch: isMatch$1,
+  isMatchWith: isMatchWith$1,
   isNaN: isNaN$1,
-  isNil: isNil,
+  isNil: isNil$2,
   isNull: isNull,
   isNumber: isNumber,
-  isObject: isObject,
+  isObject: isObject$1,
   isPlainObject: isPlainObject,
-  isRegExp: isRegExp,
+  isRegExp: isRegExp$1,
   isSafeInteger: isSafeInteger,
-  isSet: isSet,
-  isString: isString,
+  isSet: isSet$1,
+  isString: isString$1,
   isSymbol: isSymbol,
-  isUndefined: isUndefined,
+  isUndefined: isUndefined$1,
   isWeakMap: isWeakMap,
   isWeakSet: isWeakSet
 });
 
-function identity(v) {
+function identity$1(v) {
     return v;
 }
 
 function eachSources(target, sources, handler, afterHandler) {
     sources.forEach((src) => {
-        if (!isObject(src))
+        if (!isObject$1(src))
             return;
         Object.keys(src).forEach((k) => {
             let v = src[k];
@@ -7570,7 +4964,7 @@ function eachSources(target, sources, handler, afterHandler) {
 function checkTarget(target) {
     if (target === null || target === undefined)
         return {};
-    if (!isObject(target))
+    if (!isObject$1(target))
         return new target.constructor(target);
     if (!Object.isExtensible(target) ||
         Object.isFrozen(target) ||
@@ -7600,7 +4994,7 @@ function assignWith(target, ...sources) {
     const sl = sources.length;
     let handler = src[sl - 1];
     if (!handler || !handler.call) {
-        handler = identity;
+        handler = identity$1;
     }
     else {
         src = src.slice(0, sl - 1);
@@ -7630,7 +5024,7 @@ function assignWith(target, ...sources) {
  * @returns 返回target
  */
 function assign(target, ...sources) {
-    return assignWith(target, ...sources, identity);
+    return assignWith(target, ...sources, identity$1);
 }
 
 function cloneBuiltInObject(obj) {
@@ -7641,10 +5035,10 @@ function cloneBuiltInObject(obj) {
     else if (isBoolean(obj)) {
         rs = Boolean(obj);
     }
-    else if (isString(obj)) {
+    else if (isString$1(obj)) {
         rs = String(obj);
     }
-    else if (isRegExp(obj)) {
+    else if (isRegExp$1(obj)) {
         rs = new RegExp(obj);
     }
     return rs;
@@ -7667,10 +5061,10 @@ function cloneBuiltInObject(obj) {
  * @param  {Function} [handler=identity] (obj[k],k) 自定义赋值处理器，返回赋予新对象[k]的值
  * @returns 被复制的新对象
  */
-function cloneWith(obj, handler = identity) {
-    if (!isObject(obj))
+function cloneWith(obj, handler = identity$1) {
+    if (!isObject$1(obj))
         return obj;
-    if (isFunction(obj))
+    if (isFunction$1(obj))
         return obj;
     let copy = cloneBuiltInObject(obj);
     if (copy !== null)
@@ -7693,7 +5087,7 @@ function cloneWith(obj, handler = identity) {
  * @returns 被复制的新对象
  */
 function clone(obj) {
-    return cloneWith(obj, identity);
+    return cloneWith(obj, identity$1);
 }
 
 /**
@@ -7712,9 +5106,9 @@ function clone(obj) {
  * @returns 被复制的新对象
  */
 function cloneDeepWith(obj, handler) {
-    if (!isObject(obj))
+    if (!isObject$1(obj))
         return obj;
-    if (isFunction(obj))
+    if (isFunction$1(obj))
         return obj;
     let copy = cloneBuiltInObject(obj);
     if (copy !== null)
@@ -7722,8 +5116,8 @@ function cloneDeepWith(obj, handler) {
     copy = new obj.constructor();
     const propNames = Object.keys(obj);
     propNames.forEach((p) => {
-        let newProp = (handler || identity)(obj[p], p, obj);
-        if (isObject(newProp)) {
+        let newProp = (handler || identity$1)(obj[p], p, obj);
+        if (isObject$1(newProp)) {
             newProp = cloneDeepWith(newProp, handler);
         }
         try {
@@ -7751,7 +5145,7 @@ function cloneDeepWith(obj, handler) {
  * @returns 被复制的新对象
  */
 function cloneDeep(obj) {
-    return cloneDeepWith(obj, identity);
+    return cloneDeepWith(obj, identity$1);
 }
 
 /**
@@ -7807,7 +5201,7 @@ function defaultsDeep(target, ...sources) {
         if (tv === undefined) {
             t[k] = v;
         }
-        else if (isObject(tv) && !isFunction(tv)) {
+        else if (isObject$1(tv) && !isFunction$1(tv)) {
             defaultsDeep(tv, sv);
         }
     });
@@ -7829,13 +5223,13 @@ function defaultsDeep(target, ...sources) {
  * @returns
  * @since 1.0.0
  */
-function eq(a, b) {
+function eq$2(a, b) {
     return eq$1(a, b);
 }
 
-function toPath$1(path) {
+function toPath$1$1(path) {
     let chain = path;
-    if (isArray(chain)) {
+    if (isArray$1(chain)) {
         chain = chain.join('.');
     }
     else {
@@ -7870,10 +5264,10 @@ function toPath$1(path) {
  * @param [defaultValue] 如果path未定义，返回默认值
  * @returns 属性值或默认值
  */
-function get(obj, path, defaultValue) {
-    if (!isObject(obj))
+function get$1(obj, path, defaultValue) {
+    if (!isObject$1(obj))
         return defaultValue;
-    const chain = toPath$1(path);
+    const chain = toPath$1$1(path);
     let target = obj;
     for (let i = 0; i < chain.length; i++) {
         const seg = chain[i];
@@ -7903,9 +5297,9 @@ function get(obj, path, defaultValue) {
  * @returns 接收一个对象作为参数的函数
  * @since 0.17.0
  */
-function prop(path) {
+function prop$1(path) {
     return (obj) => {
-        return get(obj, path);
+        return get$1(obj, path);
     };
 }
 
@@ -7923,8 +5317,8 @@ function prop(path) {
  * @returns path数组
  * @since 0.16.0
  */
-function toPath(path) {
-    return toPath$1(path);
+function toPath$2(path) {
+    return toPath$1$1(path);
 }
 
 /**
@@ -7945,27 +5339,27 @@ function toPath(path) {
  * @returns matcher(v)函数
  * @since 0.17.0
  */
-function matcher(props) {
+function matcher$1(props) {
     return (obj) => {
-        return isMatch(obj, props);
+        return isMatch$1(obj, props);
     };
 }
 
-function iteratee(value) {
-    if (isUndefined(value)) {
-        return identity;
+function iteratee$1(value) {
+    if (isUndefined$1(value)) {
+        return identity$1;
     }
-    else if (isFunction(value)) {
+    else if (isFunction$1(value)) {
         return value;
     }
-    else if (isString(value)) {
-        return prop(value);
+    else if (isString$1(value)) {
+        return prop$1(value);
     }
-    else if (isArray(value)) {
-        return prop(toPath(value));
+    else if (isArray$1(value)) {
+        return prop$1(toPath$2(value));
     }
-    else if (isObject(value)) {
-        return matcher(value);
+    else if (isObject$1(value)) {
+        return matcher$1(value);
     }
     return () => false;
 }
@@ -7996,7 +5390,7 @@ function iteratee(value) {
  * @returns 第一个匹配断言的元素的key或undefined
  */
 function findKey(object, predicate) {
-    const callback = iteratee(predicate);
+    const callback = iteratee$1(predicate);
     let rs;
     for (let k in object) {
         let v = object[k];
@@ -8047,7 +5441,7 @@ function fromPairs(pairs) {
 function functions$1(obj) {
     let rs = [];
     for (let k in obj) {
-        if (isFunction(obj[k])) {
+        if (isFunction$1(obj[k])) {
             rs.push(k);
         }
     }
@@ -8083,7 +5477,7 @@ function has(obj, key) {
  * @param obj
  * @returns 对象的key
  */
-function keys(obj) {
+function keys$1(obj) {
     if (obj === null || obj === undefined)
         return [];
     return Object.keys(obj);
@@ -8132,8 +5526,8 @@ function noop() {
  * @param obj
  * @returns 对象根属性对应的值列表
  */
-function values(obj) {
-    return keys(obj).map((k) => obj[k]);
+function values$1(obj) {
+    return keys$1(obj).map((k) => obj[k]);
 }
 
 /**
@@ -8157,25 +5551,25 @@ function values(obj) {
  *
  * @returns 转换后的数组对象
  */
-function toArray(collection) {
-    if (isArray(collection))
+function toArray$1(collection) {
+    if (isArray$1(collection))
         return collection.concat();
-    if (isFunction(collection))
+    if (isFunction$1(collection))
         return [collection];
-    if (isSet(collection)) {
+    if (isSet$1(collection)) {
         return Array.from(collection);
     }
-    else if (isString(collection)) {
+    else if (isString$1(collection)) {
         return collection.split('');
     }
-    else if (isArrayLike(collection)) {
+    else if (isArrayLike$1(collection)) {
         return Array.from(collection);
     }
-    else if (isMap(collection)) {
+    else if (isMap$1(collection)) {
         return Array.from(collection.values());
     }
-    else if (isObject(collection)) {
-        return values(collection);
+    else if (isObject$1(collection)) {
+        return values$1(collection);
     }
     return [collection];
 }
@@ -8199,8 +5593,8 @@ function toArray(collection) {
 function concat(...arrays) {
     if (arrays.length < 1)
         return [];
-    arrays = arrays.map((alk) => (isArrayLike(alk) ? toArray(alk) : alk));
-    return toArray(arrays[0]).concat(...arrays.slice(1));
+    arrays = arrays.map((alk) => (isArrayLike$1(alk) ? toArray$1(alk) : alk));
+    return toArray$1(arrays[0]).concat(...arrays.slice(1));
 }
 
 /**
@@ -8225,7 +5619,7 @@ function mergeWith(target, ...sources) {
     let src = sources;
     const sl = src.length;
     let handler = src[sl - 1];
-    if (!isFunction(handler)) {
+    if (!isFunction$1(handler)) {
         handler = noop;
     }
     else {
@@ -8242,7 +5636,7 @@ function walkSources(target, src, handler, stack) {
             t[k] = v;
         }
         else {
-            if (isObject(tv) && !isFunction(tv)) {
+            if (isObject$1(tv) && !isFunction$1(tv)) {
                 walkSources(tv, [sv], handler, path);
             }
             else {
@@ -8296,7 +5690,7 @@ function omitBy(obj, predicate) {
         return rs;
     Object.keys(obj).forEach(k => {
         let v = obj[k];
-        if (!(predicate || identity)(v, k)) {
+        if (!(predicate || identity$1)(v, k)) {
             rs[k] = v;
         }
     });
@@ -8323,7 +5717,7 @@ function omitBy(obj, predicate) {
 function flat(array, depth = 1) {
     if (depth < 1)
         return array.concat();
-    const rs = toArray(array).reduce((acc, val) => {
+    const rs = toArray$1(array).reduce((acc, val) => {
         return acc.concat(Array.isArray(val) && depth > 0 ? flat(val, depth - 1) : val);
     }, []);
     return rs;
@@ -8384,17 +5778,17 @@ function pickBy(obj, predicate) {
         return rs;
     Object.keys(obj).forEach(k => {
         let v = obj[k];
-        if ((predicate || identity)(v, k)) {
+        if ((predicate || identity$1)(v, k)) {
             rs[k] = v;
         }
     });
     return rs;
 }
 
-function _eachIterator(collection, callback, forRight) {
+function _eachIterator$1(collection, callback, forRight) {
     let values;
     let keys;
-    if (isString(collection) || isArrayLike(collection)) {
+    if (isString$1(collection) || isArrayLike$1(collection)) {
         let size = collection.length;
         if (forRight) {
             while (size--) {
@@ -8411,7 +5805,7 @@ function _eachIterator(collection, callback, forRight) {
             }
         }
     }
-    else if (isSet(collection)) {
+    else if (isSet$1(collection)) {
         let size = collection.size;
         if (forRight) {
             values = Array.from(collection);
@@ -8430,7 +5824,7 @@ function _eachIterator(collection, callback, forRight) {
             }
         }
     }
-    else if (isMap(collection)) {
+    else if (isMap$1(collection)) {
         let size = collection.size;
         keys = collection.keys();
         values = collection.values();
@@ -8451,7 +5845,7 @@ function _eachIterator(collection, callback, forRight) {
             }
         }
     }
-    else if (isObject(collection)) {
+    else if (isObject$1(collection)) {
         keys = Object.keys(collection);
         let size = keys.length;
         if (forRight) {
@@ -8473,8 +5867,8 @@ function _eachIterator(collection, callback, forRight) {
     }
 }
 
-function each(collection, callback) {
-    _eachIterator(collection, callback, false);
+function each$1(collection, callback) {
+    _eachIterator$1(collection, callback, false);
 }
 
 /**
@@ -8492,8 +5886,8 @@ function each(collection, callback) {
  * @param [end] 切片结束下标，<b>不包含</b>下标位置元素
  * @returns 切片元素组成的新数组
  */
-function slice(array, begin, end) {
-    return toArray(array).slice(begin || 0, end);
+function slice$1(array, begin, end) {
+    return toArray$1(array).slice(begin || 0, end);
 }
 
 /**
@@ -8525,13 +5919,13 @@ function slice(array, begin, end) {
 function includes(collection, value, fromIndex) {
     let rs = false;
     fromIndex = fromIndex || 0;
-    if (isString(collection)) {
+    if (isString$1(collection)) {
         return collection.includes(value, fromIndex);
     }
-    collection = isArrayLike(collection)
-        ? slice(collection, fromIndex)
+    collection = isArrayLike$1(collection)
+        ? slice$1(collection, fromIndex)
         : collection;
-    each(collection, (v) => {
+    each$1(collection, (v) => {
         if (eq$1(v, value)) {
             rs = true;
             return false;
@@ -8579,9 +5973,9 @@ function pick(obj, ...props) {
  * @since 0.16.0
  */
 function set(obj, path, value) {
-    if (!isObject(obj))
+    if (!isObject$1(obj))
         return obj;
-    const chain = toPath$1(path);
+    const chain = toPath$1$1(path);
     let target = obj;
     for (let i = 0; i < chain.length; i++) {
         const seg = chain[i];
@@ -8627,11 +6021,11 @@ function toObject(...vals) {
     const pairs = []; // 存放k/v
     let key = null;
     vals.forEach((v) => {
-        if (isArray(v)) {
+        if (isArray$1(v)) {
             const tmp = toObject(...v);
             assign(rs, tmp);
         }
-        else if (isObject(v)) {
+        else if (isObject$1(v)) {
             if (key) {
                 pairs.push(key, v);
                 key = null;
@@ -8688,9 +6082,9 @@ function toPairs(obj) {
  * @returns 成功返回true，失败或路径不存在返回false
  */
 function unset(obj, path) {
-    if (!isObject(obj))
+    if (!isObject$1(obj))
         return obj;
-    const chain = toPath$1(path);
+    const chain = toPath$1$1(path);
     let target = obj;
     for (let i = 0; i < chain.length; i++) {
         const seg = chain[i];
@@ -8734,13 +6128,13 @@ var object = /*#__PURE__*/Object.freeze({
   cloneWith: cloneWith,
   defaults: defaults,
   defaultsDeep: defaultsDeep,
-  eq: eq,
+  eq: eq$2,
   findKey: findKey,
   fromPairs: fromPairs,
   functions: functions$1,
-  get: get,
+  get: get$1,
   has: has,
-  keys: keys,
+  keys: keys$1,
   keysIn: keysIn,
   merge: merge,
   mergeWith: mergeWith,
@@ -8748,19 +6142,19 @@ var object = /*#__PURE__*/Object.freeze({
   omitBy: omitBy,
   pick: pick,
   pickBy: pickBy,
-  prop: prop,
+  prop: prop$1,
   set: set,
   toObject: toObject,
   toPairs: toPairs,
   unset: unset,
-  values: values,
+  values: values$1,
   valuesIn: valuesIn
 });
 
 function countBy(collection, itee) {
     const stat = {};
-    const cb = iteratee(itee || identity);
-    each(collection, (el) => {
+    const cb = iteratee$1(itee || identity$1);
+    each$1(collection, (el) => {
         const key = cb(el);
         if (stat[key] === undefined)
             stat[key] = 0;
@@ -8770,13 +6164,13 @@ function countBy(collection, itee) {
 }
 
 function eachRight(collection, callback) {
-    _eachIterator(collection, callback, true);
+    _eachIterator$1(collection, callback, true);
 }
 
 function every(collection, predicate) {
     let rs = true;
-    const callback = iteratee(predicate);
-    each(collection, (v, k, c) => {
+    const callback = iteratee$1(predicate);
+    each$1(collection, (v, k, c) => {
         const r = callback(v, k, c);
         if (!r) {
             rs = false;
@@ -8788,8 +6182,8 @@ function every(collection, predicate) {
 
 function filter(collection, predicate) {
     const rs = [];
-    const callback = iteratee(predicate);
-    each(collection, (v, k, c) => {
+    const callback = iteratee$1(predicate);
+    each$1(collection, (v, k, c) => {
         const r = callback(v, k, c);
         if (r) {
             rs.push(v);
@@ -8799,9 +6193,9 @@ function filter(collection, predicate) {
 }
 
 function find(collection, predicate) {
-    const callback = iteratee(predicate);
+    const callback = iteratee$1(predicate);
     let rs;
-    each(collection, (v, k, c) => {
+    each$1(collection, (v, k, c) => {
         const r = callback(v, k, c);
         if (r) {
             rs = v;
@@ -8812,7 +6206,7 @@ function find(collection, predicate) {
 }
 
 function findLast(collection, predicate) {
-    const callback = iteratee(predicate);
+    const callback = iteratee$1(predicate);
     let rs;
     eachRight(collection, (v, k, c) => {
         const r = callback(v, k, c);
@@ -8826,8 +6220,8 @@ function findLast(collection, predicate) {
 
 function map(collection, itee) {
     const rs = [];
-    const cb = iteratee(itee);
-    each(collection, (v, k, c) => {
+    const cb = iteratee$1(itee);
+    each$1(collection, (v, k, c) => {
         const r = cb(v, k, c);
         rs.push(r);
     });
@@ -8865,8 +6259,8 @@ function flatMapDeep(collection, itee) {
  */
 function groupBy(collection, itee) {
     const stat = {};
-    const cb = iteratee(itee || identity);
-    each(collection, (el) => {
+    const cb = iteratee$1(itee || identity$1);
+    each$1(collection, (el) => {
         const key = cb(el);
         if (stat[key] === undefined)
             stat[key] = [];
@@ -8877,8 +6271,8 @@ function groupBy(collection, itee) {
 
 function keyBy(collection, itee) {
     const stat = {};
-    const cb = iteratee(itee || identity);
-    each(collection, (el) => {
+    const cb = iteratee$1(itee || identity$1);
+    each$1(collection, (el) => {
         const key = cb(el);
         stat[key] = el;
     });
@@ -8888,8 +6282,8 @@ function keyBy(collection, itee) {
 function partition(collection, predicate) {
     const matched = [];
     const mismatched = [];
-    const callback = iteratee(predicate);
-    each(collection, (v, k, c) => {
+    const callback = iteratee$1(predicate);
+    each$1(collection, (v, k, c) => {
         const r = callback(v, k, c);
         if (r) {
             matched.push(v);
@@ -8926,7 +6320,7 @@ function partition(collection, predicate) {
 function reduce(collection, callback, initialValue) {
     let accumulator = initialValue;
     let hasInitVal = initialValue !== undefined;
-    each(collection, (v, k, c) => {
+    each$1(collection, (v, k, c) => {
         if (hasInitVal) {
             accumulator = callback(accumulator, v, k, c);
         }
@@ -8940,8 +6334,8 @@ function reduce(collection, callback, initialValue) {
 
 function reject(collection, predicate) {
     const rs = [];
-    const callback = iteratee(predicate);
-    each(collection, (v, k, c) => {
+    const callback = iteratee$1(predicate);
+    each$1(collection, (v, k, c) => {
         const r = callback(v, k, c);
         if (!r) {
             rs.push(v);
@@ -8973,7 +6367,7 @@ function randi(min, max) {
  * @since 0.16.0
  */
 function sample(collection) {
-    const ary = toArray(collection);
+    const ary = toArray$1(collection);
     return ary[randi(ary.length)];
 }
 
@@ -8981,10 +6375,10 @@ function range(start = 0, end, step) {
     let startNum = 0;
     let endNum = 0;
     let stepNum = 1;
-    if (isNumber(start) && isUndefined(end) && isUndefined(step)) {
+    if (isNumber(start) && isUndefined$1(end) && isUndefined$1(step)) {
         endNum = start >> 0;
     }
-    else if (isNumber(start) && isNumber(end) && isUndefined(step)) {
+    else if (isNumber(start) && isNumber(end) && isUndefined$1(step)) {
         startNum = start >> 0;
         endNum = end >> 0;
     }
@@ -9028,7 +6422,7 @@ function range(start = 0, end, step) {
 function pop(array, index) {
     index = index || -1;
     let rs = null;
-    if (isArray(array)) {
+    if (isArray$1(array)) {
         const i = toNumber(index);
         if (i > -1) {
             rs = array.splice(i, 1);
@@ -9060,7 +6454,7 @@ function pop(array, index) {
  */
 function sampleSize(collection, count) {
     count = count || 1;
-    const ary = toArray(collection);
+    const ary = toArray$1(collection);
     const seeds = range(0, ary.length);
     const ks = [];
     while (seeds.length > 0) {
@@ -9099,13 +6493,13 @@ function sampleSize(collection, count) {
  * @returns 集合长度，对于null/undefined/WeakMap/WeakSet返回0
  */
 function size(collection) {
-    if (isNil(collection))
+    if (isNil$2(collection))
         return 0;
     if ((collection.length))
         return collection.length;
-    if (isMap(collection) || isSet(collection))
+    if (isMap$1(collection) || isSet$1(collection))
         return collection.size;
-    if (isObject(collection))
+    if (isObject$1(collection))
         return Object.keys(collection).length;
     return 0;
 }
@@ -9130,8 +6524,8 @@ function shuffle(collection) {
 
 function some(collection, predicate) {
     let rs = false;
-    const callback = iteratee(predicate || (() => true));
-    each(collection, (v, k, c) => {
+    const callback = iteratee$1(predicate || (() => true));
+    each$1(collection, (v, k, c) => {
         const r = callback(v, k, c);
         if (r) {
             rs = true;
@@ -9144,7 +6538,7 @@ function some(collection, predicate) {
 function sortBy(collection, itee) {
     if (size(collection) < 1)
         return [];
-    const cb = iteratee(itee || identity);
+    const cb = iteratee$1(itee || identity$1);
     let i = 0;
     const list = map(collection, (v, k) => {
         return {
@@ -9158,23 +6552,23 @@ function sortBy(collection, itee) {
 }
 // comparators
 const compareNumAsc = (a, b) => {
-    if (isNil(a) || !isNumber(a))
+    if (isNil$2(a) || !isNumber(a))
         return 1;
-    if (isNil(b) || !isNumber(b))
+    if (isNil$2(b) || !isNumber(b))
         return -1;
     return a - b;
 };
 const compareStrAsc = (a, b) => {
-    if (isNil(a))
+    if (isNil$2(a))
         return 1;
-    if (isNil(b))
+    if (isNil$2(b))
         return -1;
-    return toString(a).localeCompare(toString(b));
+    return toString$1(a).localeCompare(toString$1(b));
 };
 const compareDateAsc = (a, b) => {
-    if (isNil(a))
+    if (isNil$2(a))
         return 1;
-    if (isNil(b))
+    if (isNil$2(b))
         return -1;
     return compareDate(a, b);
 };
@@ -9222,10 +6616,10 @@ function getComparator(el) {
  * @returns 排序后的数组
  */
 function sort(collection, comparator) {
-    const ary = toArray(collection);
+    const ary = toArray$1(collection);
     if (ary.length < 1)
         return ary;
-    if (isFunction(comparator)) {
+    if (isFunction$1(comparator)) {
         return ary.sort(comparator);
     }
     else {
@@ -9236,7 +6630,7 @@ function sort(collection, comparator) {
 var collection = /*#__PURE__*/Object.freeze({
   __proto__: null,
   countBy: countBy,
-  each: each,
+  each: each$1,
   eachRight: eachRight,
   every: every,
   filter: filter,
@@ -9258,7 +6652,7 @@ var collection = /*#__PURE__*/Object.freeze({
   some: some,
   sort: sort,
   sortBy: sortBy,
-  toArray: toArray
+  toArray: toArray$1
 });
 
 /**
@@ -9285,7 +6679,7 @@ var collection = /*#__PURE__*/Object.freeze({
  * @returns 插入值后的数组对象
  */
 function append(array, ...values) {
-    const rs = isArray(array) ? array : toArray(array);
+    const rs = isArray$1(array) ? array : toArray$1(array);
     rs.push(...values);
     return rs;
 }
@@ -9304,7 +6698,7 @@ function append(array, ...values) {
  * @since 0.23.0
  */
 function chunk(array, size = 1) {
-    const ary = toArray(array);
+    const ary = toArray$1(array);
     const sizeNum = (size || 1) >> 0;
     const rs = [];
     ary.forEach((v, i) => {
@@ -9324,8 +6718,8 @@ function chunk(array, size = 1) {
  * @param array 数组
  * @returns 转换后的新数组对象
  */
-function compact(array) {
-    return toArray(array).filter(identity);
+function compact$1(array) {
+    return toArray$1(array).filter(identity$1);
 }
 
 /**
@@ -9352,12 +6746,12 @@ function except(...params) {
     const sl = params.length;
     if (sl > 2) {
         const lp = params[sl - 1];
-        if (isFunction(lp)) {
+        if (isFunction$1(lp)) {
             comparator = lp;
             list = params.slice(0, params.length - 1);
         }
     }
-    list = list.filter((v) => isArrayLike(v) || isArray(v));
+    list = list.filter((v) => isArrayLike$1(v) || isArray$1(v));
     if (list.length < 1)
         return list;
     const len = list.length;
@@ -9381,7 +6775,7 @@ function except(...params) {
         }
     }
     const rs = [];
-    each(kvMap, (v) => {
+    each$1(kvMap, (v) => {
         if (v.i < len) {
             rs.push(v.v);
         }
@@ -9405,7 +6799,7 @@ function except(...params) {
  * @returns 填充后的新数组
  */
 function fill(array, value, start = 0, end) {
-    const rs = toArray(array);
+    const rs = toArray$1(array);
     rs.fill(value, start, end);
     return rs;
 }
@@ -9428,11 +6822,11 @@ function fill(array, value, start = 0, end) {
  * @param fromIndex 从0开始的起始索引，设置该参数可以减少实际遍历次数。默认0
  * @returns 第一个匹配断言的元素索引或-1
  */
-function findIndex(array, predicate, fromIndex) {
+function findIndex$1(array, predicate, fromIndex) {
     let rs = -1;
     let fromIndexNum = fromIndex || 0;
-    const itee = iteratee(predicate);
-    each(slice(array, fromIndexNum), (v, k, c) => {
+    const itee = iteratee$1(predicate);
+    each$1(slice$1(array, fromIndexNum), (v, k, c) => {
         const r = itee(v, k, c);
         if (r) {
             rs = k + fromIndexNum;
@@ -9462,11 +6856,11 @@ function findIndex(array, predicate, fromIndex) {
 function findLastIndex(array, predicate, fromIndex) {
     let rs = -1;
     let fromIndexNum = fromIndex || 0;
-    const itee = iteratee(predicate);
+    const itee = iteratee$1(predicate);
     if (fromIndex === undefined) {
         fromIndexNum = size(array) - 1;
     }
-    eachRight(slice(array, 0, fromIndexNum + 1), (v, k, c) => {
+    eachRight(slice$1(array, 0, fromIndexNum + 1), (v, k, c) => {
         const r = itee(v, k, c);
         if (r) {
             rs = k;
@@ -9489,7 +6883,7 @@ function findLastIndex(array, predicate, fromIndex) {
  * @returns 数组中第一个元素
  */
 function first(array) {
-    return toArray(array)[0];
+    return toArray$1(array)[0];
 }
 
 /**
@@ -9530,7 +6924,7 @@ function initial(array) {
  * @returns 插入值后的数组对象
  */
 function insert(array, index, ...values) {
-    const rs = isArray(array) ? array : toArray(array);
+    const rs = isArray$1(array) ? array : toArray$1(array);
     if (!isNumber(index) || index < 0)
         index = 0;
     rs.splice(index, 0, ...values);
@@ -9568,12 +6962,12 @@ function intersect(...params) {
     const sl = params.length;
     if (sl > 2) {
         const lp = params[sl - 1];
-        if (isFunction(lp)) {
+        if (isFunction$1(lp)) {
             comparator = lp;
             list = params.slice(0, sl - 1);
         }
     }
-    list = list.filter((v) => isArrayLike(v) || isArray(v));
+    list = list.filter((v) => isArrayLike$1(v) || isArray$1(v));
     if (list.length < 1)
         return list;
     const len = list.length;
@@ -9611,7 +7005,7 @@ function intersect(...params) {
         }
     }
     const rs = [];
-    each(kvMap, (v) => {
+    each$1(kvMap, (v) => {
         if (v.i === len) {
             rs.push(v.v);
         }
@@ -9633,7 +7027,7 @@ function intersect(...params) {
  * @returns 拼接字符串
  */
 function join(array, separator) {
-    return toArray(array).join(separator || ',');
+    return toArray$1(array).join(separator || ',');
 }
 
 /**
@@ -9647,7 +7041,7 @@ function join(array, separator) {
  * @returns 数组中最后一个元素
  */
 function last(array) {
-    const ary = toArray(array);
+    const ary = toArray$1(array);
     return ary[ary.length - 1];
 }
 
@@ -9677,9 +7071,9 @@ function last(array) {
  */
 function remove(array, predicate) {
     const rs = [];
-    if (!isArray(array))
+    if (!isArray$1(array))
         return rs;
-    const itee = iteratee(predicate);
+    const itee = iteratee$1(predicate);
     let i = 0;
     for (let l = 0; l < array.length; l++) {
         const item = array[l];
@@ -9728,7 +7122,7 @@ function pull(array, ...values) {
  * @returns 颠倒后的新数组
  */
 function reverse(array) {
-    const rs = toArray(array);
+    const rs = toArray$1(array);
     return rs.reverse();
 }
 
@@ -9748,7 +7142,7 @@ function sortedIndexBy(array, value, itee) {
     let left = 0;
     let right = size(array);
     let index = 0;
-    const cb = iteratee(itee || identity);
+    const cb = iteratee$1(itee || identity$1);
     value = cb(value);
     while (left < right) {
         const mid = parseInt((left + right) / 2);
@@ -9793,7 +7187,7 @@ function sortedIndex(array, value) {
  * @returns 新数组
  */
 function tail(array) {
-    const rs = toArray(array);
+    const rs = toArray$1(array);
     return rs.slice(1);
 }
 
@@ -9811,7 +7205,7 @@ function tail(array) {
  * @returns 新数组
  */
 function take(array, length) {
-    const rs = toArray(array);
+    const rs = toArray$1(array);
     return rs.slice(0, length);
 }
 
@@ -9830,7 +7224,7 @@ function take(array, length) {
  * @since 1.0.0
  */
 function takeRight(array, length) {
-    const rs = toArray(array);
+    const rs = toArray$1(array);
     const maxLength = rs.length;
     return rs.slice(maxLength - (length || maxLength), maxLength);
 }
@@ -9859,11 +7253,11 @@ function union(...params) {
     let comparator;
     let list = params;
     const sl = params.length;
-    if (sl > 2 && isFunction(params[sl - 1])) {
+    if (sl > 2 && isFunction$1(params[sl - 1])) {
         comparator = params[sl - 1];
         list = params.slice(0, sl - 1);
     }
-    list = list.filter((v) => isArrayLike(v) || isArray(v));
+    list = list.filter((v) => isArrayLike$1(v) || isArray$1(v));
     if (list.length < 1)
         return list;
     let rs;
@@ -9878,7 +7272,7 @@ function union(...params) {
         rs = map(kvMap, (v) => v);
     }
     else {
-        rs = toArray(new Set(flat(list)));
+        rs = toArray$1(new Set(flat(list)));
     }
     return rs;
 }
@@ -9893,8 +7287,8 @@ function union(...params) {
  * @returns 转换后的新数组对象
  */
 function uniq(array) {
-    const ary = toArray(array);
-    return toArray(new Set(ary));
+    const ary = toArray$1(array);
+    return toArray$1(new Set(ary));
 }
 
 /**
@@ -9913,10 +7307,10 @@ function uniq(array) {
  * @since 1.0.0
  */
 function uniqBy(array, itee) {
-    const cb = iteratee(itee || identity);
+    const cb = iteratee$1(itee || identity$1);
     const keyMap = new Map();
     const rs = [];
-    each(array, (v, k) => {
+    each$1(array, (v, k) => {
         const key = cb(v, k);
         if (keyMap.get(key))
             return;
@@ -9941,8 +7335,8 @@ function uniqBy(array, itee) {
 function unzip(array) {
     const rs = [];
     const len = size(array);
-    each(array, (group, colIndex) => {
-        each(group, (el, rowIndex) => {
+    each$1(array, (group, colIndex) => {
+        each$1(group, (el, rowIndex) => {
             let row = rs[rowIndex];
             if (!row) {
                 row = rs[rowIndex] = new Array(len);
@@ -9987,7 +7381,7 @@ function zip(...arrays) {
     const rs = [];
     const size = arrays.length;
     arrays.forEach((ary, colIndex) => {
-        each(ary, (el, i) => {
+        each$1(ary, (el, i) => {
             let group = rs[i];
             if (!group) {
                 group = rs[i] = new Array(size);
@@ -10011,8 +7405,8 @@ function zip(...arrays) {
  */
 function zipObject(keys, values) {
     const rs = {};
-    each(keys, (k, i) => {
-        rs[k] = get(values, i);
+    each$1(keys, (k, i) => {
+        rs[k] = get$1(values, i);
     });
     return rs;
 }
@@ -10036,8 +7430,8 @@ function zipWith(...params) {
     const sl = params.length;
     let itee = params[sl - 1];
     const arys = params;
-    if (!isFunction(itee)) {
-        itee = identity;
+    if (!isFunction$1(itee)) {
+        itee = identity$1;
     }
     else {
         pop(arys);
@@ -10050,11 +7444,11 @@ var array = /*#__PURE__*/Object.freeze({
   __proto__: null,
   append: append,
   chunk: chunk,
-  compact: compact,
+  compact: compact$1,
   concat: concat,
   except: except,
   fill: fill,
-  findIndex: findIndex,
+  findIndex: findIndex$1,
   findLastIndex: findLastIndex,
   first: first,
   flat: flat,
@@ -10070,7 +7464,7 @@ var array = /*#__PURE__*/Object.freeze({
   range: range,
   remove: remove,
   reverse: reverse,
-  slice: slice,
+  slice: slice$1,
   sortedIndex: sortedIndex,
   sortedIndexBy: sortedIndexBy,
   tail: tail,
@@ -10102,8 +7496,8 @@ var array = /*#__PURE__*/Object.freeze({
  * @since 1.0.0
  */
 function add(a, b) {
-    a = isNil(a) ? 0 : a;
-    b = isNil(b) ? 0 : b;
+    a = isNil$2(a) ? 0 : a;
+    b = isNil$2(b) ? 0 : b;
     return a + b;
 }
 
@@ -10123,8 +7517,8 @@ function add(a, b) {
  * @since 1.0.0
  */
 function divide(a, b) {
-    a = isNil(a) ? 0 : a;
-    b = isNil(b) ? 0 : b;
+    a = isNil$2(a) ? 0 : a;
+    b = isNil$2(b) ? 0 : b;
     return a / b;
 }
 
@@ -10143,7 +7537,7 @@ function divide(a, b) {
  * @since 1.0.0
  */
 function max(values) {
-    const vals = flatMap(values, v => isNil(v) || isNaN(v) ? [] : v);
+    const vals = flatMap(values, v => isNil$2(v) || isNaN(v) ? [] : v);
     let f64a = new Float64Array(vals);
     f64a.sort();
     return f64a[f64a.length - 1];
@@ -10164,7 +7558,7 @@ function max(values) {
  * @since 1.0.0
  */
 function mean(values) {
-    const vals = map(values, v => isNil(v) ? 0 : v);
+    const vals = map(values, v => isNil$2(v) ? 0 : v);
     let f64a = new Float64Array(vals);
     let rs = 0;
     f64a.forEach(v => {
@@ -10187,7 +7581,7 @@ function mean(values) {
  * @since 1.0.0
  */
 function min(values) {
-    const vals = flatMap(values, v => isNil(v) || isNaN(v) ? [] : v);
+    const vals = flatMap(values, v => isNil$2(v) || isNaN(v) ? [] : v);
     let f64a = new Float64Array(vals);
     f64a.sort();
     return f64a[0];
@@ -10230,8 +7624,8 @@ function minmax(min, max, value) {
  * @since 1.0.0
  */
 function multiply(a, b) {
-    a = isNil(a) ? 0 : a;
-    b = isNil(b) ? 0 : b;
+    a = isNil$2(a) ? 0 : a;
+    b = isNil$2(b) ? 0 : b;
     return a * b;
 }
 
@@ -10263,17 +7657,17 @@ function randf(min, max) {
  * @since 1.0.0
  */
 function subtract(a, b) {
-    a = isNil(a) ? 0 : a;
-    b = isNil(b) ? 0 : b;
+    a = isNil$2(a) ? 0 : a;
+    b = isNil$2(b) ? 0 : b;
     return a - b;
 }
 
 function sum(...values) {
     let ary = values;
-    if (ary.length === 1 && isArrayLike(ary[0])) {
+    if (ary.length === 1 && isArrayLike$1(ary[0])) {
         ary = ary[0];
     }
-    const vals = ary.map((v) => isNil(v) ? 0 : v);
+    const vals = ary.map((v) => isNil$2(v) ? 0 : v);
     let rs = 0;
     const f64a = new Float64Array(vals);
     f64a.forEach((v) => {
@@ -10297,7 +7691,7 @@ var math = /*#__PURE__*/Object.freeze({
   sum: sum
 });
 
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'.split('');
+const ALPHABET$1 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'.split('');
 /**
  * 生成一个指定长度的alphaId并返回。id内容由随机字母表字符组成
  * @example
@@ -10310,10 +7704,10 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
  * @returns alphaId
  * @since 1.0.0
  */
-function alphaId(len) {
+function alphaId$1(len) {
     const bytes = self.crypto.getRandomValues(new Uint8Array(len || 16));
     let rs = '';
-    bytes.forEach(b => rs += ALPHABET[b % ALPHABET.length]);
+    bytes.forEach(b => rs += ALPHABET$1[b % ALPHABET$1.length]);
     return rs;
 }
 
@@ -10361,7 +7755,7 @@ function defaultTo(v, defaultValue) {
 function mixin(target, obj) {
     functions$1(obj).forEach((fnName) => {
         const fn = obj[fnName];
-        if (isFunction(target)) {
+        if (isFunction$1(target)) {
             target[fnName] = fn;
         }
         else {
@@ -10415,7 +7809,7 @@ function noConflict() {
  */
 function snowflakeId(nodeId, epoch) {
     epoch = epoch || 1580486400000;
-    if (isNil(nodeId))
+    if (isNil$2(nodeId))
         return '0000000000000000000';
     let nowTime = Date.now();
     // 12bits for seq
@@ -10523,17 +7917,17 @@ function uuid(delimiter) {
 
 var utils = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  alphaId: alphaId,
+  alphaId: alphaId$1,
   defaultTo: defaultTo,
-  identity: identity,
-  iteratee: iteratee,
-  matcher: matcher,
+  identity: identity$1,
+  iteratee: iteratee$1,
+  matcher: matcher$1,
   mixin: mixin,
   noConflict: noConflict,
   noop: noop,
   snowflakeId: snowflakeId,
   times: times,
-  toPath: toPath,
+  toPath: toPath$2,
   uniqueId: uniqueId,
   uuid: uuid
 });
@@ -10675,8 +8069,8 @@ function bind(fn, thisArg, ...args) {
  */
 function bindAll(object, ...methodNames) {
     const pathList = flatDeep(methodNames);
-    each(pathList, (path) => {
-        const fn = get(object, path);
+    each$1(pathList, (path) => {
+        const fn = get$1(object, path);
         set(object, path, fn.bind(object));
     });
     return object;
@@ -10697,7 +8091,7 @@ function bindAll(object, ...methodNames) {
  * @since 1.0.0
  */
 function call(fn, ...args) {
-    if (!isFunction(fn))
+    if (!isFunction$1(fn))
         return undefined;
     return fn(...args);
 }
@@ -10724,7 +8118,7 @@ function compose(...fns) {
     return function (...args) {
         let rs = fns[0](...args);
         for (let i = 1; i < fns.length; i++) {
-            if (isFunction(fns[i])) {
+            if (isFunction$1(fns[i])) {
                 rs = fns[i](rs);
             }
         }
@@ -10772,8 +8166,8 @@ function delay(fn, wait, ...args) {
  * @returns 表达式计算结果
  */
 function fval(expression, args) {
-    const ks = keys(args);
-    const val = values(args);
+    const ks = keys$1(args);
+    const val = values$1(args);
     return Function(...ks, '"use strict";return ' + expression)(...val);
 }
 
@@ -10870,7 +8264,7 @@ class FuncChain {
      * @returns 执行函数链返回的值
      */
     value() {
-        let comprehension = isArrayLike(this._wrappedValue)
+        let comprehension = isArrayLike$1(this._wrappedValue)
             ? createComprehension()
             : null;
         const maxChainIndex = this._chain.length - 1;
@@ -10957,7 +8351,7 @@ console.log(targets, x, '次');//大约0.5ms左右，循环 18 次
 function myfx(v) {
     return v instanceof FuncChain ? v : new FuncChain(v);
 }
-const CAN_COMPREHENSIONS = [split.name, toArray.name, range.name];
+const CAN_COMPREHENSIONS = [split$1.name, toArray$1.name, range.name];
 function createComprehension(fn, params) {
     const comprehension = {
         forEachRight: false,
@@ -10981,8 +8375,8 @@ function buildComprehension(comprehension, fn, params) {
             if (size(comprehension.range) > 0 || isDefined(comprehension.count))
                 return 2;
             let fn = params[0];
-            if (!isFunction(fn)) {
-                fn = iteratee(params[0]);
+            if (!isFunction$1(fn)) {
+                fn = iteratee$1(params[0]);
             }
             comprehension.goalSettings.push({ type: fnName, fn: fn });
             break;
@@ -10994,7 +8388,7 @@ function buildComprehension(comprehension, fn, params) {
                 comprehension.reverse = !comprehension.reverse;
             }
             break;
-        case slice.name:
+        case slice$1.name:
             if (size(comprehension.range) > 0)
                 return 2;
             comprehension.range[0] = params[0];
@@ -11007,13 +8401,13 @@ function buildComprehension(comprehension, fn, params) {
             comprehension.range[1] = params[1];
             break;
         case take.name:
-            if (isUndefined(comprehension.count) || params[0] < comprehension.count) {
+            if (isUndefined$1(comprehension.count) || params[0] < comprehension.count) {
                 comprehension.count = params[0];
             }
             break;
         case first.name:
         case first.name:
-            if (isUndefined(comprehension.count) || 1 < comprehension.count) {
+            if (isUndefined$1(comprehension.count) || 1 < comprehension.count) {
                 comprehension.count = 1;
                 comprehension.returnEl = true;
             }
@@ -11043,7 +8437,7 @@ function execComprehension(comprehension, collection) {
     const gsLen = gs.length;
     const range = comprehension.range;
     const hasRange = range.length > 0;
-    const forEach = comprehension.forEachRight ? eachRight : each;
+    const forEach = comprehension.forEachRight ? eachRight : each$1;
     forEach(collection, (v, k) => {
         let t = v;
         // before save target
@@ -11248,7 +8642,7 @@ function getText(str) {
     };
 }
 function parseNode(rs, mixins) {
-    const parts = compact(rs);
+    const parts = compact$1(rs);
     const src = parts[0];
     const modifier = src.replace(template$1.settings.delimiters[0], '')[0];
     switch (modifier) {
@@ -11295,7 +8689,7 @@ function parseNode(rs, mixins) {
 // 默认全局变量 print() / _
 function compile(tokens, options) {
     let funcStr = '';
-    each(tokens, (token) => {
+    each$1(tokens, (token) => {
         if (token.comment)
             return;
         if (token.text) {
@@ -11312,7 +8706,7 @@ function compile(tokens, options) {
         }
     });
     return (obj) => {
-        let declarations = keys(obj).join(',');
+        let declarations = keys$1(obj).join(',');
         if (declarations) {
             declarations = '{' + declarations + '}';
         }
@@ -11387,12 +8781,12 @@ var template = /*#__PURE__*/Object.freeze({
  * @since 1.0.0
  */
 function arrayToTree(array, idKey = 'id', pidKey, options = {}) {
-    if (!isArray(array))
+    if (!isArray$1(array))
         return [];
     const pk = pidKey || 'pid';
     const attrMap = options.attrMap;
-    const hasAttrMap = !!attrMap && isObject(attrMap);
-    const rootParentValue = get(options, 'rootParentValue', null);
+    const hasAttrMap = !!attrMap && isObject$1(attrMap);
+    const rootParentValue = get$1(options, 'rootParentValue', null);
     const childrenKey = options.childrenKey || 'children';
     const sortKey = options.sortKey;
     const hasSortKey = !!sortKey;
@@ -11408,7 +8802,7 @@ function arrayToTree(array, idKey = 'id', pidKey, options = {}) {
         }
         if (record[pk] === rootParentValue) {
             if (hasAttrMap) {
-                each(attrMap, (v, k) => (record[k] = record[v]));
+                each$1(attrMap, (v, k) => (record[k] = record[v]));
             }
             roots.push(record);
         }
@@ -11422,7 +8816,7 @@ function arrayToTree(array, idKey = 'id', pidKey, options = {}) {
                 children = parentNode[childrenKey] = [];
             }
             if (hasAttrMap) {
-                each(attrMap, (v, k) => (record[k] = record[v]));
+                each$1(attrMap, (v, k) => (record[k] = record[v]));
             }
             if (hasSortKey) {
                 const [min, max] = sortMap[parentId];
@@ -11456,7 +8850,7 @@ function arrayToTree(array, idKey = 'id', pidKey, options = {}) {
  * @returns 断言为true的最近一个祖先节点
  * @since 1.0.0
  */
-function closest(node, predicate, parentKey) {
+function closest$1(node, predicate, parentKey) {
     let p = node;
     let t = null;
     let k = true;
@@ -11518,7 +8912,7 @@ function _walkTree(treeNodes, callback, options, ...rest) {
     const parentNode = rest[0];
     const chain = rest[1] || [];
     const childrenKey = options.childrenKey || 'children';
-    const data = isArrayLike(treeNodes) ? treeNodes : [treeNodes];
+    const data = isArrayLike$1(treeNodes) ? treeNodes : [treeNodes];
     for (let i = 0; i < data.length; i++) {
         const node = data[i];
         const rs = callback(node, parentNode, chain, chain.length);
@@ -11584,7 +8978,7 @@ function _walkTree(treeNodes, callback, options, ...rest) {
  */
 function filterTree(treeNodes, predicate, options) {
     options = options || {};
-    const callback = iteratee(predicate);
+    const callback = iteratee$1(predicate);
     const childrenKey = options.childrenKey || 'children';
     let nodes = [];
     walkTree(treeNodes, (n, p, c, l) => {
@@ -11646,7 +9040,7 @@ function filterTree(treeNodes, predicate, options) {
  * @since 1.0.0
  */
 function findTreeNode(treeNodes, predicate, options) {
-    const callback = iteratee(predicate);
+    const callback = iteratee$1(predicate);
     let node;
     walkTree(treeNodes, (n, p, c, l) => {
         const rs = callback(n, p, c, l);
@@ -11702,7 +9096,7 @@ function findTreeNode(treeNodes, predicate, options) {
  * @since 1.0.0
  */
 function findTreeNodes(treeNodes, predicate, options) {
-    const callback = iteratee(predicate);
+    const callback = iteratee$1(predicate);
     const nodes = [];
     walkTree(treeNodes, (n, p, c, l) => {
         const rs = callback(n, p, c, l);
@@ -11760,7 +9154,7 @@ function findTreeNodes(treeNodes, predicate, options) {
 function sortTree(treeNodes, comparator, options) {
     options = options || {};
     const childrenKey = options.childrenKey || 'children';
-    const data = isArray(treeNodes)
+    const data = isArray$1(treeNodes)
         ? treeNodes
         : [treeNodes];
     data.sort((a, b) => comparator(a, b));
@@ -11774,7 +9168,7 @@ function sortTree(treeNodes, comparator, options) {
 var tree = /*#__PURE__*/Object.freeze({
   __proto__: null,
   arrayToTree: arrayToTree,
-  closest: closest,
+  closest: closest$1,
   filterTree: filterTree,
   findTreeNode: findTreeNode,
   findTreeNodes: findTreeNodes,
@@ -11836,6 +9230,2628 @@ if (ctx.myff) {
     }, 0);
 }
 
+/* eslint-disable max-len */
+const CLASS_RESIZABLE_HANDLE = "uii-resizable-handle";
+const CLASS_RESIZABLE_HANDLE_DIR = "uii-resizable-handle-";
+const CLASS_RESIZABLE_HANDLE_ACTIVE = "uii-resizable-handle-active";
+const CLASS_RESIZABLE_GHOST = "uii-resizable-ghost";
+const EXP_DIR = new RegExp(CLASS_RESIZABLE_HANDLE_DIR + "(?<dir>[nesw]+)");
+/**
+ * 用于表示一个或多个可改变尺寸元素的定义
+ * > 可用CSS接口
+ * - .uii-resizable-handle
+ * - .uii-resizable-handle-[n/s/e/w/ne/nw/se/sw]
+ * - .uii-resizable-handle-active
+ * @public
+ */
+class Resizable extends Uii {
+    constructor(els, opts) {
+        super(els, assign$1({
+            handleSize: 8,
+            minSize: 50,
+            ghost: false,
+            offset: 0,
+        }, opts));
+        each$2(this.ele, (el) => {
+            let tmp = el;
+            if (tmp._uiik_resizable) {
+                tmp._uiik_resizable.destroy();
+                return false;
+            }
+        });
+        each$2(this.ele, (el) => {
+            el._uiik_resizable = this;
+            this.initHandle(el);
+        });
+    }
+    bindHandle(handle, dir, panel, opts) {
+        const onStart = opts.onStart;
+        const onResize = opts.onResize;
+        const onEnd = opts.onEnd;
+        const onClone = opts.onClone;
+        const uiik = this;
+        this.addPointerDown(handle, ({ ev, onPointerStart, onPointerMove, onPointerEnd }) => {
+            //检测
+            const onPointerDown = opts.onPointerDown;
+            if (onPointerDown && onPointerDown(ev) === false)
+                return true;
+            let container = panel.parentElement;
+            // 获取panel当前信息
+            let matrixInfo = getMatrixInfo(panel, true);
+            const offset = getRectInContainer(panel, container, matrixInfo);
+            const offsetParentRect = container.getBoundingClientRect();
+            const offsetParentCStyle = window.getComputedStyle(container);
+            let setOrigin = !(panel instanceof SVGGraphicsElement) && matrixInfo.angle != 0;
+            const { w, h } = getStyleSize(panel);
+            const originW = w;
+            const originH = h;
+            const originX = offset.x;
+            const originY = offset.y;
+            let changeW = false;
+            let changeH = false;
+            let changeX = false;
+            let changeY = false;
+            let toTransformOrigin = "";
+            switch (dir) {
+                case "s":
+                    changeH = true;
+                    break;
+                case "e":
+                    changeW = true;
+                    break;
+                case "se":
+                    changeW = true;
+                    changeH = true;
+                    break;
+                case "n":
+                    changeX = true;
+                    changeY = true;
+                    changeH = true;
+                    toTransformOrigin = "0 0";
+                    break;
+                case "w":
+                    changeX = true;
+                    changeY = true;
+                    changeW = true;
+                    toTransformOrigin = "0 0";
+                    break;
+                case "sw":
+                case "ne":
+                case "nw":
+                    changeX = true;
+                    changeY = true;
+                    changeW = true;
+                    changeH = true;
+                    toTransformOrigin = "0 0";
+                    break;
+            }
+            // boundary
+            let minWidth = 1;
+            let minHeight = 1;
+            let maxWidth = 9999;
+            let maxHeight = 9999;
+            if (isArray$3(opts.minSize)) {
+                minWidth = opts.minSize[0];
+                minHeight = opts.minSize[1];
+            }
+            else if (isNumber$1(opts.minSize)) {
+                minWidth = opts.minSize;
+                minHeight = opts.minSize;
+            }
+            if (isArray$3(opts.maxSize)) {
+                maxWidth = opts.maxSize[0];
+                maxHeight = opts.maxSize[1];
+            }
+            else if (isNumber$1(opts.maxSize)) {
+                maxWidth = opts.maxSize;
+                maxHeight = opts.maxSize;
+            }
+            //ghost
+            const ghost = opts.ghost;
+            const ghostClass = opts.ghostClass;
+            let ghostNode = null;
+            //aspectRatio
+            const aspectRatio = opts.aspectRatio;
+            const panelStyle = panel.style;
+            let style = panelStyle;
+            let currentW = originW;
+            let currentH = originH;
+            let transform;
+            let lastX = 0, lastY = 0;
+            let originalTransformOrigin = "";
+            let vertexBeforeTransform;
+            let currentVertex;
+            let refPoint;
+            //slope
+            let k1;
+            let sX = 0, sY = 0;
+            let startPointXy;
+            //bind events
+            onPointerStart(function (args) {
+                var _a;
+                const { ev } = args;
+                handle.classList.add(CLASS_RESIZABLE_HANDLE_ACTIVE);
+                if (ghost) {
+                    if (isFunction$3(ghost)) {
+                        ghostNode = ghost(panel);
+                    }
+                    else {
+                        ghostNode = panel.cloneNode(true);
+                        ghostNode.style.opacity = "0.3";
+                        ghostNode.style.pointerEvents = "none";
+                    }
+                    if (ghostNode) {
+                        if (ghostClass) {
+                            ghostNode.className =
+                                ghostNode.className.replace(ghostClass, "") +
+                                    " " +
+                                    ghostClass;
+                        }
+                        ghostNode.classList.toggle(CLASS_RESIZABLE_GHOST, true);
+                        (_a = panel.parentNode) === null || _a === void 0 ? void 0 : _a.appendChild(ghostNode);
+                        transform = wrapper(ghostNode);
+                        onClone && onClone({ clone: ghostNode }, ev);
+                    }
+                    style = ghostNode === null || ghostNode === void 0 ? void 0 : ghostNode.style;
+                }
+                else {
+                    transform = wrapper(panel);
+                }
+                const cStyle = window.getComputedStyle(panel);
+                const w = parseFloat(cStyle.width);
+                const h = parseFloat(cStyle.height);
+                const oxy = parseOxy(opts.ox, opts.oy, w, h);
+                oxy.originX;
+                oxy.originY;
+                //计算sx及cx
+                const panelRect = getRectInContainer(panel, panel.parentElement, matrixInfo);
+                let centerX = Math.round(panelRect.x + panelRect.w / 2);
+                let centerY = Math.round(panelRect.y + panelRect.h / 2);
+                let sx = Math.round(centerX - originW / 2);
+                let sy = Math.round(centerY - originH / 2);
+                transform.x = sx;
+                transform.y = sy;
+                const deg = matrixInfo.angle * ONE_ANG;
+                currentVertex = vertexBeforeTransform = calcVertex(originW, originH, centerX, centerY, sx, sy, deg);
+                //计算参考点及斜率
+                switch (dir) {
+                    case "s":
+                    case "e":
+                    case "se":
+                        refPoint = currentVertex[0];
+                        break;
+                    case "n":
+                    case "w":
+                    case "nw":
+                        refPoint = currentVertex[3];
+                        break;
+                    case "sw":
+                        refPoint = currentVertex[1];
+                        break;
+                    case "ne":
+                        refPoint = currentVertex[2];
+                        break;
+                }
+                //水平斜率
+                k1 =
+                    (currentVertex[1].y - refPoint.y) /
+                        (currentVertex[1].x - refPoint.x); //w
+                //change trans origin
+                style.transition = "none";
+                originalTransformOrigin = style.transformOrigin;
+                if (setOrigin) {
+                    if (toTransformOrigin) {
+                        style.transformOrigin = toTransformOrigin;
+                    }
+                    else {
+                        style.transformOrigin = `${centerX - sx}px ${centerY - sy}px`;
+                    }
+                }
+                if (panel instanceof SVGGraphicsElement) {
+                    sX = matrixInfo.x - currentVertex[0].x;
+                    sY = matrixInfo.y - currentVertex[0].y;
+                }
+                startPointXy = getPointInContainer(ev, container, offsetParentRect, offsetParentCStyle, matrixInfo);
+                onStart &&
+                    onStart.call(uiik, { w: originW, h: originH, transform, handle, ghost: ghostNode }, ev);
+            });
+            onPointerMove((args) => {
+                const { ev, offX, offY } = args;
+                let newX = startPointXy.x + offX;
+                let newY = startPointXy.y + offY;
+                const rpx = refPoint.x;
+                const rpy = refPoint.y;
+                ////////////////////////////////////////// 计算边长
+                //1. calc angle
+                let angle = Math.atan2(newY - rpy, newX - rpx) * ONE_RAD - matrixInfo.angle;
+                //2. hypotenuse length
+                let hyLen = Math.sqrt((newX - rpx) * (newX - rpx) + (newY - rpy) * (newY - rpy));
+                //3. h&v projection length
+                let pl1 = Math.abs(k1 === Infinity
+                    ? newY - refPoint.y / matrixInfo.scale
+                    : hyLen * Math.cos(angle * ONE_ANG));
+                let pl2 = Math.sqrt(hyLen * hyLen - pl1 * pl1);
+                let w = originW;
+                let h = originH;
+                let y = originY;
+                let x = originX;
+                let angl = 0;
+                switch (dir) {
+                    case "w":
+                    case "sw":
+                        angl =
+                            Math.atan2(currentVertex[0].y - currentVertex[1].y, currentVertex[0].x - currentVertex[1].x) * ONE_RAD;
+                        break;
+                    case "n":
+                    case "ne":
+                    case "nw":
+                        angl =
+                            Math.atan2(currentVertex[0].y - currentVertex[2].y, currentVertex[0].x - currentVertex[2].x) * ONE_RAD;
+                }
+                //w & h
+                switch (dir) {
+                    case "s":
+                        h = pl2;
+                        break;
+                    case "e":
+                        w = pl1;
+                        break;
+                    case "n":
+                        h = pl2;
+                        if (angl === 90) {
+                            h = newY - currentVertex[2].y;
+                        }
+                        break;
+                    case "w":
+                        w = pl1;
+                        if (angl === 0) {
+                            w = newX - currentVertex[1].x;
+                        }
+                        break;
+                    case "nw":
+                        w = pl1;
+                        h = pl2;
+                        if (matrixInfo.angle === 180) {
+                            w = newX - currentVertex[3].x;
+                            h = newY - currentVertex[3].y;
+                        }
+                        break;
+                    case "se":
+                    case "sw":
+                    case "ne":
+                        w = pl1;
+                        h = pl2;
+                        break;
+                }
+                //w & h boundary
+                if (minHeight && h < minHeight)
+                    h = minHeight;
+                if (maxHeight && h > maxHeight)
+                    h = maxHeight;
+                if (minWidth && w < minWidth) {
+                    w = minWidth;
+                }
+                if (maxWidth && w > maxWidth)
+                    w = maxWidth;
+                let hLine, wLine;
+                // x & y
+                switch (dir) {
+                    case "s":
+                        hLine = { p1: currentVertex[1], p2: currentVertex[0] };
+                        h = limitWH(newX, newY, hLine, h, minHeight);
+                        break;
+                    case "e":
+                        wLine = { p1: currentVertex[0], p2: currentVertex[2] };
+                        w = limitWH(newX, newY, wLine, w, minWidth);
+                        break;
+                    case "se":
+                        wLine = { p1: currentVertex[0], p2: currentVertex[2] };
+                        hLine = { p1: currentVertex[1], p2: currentVertex[0] };
+                        w = limitWH(newX, newY, wLine, w, minWidth);
+                        h = limitWH(newX, newY, hLine, h, minHeight);
+                        break;
+                    case "n":
+                        hLine = { p1: currentVertex[2], p2: currentVertex[3] };
+                        h = limitWH(newX, newY, hLine, h, minHeight);
+                        let plh;
+                        //1&2 quad
+                        if (angl === 90) {
+                            x = currentVertex[2].x;
+                            y = newY;
+                        }
+                        else if (currentVertex[2].y > currentVertex[0].y) {
+                            plh = h * Math.cos(angl * ONE_ANG);
+                            x = currentVertex[2].x + plh;
+                            y = currentVertex[2].y - Math.sqrt(h * h - plh * plh);
+                        }
+                        else {
+                            plh = h * Math.cos((180 - angl) * ONE_ANG);
+                            x = currentVertex[2].x - plh;
+                            y = currentVertex[2].y + Math.sqrt(h * h - plh * plh);
+                        }
+                        break;
+                    case "w":
+                        wLine = { p1: currentVertex[3], p2: currentVertex[1] };
+                        w = limitWH(newX, newY, wLine, w, minWidth);
+                        let plw;
+                        //1&4 quad
+                        if (angl === 0) {
+                            x = newX;
+                            y = currentVertex[1].y;
+                        }
+                        else if (currentVertex[1].y > currentVertex[0].y) {
+                            plw = w * Math.cos((180 - angl) * ONE_ANG);
+                            x = currentVertex[1].x - plw;
+                            y = currentVertex[1].y - Math.sqrt(w * w - plw * plw);
+                        }
+                        else {
+                            plw = w * Math.cos(angl * ONE_ANG);
+                            x = currentVertex[1].x + plw;
+                            y = currentVertex[1].y + Math.sqrt(w * w - plw * plw);
+                        }
+                        break;
+                    case "nw":
+                        wLine = { p1: currentVertex[3], p2: currentVertex[1] };
+                        hLine = { p1: currentVertex[2], p2: currentVertex[3] };
+                        w = limitWH(newX, newY, wLine, w, minWidth);
+                        h = limitWH(newX, newY, hLine, h, minHeight);
+                        x = newX;
+                        y = newY;
+                        let cv2x = currentVertex[2].x;
+                        let cv2y = currentVertex[2].y;
+                        let cv1x = currentVertex[1].x;
+                        let cv1y = currentVertex[1].y;
+                        //W boundary
+                        let v32n = normalizeVector(cv2x - currentVertex[3].x, cv2y - currentVertex[3].y);
+                        v32n.x *= minWidth;
+                        v32n.y *= minWidth;
+                        let v10n = normalizeVector(currentVertex[0].x - cv1x, currentVertex[0].y - cv1y);
+                        v10n.x *= minWidth;
+                        v10n.y *= minWidth;
+                        let wp1 = { x: wLine.p1.x + v32n.x, y: wLine.p1.y + v32n.y };
+                        let wp2 = { x: wLine.p2.x + v10n.x, y: wLine.p2.y + v10n.y };
+                        let invalid = (wp2.x - wp1.x) * (newY - wp1.y) -
+                            (wp2.y - wp1.y) * (newX - wp1.x) >
+                            0;
+                        if (invalid) {
+                            let v20n = normalizeVector(currentVertex[0].x - cv2x, currentVertex[0].y - cv2y);
+                            v20n.x *= h;
+                            v20n.y *= h;
+                            x = wp1.x + v20n.x;
+                            y = wp1.y + v20n.y;
+                        }
+                        //H boundary
+                        let v31n = normalizeVector(cv1x - currentVertex[3].x, cv1y - currentVertex[3].y);
+                        v31n.x *= minHeight;
+                        v31n.y *= minHeight;
+                        let v20n = normalizeVector(currentVertex[0].x - cv2x, currentVertex[0].y - cv2y);
+                        v20n.x *= minHeight;
+                        v20n.y *= minHeight;
+                        let hp1 = { x: hLine.p1.x + v31n.x, y: hLine.p1.y + v31n.y };
+                        let hp2 = { x: hLine.p2.x + v20n.x, y: hLine.p2.y + v20n.y };
+                        invalid =
+                            (hp2.x - hp1.x) * (newY - hp1.y) -
+                                (hp2.y - hp1.y) * (newX - hp1.x) >
+                                0;
+                        if (invalid) {
+                            let v10n = normalizeVector(currentVertex[0].x - cv1x, currentVertex[0].y - cv1y);
+                            v10n.x *= w;
+                            v10n.y *= w;
+                            x = hp2.x + v10n.x;
+                            y = hp2.y + v10n.y;
+                        }
+                        break;
+                    case "sw":
+                        wLine = { p1: currentVertex[3], p2: currentVertex[1] };
+                        hLine = { p1: currentVertex[1], p2: currentVertex[0] };
+                        w = limitWH(newX, newY, wLine, w, minWidth);
+                        h = limitWH(newX, newY, hLine, h, minHeight);
+                        let plw1;
+                        //1&4 quad
+                        if (angl === 0) {
+                            x = newX;
+                            y = currentVertex[0].y;
+                        }
+                        else if (currentVertex[1].y > currentVertex[0].y) {
+                            plw1 = w * Math.cos((180 - angl) * ONE_ANG);
+                            x = currentVertex[1].x - plw1;
+                            y = currentVertex[1].y - Math.sqrt(w * w - plw1 * plw1);
+                        }
+                        else {
+                            plw1 = w * Math.cos((180 - angl) * ONE_ANG);
+                            x = currentVertex[1].x - plw1;
+                            y = currentVertex[1].y + Math.sqrt(w * w - plw1 * plw1);
+                        }
+                        break;
+                    case "ne":
+                        wLine = { p1: currentVertex[0], p2: currentVertex[2] };
+                        hLine = { p1: currentVertex[2], p2: currentVertex[3] };
+                        w = limitWH(newX, newY, wLine, w, minWidth);
+                        h = limitWH(newX, newY, hLine, h, minHeight);
+                        let plne;
+                        if (angl === 0) {
+                            x = newX;
+                            y = currentVertex[0].y;
+                        }
+                        else if (currentVertex[1].x > currentVertex[0].x) {
+                            //1&2 quad
+                            plne = h * Math.cos((180 - angl) * ONE_ANG);
+                            x = currentVertex[2].x - plne;
+                            y = currentVertex[2].y - Math.sqrt(h * h - plne * plne);
+                        }
+                        else {
+                            plne = h * Math.cos(angl * ONE_ANG);
+                            x = currentVertex[2].x + plne;
+                            y = currentVertex[2].y + Math.sqrt(h * h - plne * plne);
+                        }
+                        break;
+                }
+                if (aspectRatio) {
+                    if (changeH && dir !== "sw") {
+                        if (dir === "nw") {
+                            y = originY - w / aspectRatio + originH;
+                        }
+                    }
+                }
+                let canResize = true;
+                if (onResize && onResize.call) {
+                    onResize.call;
+                    const panelRect = getRectInContainer(panel, panel.parentElement, matrixInfo);
+                    let centerX = Math.round(panelRect.x + panelRect.w / 2);
+                    let centerY = Math.round(panelRect.y + panelRect.h / 2);
+                    let sx = Math.round(centerX - originW / 2);
+                    let sy = Math.round(centerY - originH / 2);
+                    canResize = onResize.call(uiik, {
+                        w,
+                        h,
+                        ow: w - originW,
+                        oh: h - originH,
+                        target: panel,
+                        cx: x,
+                        cy: y,
+                        sx: sx,
+                        sy: sy,
+                        deg: matrixInfo.angle,
+                        transform,
+                        handle
+                    }, ev);
+                }
+                if (canResize !== false) {
+                    if (aspectRatio) {
+                        if (changeW) {
+                            style.width = w + "px";
+                            style.height = w / aspectRatio + "px";
+                        }
+                        if (changeH && dir !== "sw" && dir !== "nw") {
+                            style.width = h * aspectRatio + "px";
+                            style.height = h + "px";
+                        }
+                    }
+                    else {
+                        if (changeW) {
+                            resize(transform, style, w);
+                        }
+                        if (changeH) {
+                            resize(transform, style, undefined, h);
+                        }
+                    }
+                    if (changeY) {
+                        transform.moveTo(x, y + sY);
+                    }
+                    if (changeX) {
+                        transform.moveTo(x + sX, y);
+                    }
+                }
+                lastX = x;
+                lastY = y;
+                currentW = w;
+                currentH = h;
+            });
+            onPointerEnd((args) => {
+                var _a, _b;
+                const { ev } = args;
+                if (ghost && ghostNode) {
+                    panelStyle.left = ghostNode.style.left;
+                    panelStyle.top = ghostNode.style.top;
+                    transform = wrapper(panel);
+                    transform.moveTo((lastX + sX), (lastY + sY));
+                    ((_a = panel.parentNode) === null || _a === void 0 ? void 0 : _a.contains(ghostNode)) &&
+                        ((_b = panel.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(ghostNode));
+                    resize(transform, panelStyle, parseFloat(ghostNode.style.width), parseFloat(ghostNode.style.height));
+                }
+                if (setOrigin)
+                    panel.style.transformOrigin = originalTransformOrigin;
+                let { x: centerX, y: centerY } = getRectCenter(panel, matrixInfo);
+                let sx = Math.round(centerX - currentW / 2);
+                let sy = Math.round(centerY - currentH / 2);
+                const deg = matrixInfo.angle * ONE_ANG;
+                const currentVertex = calcVertex(currentW, currentH, centerX, centerY, sx, sy, deg);
+                //修正偏移
+                if (setOrigin) {
+                    if (panel instanceof HTMLElement) {
+                        if (changeX || changeY) {
+                            transform.moveTo(transform.x - (currentVertex[0].x - lastX), transform.y - (currentVertex[0].y - lastY));
+                        }
+                        else {
+                            transform.moveTo(transform.x -
+                                (currentVertex[0].x - vertexBeforeTransform[0].x), transform.y -
+                                (currentVertex[0].y - vertexBeforeTransform[0].y));
+                        }
+                    }
+                } //if setOrigin
+                handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
+                onEnd &&
+                    onEnd.call(uiik, { w: currentW, h: currentH, transform, handle, ghost: ghostNode }, ev);
+            });
+        }, {
+            threshold: THRESHOLD,
+            lockPage: true,
+        });
+    }
+    initHandle(panel) {
+        const opts = this.opts;
+        let handleStr = opts.handle;
+        let handles;
+        if (isString$3(handleStr)) {
+            handles = document.querySelectorAll(handleStr);
+        }
+        else if (isFunction$3(handleStr)) {
+            handles = handleStr(panel);
+        }
+        else if (isElement(handleStr)) {
+            handles = [handleStr];
+        }
+        else if (isArrayLike$3(handleStr)) {
+            let eles = filter(handleStr, h => isElement(h));
+            if (eles.length > 0) {
+                handles = eles;
+            }
+        }
+        if (!handles) {
+            console.error('Can not find handles in "' + panel.outerHTML + '"');
+            return;
+        }
+        handles = isArrayLike$3(handles) ? handles : [handles];
+        each$2(handles, (h) => {
+            //get dir from handle
+            const className = h.getAttribute("class") || "";
+            const matchRs = className.match(EXP_DIR);
+            let dir = "se";
+            if (matchRs) {
+                dir = matchRs.groups.dir;
+            }
+            h.classList.add(CLASS_RESIZABLE_HANDLE);
+            this.bindHandle(h, dir, panel, opts);
+            h.style.cursor = `${dir}-resize`;
+            h.dataset.cursor = `${dir}-resize`;
+            h.setAttribute("name", "handle");
+        });
+    }
+}
+function limitWH(newX, newY, line, value, minValue) {
+    let p1 = line.p1;
+    let p2 = line.p2;
+    let invalid = (p2.x - p1.x) * (newY - p1.y) - (p2.y - p1.y) * (newX - p1.x) > 0;
+    if (invalid) {
+        return minValue;
+    }
+    return value;
+}
+function resize(transform, style, w, h) {
+    //svg
+    if (transform.el instanceof SVGGraphicsElement) {
+        if (isDefined$1(w))
+            transform.el.setAttribute("width", w + "");
+        if (isDefined$1(h))
+            transform.el.setAttribute("height", h + "");
+    }
+    else {
+        if (isDefined$1(w))
+            style.width = w + "px";
+        if (isDefined$1(h))
+            style.height = h + "px";
+    }
+}
+/**
+ * Make els resizable
+ * @param els selector string / html element
+ * @param opts
+ * @returns
+ */
+function newResizable(els, opts) {
+    return new Resizable(els, opts);
+}
+
+/**
+   * myfx/array v1.1.0
+   * A modular utility library with more utils, higher performance and simpler declarations ...
+   * https://github.com/holyhigh2/myfx
+   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   */
+  /**
+ * 判断参数是否为Array对象的实例
+ *
+ * @example
+ * //true
+ * console.log(_.isArray([]))
+ * //false
+ * console.log(_.isArray(document.body.children))
+ *
+ * @param v
+ * @returns
+ */
+function isArray(v) {
+    // 使用 instanceof Array 无法鉴别某些场景，比如
+    // Array.prototype instanceof Array => false
+    // Array.isArray(Array.prototype) => true
+    // typeof new Proxy([],{}) => object
+    // Array.isArray(new Proxy([],{})) => true
+    return Array.isArray(v);
+}
+
+/**
+ * 判断参数是否为函数对象
+ *
+ * @example
+ * //true
+ * console.log(_.isFunction(new Function()))
+ * //true
+ * console.log(_.isFunction(()=>{}))
+ *
+ * @param v
+ * @returns
+ */
+function isFunction(v) {
+    return typeof v == 'function' || v instanceof Function;
+}
+
+/**
+ * 判断值是不是一个Set对象
+ *
+ * @example
+ * //false
+ * console.log(_.isSet(new WeakSet))
+ * //true
+ * console.log(_.isSet(new Set))
+ *
+ * @param v
+ * @returns
+ */
+function isSet(v) {
+    return v instanceof Set;
+}
+
+/**
+ * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
+ *
+ * @example
+ * //true
+ * console.log(_.isString(new String('')))
+ * //true
+ * console.log(_.isString(''))
+ *
+ * @param v
+ * @returns
+ */
+function isString(v) {
+    return typeof v === 'string' || v instanceof String;
+}
+
+const PRIMITIVE_TYPES = [
+    'string',
+    'number',
+    'bigint',
+    'boolean',
+    'undefined',
+    'symbol',
+];
+/**
+ * 判断值是不是一个非基本类型外的值，如果true则认为值是一个对象
+ * 同样，该方法还可以用来判断一个值是不是基本类型
+ *
+ * @example
+ * //false
+ * console.log(_.isObject(1))
+ * //true
+ * console.log(_.isObject(new String()))
+ * //false
+ * console.log(_.isObject(true))
+ * //false
+ * console.log(_.isObject(null))
+ *
+ * @param v value
+ * @returns 是否对象。如果值是null返回false，即使typeof null === 'object'
+ */
+function isObject(v) {
+    return null !== v && PRIMITIVE_TYPES.indexOf(typeof v) < 0;
+}
+
+/**
+ * 判断参数是否为类数组对象
+ *
+ * @example
+ * //true
+ * console.log(_.isArrayLike('abc123'))
+ * //true
+ * console.log(_.isArrayLike([]))
+ * //true
+ * console.log(_.isArrayLike(document.body.children))
+ *
+ * @param v
+ * @returns
+ */
+function isArrayLike(v) {
+    if (isString(v) && v.length > 0)
+        return true;
+    if (!isObject(v))
+        return false;
+    // 具有length属性
+    const list = v;
+    if (list.length !== undefined) {
+        const proto = list.constructor.prototype;
+        // NodeList/HTMLCollection/CSSRuleList/...
+        if (isFunction(proto.item))
+            return true;
+        // arguments
+        if (isFunction(list[Symbol.iterator]))
+            return true;
+    }
+    return false;
+}
+
+/**
+ * 判断值是不是一个Map对象
+ *
+ * @example
+ * //true
+ * console.log(_.isMap(new Map()))
+ * //false
+ * console.log(_.isMap(new WeakMap()))
+ *
+ * @param v
+ * @returns
+ */
+function isMap(v) {
+    return v instanceof Map;
+}
+
+/**
+ * 返回对象的所有key数组
+ *
+ * > 只返回对象的自身可枚举属性
+ *
+ * @example
+ * let f = new Function("this.a=1;this.b=2;");
+ * f.prototype.c = 3;
+ * //[a,b]
+ * console.log(_.keys(new f()))
+ *
+ * @param obj
+ * @returns 对象的key
+ */
+function keys(obj) {
+    if (obj === null || obj === undefined)
+        return [];
+    return Object.keys(obj);
+}
+
+/**
+ * 返回对象的所有value数组
+ * <div class="alert alert-secondary">
+      只返回对象的自身可枚举属性
+    </div>
+ *
+ *
+ * @example
+ * let f = new Function("this.a=1;this.b=2;");
+ * f.prototype.c = 3;
+ * //[1,2]
+ * console.log(_.values(new f()))
+ *
+ * @param obj
+ * @returns 对象根属性对应的值列表
+ */
+function values(obj) {
+    return keys(obj).map((k) => obj[k]);
+}
+
+/**
+ * 把一个集合对象转为array对象。对于非集合对象，
+ * <ul>
+ * <li>字符串 - 每个字符都会变成数组的元素</li>
+ * <li>其他情况 - 返回包含一个collection元素的数组</li>
+ * </ul>
+ *
+ * @example
+ * //[1,2,3]
+ * console.log(_.toArray(new Set([1,2,3])))
+ * //['a','b','c']
+ * console.log(_.toArray('abc'))
+ * //[1,2,'b']
+ * console.log(_.toArray({x:1,y:2,z:'b'}))
+ * //[[1, 'a'], [3, 'b'], ['a', 5]]
+ * console.log(_.toArray(new Map([[1,'a'],[3,'b'],['a',5]])))
+ *
+ * @param collection 如果是Map/Object对象会转换为值列表
+ *
+ * @returns 转换后的数组对象
+ */
+function toArray(collection) {
+    if (isArray(collection))
+        return collection.concat();
+    if (isFunction(collection))
+        return [collection];
+    if (isSet(collection)) {
+        return Array.from(collection);
+    }
+    else if (isString(collection)) {
+        return collection.split('');
+    }
+    else if (isArrayLike(collection)) {
+        return Array.from(collection);
+    }
+    else if (isMap(collection)) {
+        return Array.from(collection.values());
+    }
+    else if (isObject(collection)) {
+        return values(collection);
+    }
+    return [collection];
+}
+
+function identity(v) {
+    return v;
+}
+
+/**
+ * 对集合内的假值进行剔除，并返回剔除后的新数组。假值包括 null/undefined/NaN/0/''/false
+ * @example
+ * //[1,2,4,'a','1']
+ * console.log(_.compact([0,1,false,2,4,undefined,'a','1','',null]))
+ *
+ * @param array 数组
+ * @returns 转换后的新数组对象
+ */
+function compact(array) {
+    return toArray(array).filter(identity);
+}
+
+function _eachIterator(collection, callback, forRight) {
+    let values;
+    let keys;
+    if (isString(collection) || isArrayLike(collection)) {
+        let size = collection.length;
+        if (forRight) {
+            while (size--) {
+                const r = callback(collection[size], size, collection);
+                if (r === false)
+                    return;
+            }
+        }
+        else {
+            for (let i = 0; i < size; i++) {
+                const r = callback(collection[i], i, collection);
+                if (r === false)
+                    return;
+            }
+        }
+    }
+    else if (isSet(collection)) {
+        let size = collection.size;
+        if (forRight) {
+            values = Array.from(collection);
+            while (size--) {
+                const r = callback(values[size], size, collection);
+                if (r === false)
+                    return;
+            }
+        }
+        else {
+            values = collection.values();
+            for (let i = 0; i < size; i++) {
+                const r = callback(values.next().value, i, collection);
+                if (r === false)
+                    return;
+            }
+        }
+    }
+    else if (isMap(collection)) {
+        let size = collection.size;
+        keys = collection.keys();
+        values = collection.values();
+        if (forRight) {
+            keys = Array.from(keys);
+            values = Array.from(values);
+            while (size--) {
+                const r = callback(values[size], keys[size], collection);
+                if (r === false)
+                    return;
+            }
+        }
+        else {
+            for (let i = 0; i < size; i++) {
+                const r = callback(values.next().value, keys.next().value, collection);
+                if (r === false)
+                    return;
+            }
+        }
+    }
+    else if (isObject(collection)) {
+        keys = Object.keys(collection);
+        let size = keys.length;
+        if (forRight) {
+            while (size--) {
+                const k = keys[size];
+                const r = callback(collection[k], k, collection);
+                if (r === false)
+                    return;
+            }
+        }
+        else {
+            for (let i = 0; i < size; i++) {
+                const k = keys[i];
+                const r = callback(collection[k], k, collection);
+                if (r === false)
+                    return;
+            }
+        }
+    }
+}
+
+function each(collection, callback) {
+    _eachIterator(collection, callback, false);
+}
+
+/**
+ * 判断参数是否为undefined
+ * @example
+ * //true
+ * console.log(_.isUndefined(undefined))
+ * //false
+ * console.log(_.isUndefined(null))
+ *
+ * @param v
+ * @returns
+ */
+function isUndefined(v) {
+    return v === undefined;
+}
+
+function toPath$1(path) {
+    let chain = path;
+    if (isArray(chain)) {
+        chain = chain.join('.');
+    }
+    else {
+        chain += '';
+    }
+    const rs = (chain + '')
+        .replace(/\[([^\]]+)\]/gm, '.$1')
+        .replace(/^\./g, '')
+        .split('.');
+    return rs;
+}
+
+/**
+ * 通过path获取对象属性值
+ *
+ * @example
+ * //2
+ * console.log(_.get([1,2,3],1))
+ * //Holyhigh
+ * console.log(_.get({a:{b:[{x:'Holyhigh'}]}},['a','b',0,'x']))
+ * //Holyhigh2
+ * console.log(_.get({a:{b:[{x:'Holyhigh2'}]}},'a.b.0.x'))
+ * //Holyhigh
+ * console.log(_.get({a:{b:[{x:'Holyhigh'}]}},'a.b[0].x'))
+ * //hi
+ * console.log(_.get([[null,[null,null,'hi']]],'[0][1][2]'))
+ * //not find
+ * console.log(_.get({},'a.b[0].x','not find'))
+ *
+ * @param obj 需要获取属性值的对象，如果obj不是对象(isObject返回false)，则返回defaultValue
+ * @param path 属性路径，可以是索引数字，字符串key，或者多级属性数组
+ * @param [defaultValue] 如果path未定义，返回默认值
+ * @returns 属性值或默认值
+ */
+function get(obj, path, defaultValue) {
+    if (!isObject(obj))
+        return defaultValue;
+    const chain = toPath$1(path);
+    let target = obj;
+    for (let i = 0; i < chain.length; i++) {
+        const seg = chain[i];
+        target = target[seg];
+        if (!target)
+            break;
+    }
+    if (target === undefined)
+        target = defaultValue;
+    return target;
+}
+
+/**
+ * 创建一个函数，该函数返回指定对象的path属性值
+ * @example
+ * const libs = [
+ *  {name:'func.js',platform:['web','nodejs'],tags:{utils:true},js:false},
+ *  {name:'juth2',platform:['web','java'],tags:{utils:false,middleware:true},js:true},
+ *  {name:'soya2d',platform:['web'],tags:{utils:true},js:true}
+ * ];
+ * //[true,false,true]
+ * console.log(_.map(libs,_.prop('tags.utils')))
+ * //nodejs
+ * console.log(_.prop(['platform',1])(libs[0]))
+ *
+ * @param path
+ * @returns 接收一个对象作为参数的函数
+ * @since 0.17.0
+ */
+function prop(path) {
+    return (obj) => {
+        return get(obj, path);
+    };
+}
+
+/**
+ * 解析path并返回数组
+ * @example
+ * //['a', 'b', '2', 'c']
+ * console.log(_.toPath('a.b[2].c'))
+ * //['a', 'b', 'c', '1']
+ * console.log(_.toPath(['a','b','c[1]']))
+ * //['1']
+ * console.log(_.toPath(1))
+ *
+ * @param path 属性路径，可以是数字索引，字符串key，或者多级属性数组
+ * @returns path数组
+ * @since 0.16.0
+ */
+function toPath(path) {
+    return toPath$1(path);
+}
+
+/**
+ * 判断值是否为null或undefined
+ *
+ * @example
+ * //true
+ * console.log(_.isNil(undefined))
+ * //false
+ * console.log(_.isNil(0))
+ * //true
+ * console.log(_.isNil(null))
+ * //false
+ * console.log(_.isNil(NaN))
+ *
+ * @param v
+ * @returns
+ * @since 1.0.0
+ */
+function isNil$1(v) {
+    return v === null || v === undefined;
+}
+
+function eq(a, b) {
+    if (Number.isNaN(a) && Number.isNaN(b))
+        return true;
+    return a === b;
+}
+
+/**
+ * 检测props对象中的所有属性是否在object中存在并使用自定义比较器对属性值进行对比。可以用于对象的深度对比。
+ * 当comparator参数是默认值时，与<code>isMath</code>函数相同
+ *
+ * @example
+ * let target = {a:{x:1,y:2},b:1}
+ * //true
+ * console.log(_.isMatchWith(target,{b:1}))
+ * //false
+ * console.log(_.isMatchWith(target,{b:'1'}))
+ *
+ * target = {a:null,b:0}
+ * //true
+ * console.log(_.isMatchWith(target,{a:'',b:'0'},(a,b)=>_.isEmpty(a) && _.isEmpty(b)?true:a==b))
+ *
+ * @param target 如果不是对象类型，返回false
+ * @param props 对比属性对象，如果是nil，返回true
+ * @param [comparator=eq] 比较器，参数(object[k],props[k],k,object,props)，返回true表示匹配
+ * @returns 匹配所有props返回true
+ * @since 0.18.1
+ */
+function isMatchWith(target, props, comparator = eq) {
+    if (isNil$1(props))
+        return true;
+    const ks = Object.keys(props);
+    if (!isObject(target))
+        return false;
+    let rs = true;
+    for (let i = ks.length; i--;) {
+        const k = ks[i];
+        const v1 = target[k];
+        const v2 = props[k];
+        if (isObject(v1) && isObject(v2)) {
+            if (!isMatchWith(v1, v2, comparator)) {
+                rs = false;
+                break;
+            }
+        }
+        else {
+            if (!comparator(v1, v2, k, target, props)) {
+                rs = false;
+                break;
+            }
+        }
+    }
+    return rs;
+}
+
+/**
+ * 检测props对象中的所有属性是否在object中存在，可用于对象的深度对比。
+ * 使用<code>eq</code>作为值对比逻辑
+ *
+ * @example
+ * let target = {a:{x:1,y:2},b:1}
+ * //true
+ * console.log(_.isMatch(target,{b:1}))
+ * //true
+ * console.log(_.isMatch(target,{a:{x:1}}))
+ *
+ * target = [{x:1,y:2},{b:1}]
+ * //true
+ * console.log(_.isMatch(target,{1:{b:1}}))
+ * //true
+ * console.log(_.isMatch(target,[{x:1}]))
+ *
+ * @param object
+ * @param props 对比属性对象，如果是null，返回true
+ * @returns 匹配所有props返回true
+ * @since 0.17.0
+ */
+function isMatch(object, props) {
+    return isMatchWith(object, props, eq);
+}
+
+/**
+ * 创建一个函数，该函数接收一个对象为参数并返回对该对象使用props进行验证的的断言结果。
+ *
+ *
+ * @example
+ * const libs = [
+ *  {name:'func.js',platform:['web','nodejs'],tags:{utils:true},js:true},
+ *  {name:'juth2',platform:['web','java'],tags:{utils:false,middleware:true},js:false},
+ *  {name:'soya2d',platform:['web'],tags:{utils:true},js:false}
+ * ];
+ *
+ * //[{func.js...}]
+ * console.log(_.filter(libs,_.matcher({tags:{utils:true},js:true})))
+ *
+ * @param props 断言条件对象
+ * @returns matcher(v)函数
+ * @since 0.17.0
+ */
+function matcher(props) {
+    return (obj) => {
+        return isMatch(obj, props);
+    };
+}
+
+function iteratee(value) {
+    if (isUndefined(value)) {
+        return identity;
+    }
+    else if (isFunction(value)) {
+        return value;
+    }
+    else if (isString(value)) {
+        return prop(value);
+    }
+    else if (isArray(value)) {
+        return prop(toPath(value));
+    }
+    else if (isObject(value)) {
+        return matcher(value);
+    }
+    return () => false;
+}
+
+/**
+ * 对数组进行切片，并返回切片后的新数组，原数组不变。新数组内容是对原数组内容的浅拷贝
+ *
+ * @example
+ * //[2,3,4]
+ * console.log(_.slice([1,2,3,4,5],1,4))
+ * //[2,3,4,5]
+ * console.log(_.slice([1,2,3,4,5],1))
+ *
+ *
+ * @param array 数组
+ * @param [begin=0] 切片起始下标，包含下标位置元素
+ * @param [end] 切片结束下标，<b>不包含</b>下标位置元素
+ * @returns 切片元素组成的新数组
+ */
+function slice(array, begin, end) {
+    return toArray(array).slice(begin || 0, end);
+}
+
+/**
+ * 对集合内的所有元素进行断言并返回第一个匹配的元素索引
+ *
+ * @example
+ * //3 查询数组的索引
+ * console.log(_.findIndex(['a','b','c',1,3,6],_.isNumber))
+ * //0
+ * console.log(_.findIndex([{a:1},{a:2},{a:3}],'a'))
+ * //2
+ * console.log(_.findIndex([{a:1},{a:2},{a:3}],{a:3}))
+ *
+ * @param array 数组
+ * @param predicate (value[,index[,array]]);断言
+ * <br>当断言是函数时回调参数见定义
+ * <br>其他类型请参考 {@link utils!iteratee}
+ * @param fromIndex 从0开始的起始索引，设置该参数可以减少实际遍历次数。默认0
+ * @returns 第一个匹配断言的元素索引或-1
+ */
+function findIndex(array, predicate, fromIndex) {
+    let rs = -1;
+    let fromIndexNum = fromIndex || 0;
+    const itee = iteratee(predicate);
+    each(slice(array, fromIndexNum), (v, k, c) => {
+        const r = itee(v, k, c);
+        if (r) {
+            rs = k + fromIndexNum;
+            return false;
+        }
+    });
+    return rs;
+}
+
+/**
+   * myfx/string v1.1.0
+   * A modular utility library with more utils, higher performance and simpler declarations ...
+   * https://github.com/holyhigh2/myfx
+   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   */
+
+/**
+ * 判断值是否为null或undefined
+ *
+ * @example
+ * //true
+ * console.log(_.isNil(undefined))
+ * //false
+ * console.log(_.isNil(0))
+ * //true
+ * console.log(_.isNil(null))
+ * //false
+ * console.log(_.isNil(NaN))
+ *
+ * @param v
+ * @returns
+ * @since 1.0.0
+ */
+function isNil(v) {
+    return v === null || v === undefined;
+}
+
+/**
+ * 转换任何对象为字符串。如果对象本身为string类型的值/对象，则返回该对象的字符串形式。否则返回对象的toString()方法的返回值
+ *
+ * @example
+ * //''
+ * console.log(_.toString(null))
+ * //1
+ * console.log(_.toString(1))
+ * //3,6,9
+ * console.log(_.toString([3,6,9]))
+ * //-0
+ * console.log(_.toString(-0))
+ * //[object Set]
+ * console.log(_.toString(new Set([3,6,9])))
+ * //{a:1}
+ * console.log(_.toString({a:1,toString:()=>'{a:1}'}))
+ *
+ * @param v 任何值
+ * @returns 对于null/undefined会返回空字符串
+ */
+function toString(v) {
+    if (isNil(v))
+        return '';
+    if (v === 0 && 1 / v < 0)
+        return '-0';
+    return v.toString();
+}
+
+/**
+ * 判断值是不是一个正则对象
+ *
+ * @example
+ * //true
+ * console.log(_.isRegExp(new RegExp))
+ * //true
+ * console.log(_.isRegExp(/1/))
+ *
+ * @param v
+ * @returns
+ * @since 0.19.0
+ */
+function isRegExp(v) {
+    return typeof v === 'object' && v instanceof RegExp;
+}
+
+/**
+ * 使用分隔符将字符串分割为多段数组
+ *
+ * @example
+ * //["func", "js"]
+ * console.log(_.split('func.js','.'))
+ * //["func"]
+ * console.log(_.split('func.js','.',1))
+ *
+ * @param str 原字符串。如果非字符串则会自动转换成字符串
+ * @param separator 分隔符
+ * @param [limit] 限制返回的结果数量，为空返回所有结果
+ * @returns 分割后的数组
+ */
+function split(str, separator, limit) {
+    return toString(str).split(separator, limit);
+}
+
+/**
+ * 检测字符串是否与指定的正则匹配
+ *
+ * @example
+ * //true 忽略大小写包含判断
+ * console.log(_.test('func.js','Func','i'))
+ * //true 忽略大小写相等判断
+ * console.log(_.test('func.js',/^FUNC\.js$/i))
+ * //false
+ * console.log(_.test('func.js',/FUNC/))
+ *
+ * @param str
+ * @param pattern 指定正则。如果非正则类型会自动转换为正则再进行匹配
+ * @param [flags] 如果pattern参数不是正则类型，会使用该标记作为正则构造的第二个参数
+ * @returns 匹配返回true
+ * @since 0.19.0
+ */
+function test(str, pattern, flags) {
+    let regExp = pattern;
+    if (!isRegExp(regExp)) {
+        regExp = new RegExp(pattern, flags);
+    }
+    return regExp.test(str);
+}
+
+/**
+   * myfx/tree v1.1.0
+   * A modular utility library with more utils, higher performance and simpler declarations ...
+   * https://github.com/holyhigh2/myfx
+   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   */
+
+/**
+ * 根据指定的node及parentKey属性，查找最近的祖先节点
+ * @param node Element节点或普通对象节点
+ * @param predicate (node,times,cancel)断言函数，如果返回true表示节点匹配。或调用cancel中断查找
+ * @param parentKey 父节点引用属性名
+ * @returns 断言为true的最近一个祖先节点
+ * @since 1.0.0
+ */
+function closest(node, predicate, parentKey) {
+    let p = node;
+    let t = null;
+    let k = true;
+    let i = 0;
+    while (k && p) {
+        if (predicate(p, i++, () => { k = false; })) {
+            t = p;
+            break;
+        }
+        p = p[parentKey];
+    }
+    return t;
+}
+
+var _Draggable_instances, _Draggable_handleMap, _Draggable_container, _Draggable_initStyle;
+const DRAGGER_GROUPS = {};
+const CLASS_DRAGGABLE = "uii-draggable";
+const CLASS_DRAGGABLE_HANDLE = "uii-draggable-handle";
+const CLASS_DRAGGABLE_ACTIVE = "uii-draggable-active";
+const CLASS_DRAGGABLE_GHOST = "uii-draggable-ghost";
+/**
+ * 用于表示一个或多个可拖动元素的定义
+ * 每个拖动元素可以有独立handle，也可以公用一个handle
+ * 可拖动元素拖动时自动剔除left/top/x/y/cx/cy属性，而使用transform:translate替代
+ * > 可用CSS接口
+ * - .uii-draggable
+ * - .uii-draggable-handle
+ * - .uii-draggable-active
+ * - .uii-draggable-ghost
+ * @public
+ */
+class Draggable extends Uii {
+    constructor(els, opts) {
+        super(els, assign$1({
+            containment: false,
+            watch: true,
+            threshold: THRESHOLD,
+            ghost: false,
+            direction: "",
+            scroll: true,
+            useTransform: true,
+            snapOptions: {
+                tolerance: 10,
+            },
+            self: false,
+        }, opts));
+        _Draggable_instances.add(this);
+        _Draggable_handleMap.set(this, new WeakMap());
+        _Draggable_container.set(this, null);
+        if (this.opts.handle) {
+            each$2(this.ele, (el) => {
+                const h = el.querySelector(this.opts.handle);
+                if (!h) {
+                    console.error('No handle found "' + this.opts.handle + '"');
+                    return false;
+                }
+                __classPrivateFieldGet(this, _Draggable_handleMap, "f").set(el, h);
+            });
+        }
+        this.onOptionChanged(this.opts);
+        //put into group
+        if (this.opts.group) {
+            if (!DRAGGER_GROUPS[this.opts.group]) {
+                DRAGGER_GROUPS[this.opts.group] = [];
+            }
+            DRAGGER_GROUPS[this.opts.group].push(...this.ele);
+        }
+        __classPrivateFieldGet(this, _Draggable_instances, "m", _Draggable_initStyle).call(this, this.ele);
+        //containment
+        if (this.opts.containment) {
+            if (isBoolean$1(this.opts.containment)) {
+                __classPrivateFieldSet(this, _Draggable_container, isEmpty$1(this.ele) ? null : this.ele[0].parentElement, "f");
+            }
+            else if (isString$3(this.opts.containment)) {
+                __classPrivateFieldSet(this, _Draggable_container, document.querySelector(this.opts.containment), "f");
+            }
+            else if (isElement$1(this.opts.containment)) {
+                __classPrivateFieldSet(this, _Draggable_container, this.opts.containment, "f");
+            }
+        }
+        if (this.opts.watch && this.eleString) {
+            let con;
+            if (isString$3(this.opts.watch)) {
+                con = document.querySelector(this.opts.watch);
+            }
+            else {
+                con = isEmpty$1(this.ele) ? null : this.ele[0].parentElement;
+            }
+            this.bindEvent(con || document.body, this.opts, __classPrivateFieldGet(this, _Draggable_handleMap, "f"));
+        }
+        else {
+            each$2(this.ele, (el) => {
+                this.bindEvent(el, this.opts, __classPrivateFieldGet(this, _Draggable_handleMap, "f"));
+            });
+        }
+    }
+    bindEvent(bindTarget, opts, handleMap) {
+        const container = __classPrivateFieldGet(this, _Draggable_container, "f");
+        let draggableList = this.ele;
+        const eleString = this.eleString;
+        const initStyle = __classPrivateFieldGet(this, _Draggable_instances, "m", _Draggable_initStyle).bind(this);
+        this.addPointerDown(bindTarget, ({ ev, currentCStyle, onPointerStart, onPointerMove, onPointerEnd, }) => {
+            var _a;
+            let t = ev.target;
+            if (!t)
+                return true;
+            //refresh draggableList
+            if (opts.watch && eleString) {
+                draggableList = bindTarget.querySelectorAll(eleString);
+                initStyle(draggableList);
+            }
+            //find drag dom & handle
+            let findRs = closest(t, (node) => includes$1(draggableList, node), "parentNode");
+            if (!findRs)
+                return true;
+            const dragDom = findRs;
+            let handle = handleMap.get(dragDom);
+            if (handle && !handle.contains(t)) {
+                return true;
+            }
+            if (opts.self && dragDom !== t)
+                return true;
+            //检测
+            const onPointerDown = opts.onPointerDown;
+            if (onPointerDown &&
+                onPointerDown({ draggable: dragDom }, ev) === false)
+                return true;
+            const filter = opts.filter;
+            //check filter
+            if (filter) {
+                if (some$1(dragDom.querySelectorAll(filter), (ele) => ele.contains(t)))
+                    return true;
+            }
+            //用于计算鼠标移动时当前位置
+            let offsetParent;
+            let offsetParentRect;
+            let offsetParentCStyle;
+            let offsetPointX = 0;
+            let offsetPointY = 0;
+            const inContainer = !!container;
+            const ghost = opts.ghost;
+            const ghostClass = opts.ghostClass;
+            const ghostTo = opts.ghostTo;
+            const direction = opts.direction;
+            const onStart = opts.onStart;
+            const onDrag = opts.onDrag;
+            const onEnd = opts.onEnd;
+            const onClone = opts.onClone;
+            const originalZIndex = currentCStyle.zIndex;
+            let zIndex = opts.zIndex || originalZIndex;
+            const classes = opts.classes || "";
+            const group = opts.group;
+            const scroll = opts.scroll;
+            const scrollSpeed = opts.scrollSpeed || 10;
+            let gridX, gridY;
+            const snapOn = opts.snap;
+            let snappable;
+            const snapTolerance = ((_a = opts.snapOptions) === null || _a === void 0 ? void 0 : _a.tolerance) || 10;
+            const onSnap = opts.onSnap;
+            let lastSnapDirY = "", lastSnapDirX = "";
+            let lastSnapping = "";
+            const dragDomRect = dragDom.getBoundingClientRect();
+            let originW;
+            let originH;
+            // boundary
+            let minX = 0;
+            let minY = 0;
+            let maxX = 0;
+            let maxY = 0;
+            let ghostNode;
+            let transform;
+            let timer = null;
+            let toLeft = false;
+            let toTop = false;
+            let toRight = false;
+            let toBottom = false;
+            let endX = 0, endY = 0;
+            let startMatrixInfo;
+            let startPointXy;
+            //bind events
+            onPointerStart(function (args) {
+                const { ev } = args;
+                ///////////////////////// initial states start;
+                offsetParent =
+                    dragDom instanceof HTMLElement
+                        ? dragDom.offsetParent || document.body
+                        : dragDom.ownerSVGElement;
+                offsetParentRect = offsetParent.getBoundingClientRect();
+                offsetParentCStyle = window.getComputedStyle(offsetParent);
+                startMatrixInfo = getMatrixInfo(dragDom, true);
+                const offsetXy = getPointInContainer(ev, dragDom, undefined, undefined, startMatrixInfo);
+                offsetPointX = offsetXy.x;
+                offsetPointY = offsetXy.y;
+                startPointXy = getPointInContainer(ev, offsetParent, offsetParentRect, offsetParentCStyle, startMatrixInfo);
+                originW =
+                    dragDomRect.width;
+                originH =
+                    dragDomRect.height;
+                //svg group el
+                if (dragDom instanceof SVGGElement || dragDom instanceof SVGSVGElement) {
+                    let bbox = dragDom.getBBox();
+                    offsetPointX += bbox.x;
+                    offsetPointY += bbox.y;
+                }
+                if (startMatrixInfo.angle != 0) {
+                    let { sx, sy } = getCenterXy(dragDom);
+                    offsetPointX = startPointXy.x - sx;
+                    offsetPointY = startPointXy.y - sy;
+                }
+                if (group) {
+                    let i = -1;
+                    each$2(DRAGGER_GROUPS[group], (el) => {
+                        const z = parseInt(currentCStyle.zIndex) || 0;
+                        if (z > i)
+                            i = z;
+                    });
+                    zIndex = i + 1;
+                }
+                const grid = opts.grid;
+                if (isArray$3(grid)) {
+                    gridX = grid[0];
+                    gridY = grid[1];
+                }
+                else if (isNumber$1(grid)) {
+                    gridX = gridY = grid;
+                }
+                if (snapOn) {
+                    //获取拖动元素所在容器内的可吸附对象
+                    snappable = map$1((container || document).querySelectorAll(snapOn), (el) => {
+                        //计算相对容器xy
+                        const { x, y, w, h } = getRectInContainer(el, offsetParent);
+                        return {
+                            x1: x,
+                            y1: y,
+                            x2: x + w,
+                            y2: y + h,
+                            el: el,
+                        };
+                    });
+                }
+                if (inContainer) {
+                    maxX =
+                        container.scrollWidth - originW / startMatrixInfo.scale;
+                    maxY =
+                        container.scrollHeight - originH / startMatrixInfo.scale;
+                }
+                if (maxX < 0)
+                    maxX = 0;
+                if (maxY < 0)
+                    maxY = 0;
+                ///////////////////////// initial states end;
+                if (ghost) {
+                    if (isFunction$3(ghost)) {
+                        ghostNode = ghost(dragDom);
+                    }
+                    else {
+                        ghostNode = dragDom.cloneNode(true);
+                        ghostNode.style.opacity = "0.3";
+                        ghostNode.style.pointerEvents = "none";
+                        ghostNode.style.position = "absolute";
+                    }
+                    ghostNode.style.zIndex = zIndex + "";
+                    if (ghostClass) {
+                        ghostNode.classList.add(...compact(split(ghostClass, " ")));
+                    }
+                    ghostNode.classList.add(...compact(split(classes, " ")));
+                    ghostNode.classList.toggle(CLASS_DRAGGABLE_GHOST, true);
+                    let ghostParent = ghostTo ? (isString$3(ghostTo) ? document.querySelector(ghostTo) : ghostTo) : dragDom.parentNode;
+                    ghostParent === null || ghostParent === void 0 ? void 0 : ghostParent.appendChild(ghostNode);
+                    transform = wrapper(ghostNode, opts.useTransform);
+                    onClone && onClone({ clone: ghostNode, draggable: dragDom }, ev);
+                }
+                else {
+                    transform = wrapper(dragDom, opts.useTransform);
+                }
+                //apply classes
+                dragDom.classList.add(...compact(split(classes, " ")));
+                if (!ghostNode)
+                    dragDom.style.zIndex = zIndex + "";
+                dragDom.classList.toggle(CLASS_DRAGGABLE_ACTIVE, true);
+                onStart &&
+                    onStart({ draggable: dragDom, x: startPointXy.x, y: startPointXy.y, transform }, ev);
+                //notify
+                const customEv = new CustomEvent("uii-dragactive", {
+                    bubbles: true,
+                    composed: true,
+                    cancelable: false,
+                    detail: { target: dragDom }
+                });
+                dragDom.dispatchEvent(customEv);
+            });
+            onPointerMove((args) => {
+                const { ev, pointX, pointY, offX, offY } = args;
+                let newX = startPointXy.x + offX;
+                let newY = startPointXy.y + offY;
+                //edge detect
+                if (scroll) {
+                    const lX = pointX - offsetParentRect.x;
+                    const lY = pointY - offsetParentRect.y;
+                    const rX = offsetParentRect.x + offsetParentRect.width - pointX;
+                    const rY = offsetParentRect.y + offsetParentRect.height - pointY;
+                    toLeft = lX < EDGE_THRESHOLD;
+                    toTop = lY < EDGE_THRESHOLD;
+                    toRight = rX < EDGE_THRESHOLD;
+                    toBottom = rY < EDGE_THRESHOLD;
+                    if (toLeft || toTop || toRight || toBottom) {
+                        if (!timer) {
+                            timer = setInterval(() => {
+                                if (toLeft) {
+                                    offsetParent.scrollLeft -= scrollSpeed;
+                                }
+                                else if (toRight) {
+                                    offsetParent.scrollLeft += scrollSpeed;
+                                }
+                                if (toTop) {
+                                    offsetParent.scrollTop -= scrollSpeed;
+                                }
+                                else if (toBottom) {
+                                    offsetParent.scrollTop += scrollSpeed;
+                                }
+                            }, 20);
+                        }
+                    }
+                    else {
+                        if (timer) {
+                            clearInterval(timer);
+                            timer = null;
+                        }
+                    }
+                }
+                let x = newX - offsetPointX;
+                let y = newY - offsetPointY;
+                //grid
+                if (isNumber$1(gridX) && isNumber$1(gridY)) {
+                    x = ((x / gridX) >> 0) * gridX;
+                    y = ((y / gridY) >> 0) * gridY;
+                }
+                if (inContainer) {
+                    if (x < minX) {
+                        x = 0;
+                    }
+                    if (y < minY) {
+                        y = 0;
+                    }
+                    if (x > maxX) {
+                        x = maxX;
+                    }
+                    if (y > maxY) {
+                        y = maxY;
+                    }
+                }
+                let canDrag = true;
+                let emitSnap = false;
+                if (snapOn) {
+                    const currPageX1 = x;
+                    const currPageY1 = y;
+                    const currPageX2 = currPageX1 + originW;
+                    const currPageY2 = currPageY1 + originH;
+                    //check snappable
+                    let snapX = NaN, snapY = NaN;
+                    let targetX, targetY;
+                    let snapDirX, snapDirY;
+                    if (!direction || direction === "v") {
+                        each$2(snappable, (data) => {
+                            if (Math.abs(data.y1 - currPageY1) <= snapTolerance) {
+                                //top parallel
+                                snapY = data.y1;
+                                snapDirY = "t2t";
+                            }
+                            else if (Math.abs(data.y2 - currPageY1) <= snapTolerance) {
+                                //b2t
+                                snapY = data.y2;
+                                snapDirY = "t2b";
+                            }
+                            else if (Math.abs(data.y1 - currPageY2) <= snapTolerance) {
+                                //t2b
+                                snapY = data.y1 - originH;
+                                snapDirY = "b2t";
+                            }
+                            else if (Math.abs(data.y2 - currPageY2) <= snapTolerance) {
+                                //bottom parallel
+                                snapY = data.y2 - originH;
+                                snapDirY = "b2b";
+                            }
+                            if (snapY) {
+                                lastSnapDirY = snapDirY;
+                                targetY = data.el;
+                                return false;
+                            }
+                        });
+                    }
+                    if (!direction || direction === "h") {
+                        each$2(snappable, (data) => {
+                            if (Math.abs(data.x1 - currPageX1) <= snapTolerance) {
+                                //left parallel
+                                snapX = data.x1;
+                                snapDirX = "l2l";
+                            }
+                            else if (Math.abs(data.x2 - currPageX1) <= snapTolerance) {
+                                //r2l
+                                snapX = data.x2;
+                                snapDirX = "l2r";
+                            }
+                            else if (Math.abs(data.x1 - currPageX2) <= snapTolerance) {
+                                //l2r
+                                snapX = data.x1 - originW;
+                                snapDirX = "r2l";
+                            }
+                            else if (Math.abs(data.x2 - currPageX2) <= snapTolerance) {
+                                //right parallel
+                                snapX = data.x2 - originW;
+                                snapDirX = "r2r";
+                            }
+                            if (snapX) {
+                                lastSnapDirX = snapDirX;
+                                targetX = data.el;
+                                return false;
+                            }
+                        });
+                    }
+                    if (snapX || snapY) {
+                        if (snapX) {
+                            x = snapX;
+                        }
+                        if (snapY) {
+                            y = snapY;
+                        }
+                        if (onSnap && lastSnapping !== lastSnapDirX + "" + lastSnapDirY) {
+                            setTimeout(() => {
+                                //emit after relocate
+                                onSnap({
+                                    el: ghostNode || dragDom,
+                                    targetH: targetX,
+                                    targetV: targetY,
+                                    dirH: snapDirX,
+                                    dirV: snapDirY,
+                                }, ev);
+                            }, 0);
+                            lastSnapping = lastSnapDirX + "" + lastSnapDirY;
+                        }
+                        emitSnap = true;
+                    }
+                    else {
+                        lastSnapDirX = lastSnapDirY = lastSnapping = "";
+                    }
+                }
+                if (onDrag && !emitSnap) {
+                    if (onDrag({
+                        draggable: dragDom,
+                        ox: offX,
+                        oy: offY,
+                        x: x,
+                        y: y,
+                        transform,
+                    }, ev) === false) {
+                        canDrag = false;
+                        endX = x;
+                        endY = y;
+                    }
+                }
+                if (canDrag) {
+                    if (direction === "v") {
+                        transform.moveToY(y);
+                    }
+                    else if (direction === "h") {
+                        transform.moveToX(x);
+                    }
+                    else {
+                        transform.moveTo(x, y);
+                    }
+                    endX = x;
+                    endY = y;
+                }
+            });
+            onPointerEnd((args) => {
+                var _a;
+                const { ev, currentStyle } = args;
+                if (scroll) {
+                    if (timer) {
+                        clearInterval(timer);
+                        timer = null;
+                    }
+                }
+                //restore classes
+                dragDom.classList.remove(...compact(split(classes, " ")));
+                currentStyle.zIndex = originalZIndex;
+                dragDom.classList.remove(CLASS_DRAGGABLE_ACTIVE);
+                let moveToGhost = true;
+                if (onEnd) {
+                    moveToGhost =
+                        onEnd({ draggable: dragDom, x: endX, y: endY, transform }, ev) ===
+                            false
+                            ? false
+                            : true;
+                }
+                //notify
+                const customEv = new CustomEvent("uii-dragdeactive", {
+                    bubbles: true,
+                    composed: true,
+                    cancelable: false,
+                    detail: {
+                        target: dragDom
+                    }
+                });
+                dragDom.dispatchEvent(customEv);
+                if (ghost) {
+                    (_a = ghostNode.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(ghostNode);
+                    if (moveToGhost !== false) {
+                        wrapper(dragDom, opts.useTransform).moveTo(transform.x, transform.y);
+                    }
+                }
+            });
+        }, {
+            threshold: this.opts.threshold || 0,
+            lockPage: true,
+        });
+    }
+    /**
+     * @internal
+     */
+    onOptionChanged(opts) {
+        const droppable = opts.droppable;
+        if (!isFunction$3(droppable)) {
+            if (isUndefined$2(droppable)) {
+                opts.droppable = () => { };
+            }
+            else if (isString$3(droppable)) {
+                opts.droppable = () => document.querySelectorAll(droppable);
+            }
+            else if (isArrayLike$3(droppable)) {
+                opts.droppable = () => droppable;
+            }
+            else if (isElement$1(droppable)) {
+                opts.droppable = () => [droppable];
+            }
+        }
+    }
+}
+_Draggable_handleMap = new WeakMap(), _Draggable_container = new WeakMap(), _Draggable_instances = new WeakSet(), _Draggable_initStyle = function _Draggable_initStyle(draggableList) {
+    each$2(draggableList, (el) => {
+        if (isDefined$1(this.opts.type))
+            el.dataset.dropType = this.opts.type;
+        el.classList.toggle(CLASS_DRAGGABLE, true);
+        const ee = __classPrivateFieldGet(this, _Draggable_handleMap, "f").get(el) || el;
+        ee.classList.toggle(CLASS_DRAGGABLE_HANDLE, true);
+        if (!isUndefined$2(this.opts.cursor)) {
+            el.style.cursor = this.opts.cursor.default || "move";
+            if (isDefined$1(this.opts.cursor.over)) {
+                el.dataset.cursorOver = this.opts.cursor.over;
+                el.dataset.cursorActive = this.opts.cursor.active || "move";
+            }
+        }
+    });
+};
+/**
+ * create a draggable pattern for one or more elements with opts
+ * @param els selector string / html element
+ * @param opts
+ * @returns Draggable instance
+ */
+function newDraggable(els, opts) {
+    return new Draggable(els, opts);
+}
+
+var _Droppable_active;
+const Droppables = [];
+const CLASS_DROPPABLE = "uii-droppable";
+/**
+ * 用于表示一个或多个可响应拖动元素的定义
+ * > 可用CSS接口
+ * - .uii-droppable
+ * @public
+ */
+class Droppable extends Uii {
+    constructor(el, opts) {
+        super(el, assign$1({
+            watch: true
+        }, opts));
+        _Droppable_active.set(this, void 0);
+        Droppables.push(this);
+    }
+    /**
+     * @internal
+     */
+    bindEvent(droppable, opts) {
+        //dragenter
+        this.registerEvent(droppable, "mouseenter", (e) => {
+            if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
+                return;
+            if (__classPrivateFieldGet(this, _Droppable_active, "f") === droppable)
+                return;
+            if (opts.hoverClass) {
+                each$2(split(opts.hoverClass, ' '), cls => {
+                    droppable.classList.toggle(cls, true);
+                });
+            }
+            if (__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver) {
+                setCursor(__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver);
+            }
+            opts.onEnter && opts.onEnter({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
+        });
+        //dragleave
+        this.registerEvent(droppable, "mouseleave", (e) => {
+            if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
+                return;
+            if (__classPrivateFieldGet(this, _Droppable_active, "f") === droppable)
+                return;
+            if (opts.hoverClass) {
+                each$2(split(opts.hoverClass, ' '), cls => {
+                    droppable.classList.toggle(cls, false);
+                });
+            }
+            if (__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorOver) {
+                setCursor(__classPrivateFieldGet(this, _Droppable_active, "f").dataset.cursorActive || '');
+            }
+            opts.onLeave && opts.onLeave({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
+        });
+        //dragover
+        this.registerEvent(droppable, "mousemove", (e) => {
+            if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
+                return;
+            if (__classPrivateFieldGet(this, _Droppable_active, "f") === droppable)
+                return;
+            opts.onOver && opts.onOver({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
+        });
+        //drop
+        this.registerEvent(droppable, "mouseup", (e) => {
+            if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
+                return;
+            if (__classPrivateFieldGet(this, _Droppable_active, "f") === droppable)
+                return;
+            if (opts.hoverClass) {
+                each$2(split(opts.hoverClass, ' '), cls => {
+                    droppable.classList.toggle(cls, false);
+                });
+            }
+            opts.onDrop && opts.onDrop({ draggable: __classPrivateFieldGet(this, _Droppable_active, "f"), droppable }, e);
+        });
+    }
+    /**
+     * @internal
+     */
+    active(target) {
+        let valid = true;
+        const opts = this.opts;
+        if (opts.watch && this.eleString) {
+            let nodes = document.querySelectorAll(this.eleString);
+            this.ele = toArray$3(nodes);
+        }
+        //check accepts
+        if (isString$3(opts.accepts)) {
+            valid = !!target.dataset.dropType && test(opts.accepts, target.dataset.dropType);
+        }
+        else if (isFunction$3(opts.accepts)) {
+            valid = opts.accepts(this.ele, target);
+        }
+        if (!valid)
+            return;
+        __classPrivateFieldSet(this, _Droppable_active, target, "f");
+        if (opts.activeClass) {
+            each$2(this.ele, el => {
+                each$2(split(opts.activeClass || '', ' '), cls => {
+                    el.classList.toggle(cls, true);
+                });
+            });
+        }
+        opts.onActive && opts.onActive({ draggable: target, droppables: this.ele });
+        //bind events
+        each$2(this.ele, (el) => {
+            el.classList.toggle(CLASS_DROPPABLE, true);
+            el.style.pointerEvents = 'initial';
+            this.bindEvent(el, opts);
+        });
+    }
+    /**
+     * @internal
+     */
+    deactive(target) {
+        if (!__classPrivateFieldGet(this, _Droppable_active, "f"))
+            return;
+        __classPrivateFieldSet(this, _Droppable_active, null, "f");
+        const opts = this.opts;
+        if (opts.activeClass) {
+            each$2(this.ele, el => {
+                each$2(split(opts.activeClass || '', ' '), cls => {
+                    el.classList.toggle(cls, false);
+                });
+            });
+        }
+        opts.onDeactive && opts.onDeactive({ draggable: target, droppables: this.ele });
+        //unbind events
+        this.destroy();
+    }
+}
+_Droppable_active = new WeakMap();
+//uii-drag active
+document.addEventListener("uii-dragactive", (e) => {
+    let { target } = e.detail;
+    each$2(Droppables, dpb => {
+        dpb.active(target);
+    });
+});
+document.addEventListener("uii-dragdeactive", (e) => {
+    let { target } = e.detail;
+    each$2(Droppables, dpb => {
+        dpb.deactive(target);
+    });
+});
+/**
+ * Enable els to response to draggable objects
+ * @param els selector string / html element
+ * @param opts
+ * @returns
+ */
+function newDroppable(els, opts) {
+    return new Droppable(els, opts);
+}
+
+/* eslint-disable max-len */
+const CLASS_ROTATABLE = "uii-rotatable";
+const CLASS_ROTATABLE_HANDLE = "uii-rotatable-handle";
+const CLASS_ROTATABLE_ACTIVE = "uii-rotatable-active";
+/**
+ * 用于表示一个或多个可旋转元素的定义
+ * > 可用CSS接口
+ * - .uii-rotatable
+ * - .uii-rotatable-handle
+ * - .uii-rotatable-active
+ * @public
+ */
+class Rotatable extends Uii {
+    constructor(els, opts) {
+        super(els, opts);
+        each$2(this.ele, (el) => {
+            let tmp = el;
+            if (tmp._uiik_rotatable) {
+                tmp._uiik_rotatable.destroy();
+                return false;
+            }
+        });
+        each$2(this.ele, (el) => {
+            el._uiik_rotatable = this;
+            initHandle(this, el, this.opts);
+        });
+    }
+}
+function initHandle(uiik, el, opts) {
+    let handleStr = opts.handle;
+    let handles;
+    if (isString$3(handleStr)) {
+        handles = document.querySelectorAll(handleStr);
+    }
+    else if (isFunction$3(handleStr)) {
+        handles = handleStr(el);
+    }
+    if (!handles) {
+        console.error('Can not find handles with "' + el.outerHTML + '"');
+        return;
+    }
+    each$2(handles, (h) => {
+        var _a;
+        h.classList.add(CLASS_ROTATABLE_HANDLE);
+        h.style.cursor = ((_a = opts.cursor) === null || _a === void 0 ? void 0 : _a.default) || "crosshair";
+        bindHandle(uiik, h, el, opts);
+    });
+    el.classList.toggle(CLASS_ROTATABLE, true);
+}
+function bindHandle(uiik, handle, el, opts) {
+    const onStart = opts.onStart;
+    const onRotate = opts.onRotate;
+    const onEnd = opts.onEnd;
+    let deg = 0;
+    uiik.addPointerDown(handle, ({ onPointerStart, onPointerMove, onPointerEnd }) => {
+        let centerX = 0, centerY = 0;
+        let startOx = 0;
+        let startOy = 0;
+        let startDeg = 0;
+        let container;
+        let startPointXy;
+        //bind events
+        onPointerStart(function (args) {
+            const { ev } = args;
+            const { w, h } = getStyleSize(el);
+            const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h, el);
+            startOx = originX;
+            startOy = originY;
+            let centerXy = getRectCenter(el);
+            centerX = centerXy.x;
+            centerY = centerXy.y;
+            container = el.parentElement;
+            startPointXy = getPointInContainer(ev, container);
+            startDeg =
+                Math.atan2(startPointXy.y - centerY, startPointXy.x - centerX) * ONE_RAD +
+                    90;
+            if (startDeg < 0)
+                startDeg = 360 + startDeg;
+            let matrixInfo = getMatrixInfo(el);
+            startDeg -= matrixInfo.angle;
+            //apply classes
+            el.classList.toggle(CLASS_ROTATABLE_ACTIVE, true);
+            onStart && onStart({ deg, cx: centerX, cy: centerY }, ev);
+        });
+        onPointerMove((args) => {
+            const { ev, offX, offY } = args;
+            let newX = startPointXy.x + offX;
+            let newY = startPointXy.y + offY;
+            deg =
+                Math.atan2(newY - centerY, newX - centerX) * ONE_RAD +
+                    90 -
+                    startDeg;
+            onRotate &&
+                onRotate({
+                    deg,
+                    cx: centerX,
+                    cy: centerY,
+                    target: el,
+                    ox: startOx,
+                    oy: startOy,
+                }, ev);
+            rotateTo(el, deg, startOx, startOy);
+        });
+        onPointerEnd((args) => {
+            const { ev } = args;
+            el.classList.toggle(CLASS_ROTATABLE_ACTIVE, false);
+            onEnd && onEnd({ deg }, ev);
+        });
+    }, {
+        threshold: THRESHOLD,
+        lockPage: true,
+    });
+}
+/**
+ * Make els rotatable
+ * @param els selector string / html element
+ * @param opts
+ * @returns
+ */
+function newRotatable(els, opts) {
+    return new Rotatable(els, opts);
+}
+
+var _CollisionDetector__targets;
+class CollisionDetector {
+    constructor(el, targets, opts) {
+        _CollisionDetector__targets.set(this, void 0);
+        __classPrivateFieldSet(this, _CollisionDetector__targets, targets, "f");
+        this.opts = {
+            container: document.body
+        };
+        this.opts = assign$1(this.opts, opts);
+        const domEl = isString$3(el) ? document.querySelector(el) : el;
+        if (!domEl) {
+            console.error('Invalid selector "' + el + '"');
+            return;
+        }
+        const ele = domEl;
+        this.el = domEl;
+        //el data
+        const offset = getBox(ele, this.opts.container);
+        const rect = { x: offset.x, y: offset.y, width: ele.offsetWidth, height: ele.offsetHeight };
+        this.elData = {
+            x1: rect.x,
+            y1: rect.y,
+            x2: rect.x + rect.width,
+            y2: rect.y + rect.height,
+        };
+        //targets data
+        this.update();
+    }
+    /**
+     * update targets data if them changed
+     */
+    update() {
+        let targets;
+        if (isFunction$3(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
+            targets = __classPrivateFieldGet(this, _CollisionDetector__targets, "f").call(this);
+        }
+        else if (isString$3(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
+            targets = this.opts.container.querySelectorAll(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"));
+            targets = reject$1(targets, t => t === this.el);
+        }
+        else if (isElement$1(__classPrivateFieldGet(this, _CollisionDetector__targets, "f"))) {
+            targets = [__classPrivateFieldGet(this, _CollisionDetector__targets, "f")];
+        }
+        else {
+            targets = __classPrivateFieldGet(this, _CollisionDetector__targets, "f");
+        }
+        this.targetsData = flatMap$1(targets, t => {
+            if (!t)
+                return [];
+            const rect = getRectInContainer(t, this.opts.container);
+            return {
+                x1: rect.x,
+                y1: rect.y,
+                x2: rect.x + rect.w,
+                y2: rect.y + rect.h,
+                el: t
+            };
+        });
+    }
+    getOverlaps(x1, y1, x2, y2) {
+        let elData = this.elData;
+        if (x1 && x2 && y1 && y2) {
+            elData = {
+                x1,
+                y1,
+                x2,
+                y2,
+            };
+        }
+        let overlaps = flatMap$1(this.targetsData, (td, i) => {
+            if (elData.x2 < td.x1 || elData.x1 > td.x2 || elData.y2 < td.y1 || elData.y1 > td.y2)
+                return [];
+            return td.el;
+        });
+        return overlaps;
+    }
+    getInclusions(x1, y1, x2, y2) {
+        let elData = this.elData;
+        if (x1 && x2 && y1 && y2) {
+            elData = {
+                x1,
+                y1,
+                x2,
+                y2,
+            };
+        }
+        let contains = flatMap$1(this.targetsData, (td, i) => {
+            if (elData.x2 >= td.x2 && elData.x1 <= td.x1 && elData.y2 >= td.y2 && elData.y1 <= td.y1)
+                return td.el;
+            return [];
+        });
+        return contains;
+    }
+}
+_CollisionDetector__targets = new WeakMap();
+/**
+ * create a detector for the el and return
+ * @param el element to be detected
+ * @param targets
+ * @param opts CollisionDetectorOptions
+ * @param opts.container a root element of targets
+ * @returns
+ */
+function newCollisionDetector(el, targets, opts) {
+    return new CollisionDetector(el, targets, opts);
+}
+
+var _Selectable_instances, _Selectable__detector, _Selectable__lastSelected, _Selectable_bindEvent;
+const CLASS_SELECTOR = "uii-selector";
+const CLASS_SELECTING = "uii-selecting";
+const CLASS_SELECTED = "uii-selected";
+/**
+ * 用于表示一个元素选择器的定义
+ * > 可用CSS接口
+ * - .uii-selector
+ * - .uii-selecting
+ * - .uii-selected
+ * @public
+ */
+class Selectable extends Uii {
+    constructor(container, opts) {
+        super(container, assign$1({
+            targets: [],
+            scroll: true,
+        }, opts));
+        _Selectable_instances.add(this);
+        _Selectable__detector.set(this, void 0);
+        _Selectable__lastSelected.set(this, void 0);
+        const domEl = this.ele[0];
+        //create selector
+        let selector = document.createElement("div");
+        if (domEl instanceof SVGElement) {
+            selector = document.createElementNS('http://www.w3.org/2000/svg', "rect");
+        }
+        selector.setAttribute('class', CLASS_SELECTOR);
+        selector.style.cssText = `
+      position:absolute;
+      left:0;top:0;
+    `;
+        if (this.opts.class) {
+            selector.setAttribute('class', selector.getAttribute('class') + " " + this.opts.class);
+        }
+        else {
+            selector.style.cssText += "border:1px dashed #000;stroke:#000;";
+        }
+        selector.style.display = 'none';
+        domEl.appendChild(selector);
+        //create detector
+        __classPrivateFieldSet(this, _Selectable__detector, newCollisionDetector(selector, this.opts.targets, {
+            container: domEl,
+        }), "f");
+        __classPrivateFieldGet(this, _Selectable_instances, "m", _Selectable_bindEvent).call(this, selector, domEl);
+    }
+    /**
+     *  更新targets
+     */
+    updateTargets() {
+        __classPrivateFieldGet(this, _Selectable__detector, "f").update();
+    }
+    /**
+     * @internal
+     */
+    onOptionChanged() {
+        this.updateTargets();
+    }
+}
+_Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap(), _Selectable_instances = new WeakSet(), _Selectable_bindEvent = function _Selectable_bindEvent(selector, con) {
+    const that = this;
+    const opts = this.opts;
+    this.addPointerDown(con, ({ ev, target, currentRect, currentCStyle, currentTarget, onPointerStart, onPointerMove, onPointerEnd }) => {
+        const onStart = opts.onStart;
+        const onSelect = opts.onSelect;
+        const onEnd = opts.onEnd;
+        const mode = opts.mode || "overlap";
+        const scroll = opts.scroll;
+        const scrollSpeed = opts.scrollSpeed || 10;
+        const filter = opts.filter;
+        const selectingClassAry = compact(split(opts.selectingClass, " "));
+        const selectedClassAry = compact(split(opts.selectedClass, " "));
+        //check filter
+        if (filter) {
+            if (isFunction$3(filter)) {
+                if (filter(target))
+                    return true;
+            }
+            else if (some$1(con.querySelectorAll(filter), (el) => el.contains(target)))
+                return true;
+        }
+        //检测
+        const onPointerDown = opts.onPointerDown;
+        if (onPointerDown && onPointerDown(ev) === false)
+            return true;
+        let originPos = "";
+        let startPointXy = getPointInContainer(ev, con, currentRect, currentCStyle);
+        let hitPosX = startPointXy.x;
+        let hitPosY = startPointXy.y;
+        const style = selector.style;
+        let selection = [];
+        let lastSelection = [];
+        let x1 = hitPosX, y1 = hitPosY;
+        let timer = null;
+        let toLeft = false;
+        let toTop = false;
+        let toRight = false;
+        let toBottom = false;
+        //bind events
+        onPointerStart(function (args) {
+            const { ev } = args;
+            //update targets count & positions
+            __classPrivateFieldGet(that, _Selectable__detector, "f").update();
+            //detect container position
+            const pos = currentCStyle.position;
+            if (pos === "static") {
+                originPos = con.style.position;
+                con.style.position = "relative";
+            }
+            //clear _lastSelected
+            each$2(__classPrivateFieldGet(that, _Selectable__lastSelected, "f"), t => {
+                target.classList.toggle(CLASS_SELECTED, false);
+            });
+            style.display = 'block';
+            onStart && onStart({ selection: __classPrivateFieldGet(that, _Selectable__lastSelected, "f"), selectable: con }, ev);
+        });
+        onPointerMove(({ ev, offX, offY }) => {
+            let pointX = startPointXy.x + offX;
+            let pointY = startPointXy.y + offY;
+            //edge detect
+            if (scroll) {
+                const ltX = ev.clientX - currentRect.x;
+                const ltY = ev.clientY - currentRect.y;
+                const rbX = currentRect.x + currentRect.width - ev.clientX;
+                const rbY = currentRect.y + currentRect.height - ev.clientY;
+                toLeft = ltX < EDGE_THRESHOLD;
+                toTop = ltY < EDGE_THRESHOLD;
+                toRight = rbX < EDGE_THRESHOLD;
+                toBottom = rbY < EDGE_THRESHOLD;
+                if (toLeft || toTop || toRight || toBottom) {
+                    if (!timer) {
+                        timer = setInterval(() => {
+                            if (toLeft) {
+                                con.scrollLeft -= scrollSpeed;
+                            }
+                            else if (toRight) {
+                                con.scrollLeft += scrollSpeed;
+                            }
+                            if (toTop) {
+                                con.scrollTop -= scrollSpeed;
+                            }
+                            else if (toBottom) {
+                                con.scrollTop += scrollSpeed;
+                            }
+                        }, 20);
+                    }
+                }
+                else {
+                    if (timer) {
+                        clearInterval(timer);
+                        timer = null;
+                    }
+                }
+            }
+            let x = hitPosX, y = hitPosY, w = Math.abs(offX), h = Math.abs(offY);
+            if (offX > 0 && offY > 0) {
+                x1 = hitPosX;
+                y1 = hitPosY;
+            }
+            else if (offX < 0 && offY < 0) {
+                x = x1 = pointX;
+                y = y1 = pointY;
+            }
+            else if (offX < 0) {
+                x = x1 = pointX;
+            }
+            else if (offY < 0) {
+                y = y1 = pointY;
+            }
+            style.width = w + "px";
+            style.height = h + "px";
+            style.transform = `translate3d(${x}px,${y}px,0)`;
+            //detect collision
+            if (mode === "overlap") {
+                selection = __classPrivateFieldGet(that, _Selectable__detector, "f").getOverlaps(x1, y1, x1 + w, y1 + h);
+            }
+            else if (mode === "inclusion") {
+                selection = __classPrivateFieldGet(that, _Selectable__detector, "f").getInclusions(x1, y1, x1 + w, y1 + h);
+            }
+            each$2(lastSelection, (t) => {
+                if (!includes$1(selection, t)) {
+                    t.classList.toggle(CLASS_SELECTING, false);
+                    each$2(selectingClassAry, (cls) => {
+                        t.classList.toggle(cls, false);
+                    });
+                }
+            });
+            each$2(selection, (t) => {
+                t.classList.toggle(CLASS_SELECTING, true);
+                each$2(selectingClassAry, (cls) => {
+                    t.classList.toggle(cls, true);
+                });
+            });
+            const changed = lastSelection.length != selection.length;
+            lastSelection = selection;
+            if (changed && onSelect)
+                onSelect({ selection, selectable: con }, ev);
+        });
+        onPointerEnd((args) => {
+            const { ev, currentStyle } = args;
+            style.display = 'none';
+            if (scroll) {
+                if (timer) {
+                    clearInterval(timer);
+                    timer = null;
+                }
+            }
+            //restore container position
+            if (originPos) {
+                con.style.position = originPos;
+            }
+            each$2(selection, (t) => {
+                each$2(selectingClassAry, (cls) => {
+                    t.classList.toggle(cls, false);
+                });
+                each$2(selectedClassAry, (cls) => {
+                    t.classList.toggle(cls, true);
+                });
+                t.classList.toggle(CLASS_SELECTING, false);
+                t.classList.toggle(CLASS_SELECTED, true);
+            });
+            __classPrivateFieldSet(that, _Selectable__lastSelected, selection, "f");
+            if (onEnd)
+                onEnd({ selection, selectable: con }, ev);
+        });
+    }, {
+        threshold: THRESHOLD,
+        lockPage: true
+    });
+};
+/**
+ * Add a selector into the container
+ * @param container css selector or html element
+ * @param opts
+ * @returns
+ */
+function newSelectable(container, opts) {
+    return new Selectable(container, opts);
+}
+
+/**
+   * myfx/utils v1.1.0
+   * A modular utility library with more utils, higher performance and simpler declarations ...
+   * https://github.com/holyhigh2/myfx
+   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   */
+  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'.split('');
+/**
+ * 生成一个指定长度的alphaId并返回。id内容由随机字母表字符组成
+ * @example
+ * // urN-k0mpetBwboeQ
+ * console.log(_.alphaId())
+ * // Ii6cPyfw-Ql5YC8OIhVwH1lpGY9x
+ * console.log(_.alphaId(28))
+ *
+ * @param [len=16] id长度
+ * @returns alphaId
+ * @since 1.0.0
+ */
+function alphaId(len) {
+    const bytes = self.crypto.getRandomValues(new Uint8Array(len || 16));
+    let rs = '';
+    bytes.forEach(b => rs += ALPHABET[b % ALPHABET.length]);
+    return rs;
+}
+
 var _Sortable_removeListenItems;
 const SORTABLE_GROUPS = {};
 const CLASS_SORTABLE_CONTAINER = "uii-sortable-container";
@@ -11862,7 +11878,7 @@ class Sortable extends Uii {
         }, opts));
         _Sortable_removeListenItems.set(this, void 0);
         if (size$1(this.ele) > 1 && !this.opts.group) {
-            this.opts.group = "uii_sortable_" + alphaId$1();
+            this.opts.group = "uii_sortable_" + alphaId();
         }
         each$2(this.ele, (el) => {
             el.classList.add(CLASS_SORTABLE_CONTAINER);
@@ -11895,7 +11911,7 @@ class Sortable extends Uii {
         each$2(activableContainers, (el) => {
             el.setAttribute(ATTR_SORTABLE_ACTIVE, "1");
             if (toOpts.activeClass) {
-                each$2(split$1(toOpts.activeClass || "", " "), (cls) => {
+                each$2(split(toOpts.activeClass || "", " "), (cls) => {
                     el.classList.toggle(cls, true);
                 });
             }
@@ -11914,7 +11930,7 @@ class Sortable extends Uii {
         each$2(toContainers, (el) => {
             el.removeAttribute(ATTR_SORTABLE_ACTIVE);
             if (opts.activeClass) {
-                each$2(split$1(opts.activeClass || "", " "), (cls) => {
+                each$2(split(opts.activeClass || "", " "), (cls) => {
                     el.classList.toggle(cls, false);
                 });
             }
@@ -11947,7 +11963,7 @@ function bindContainer(registerEvent, container, opts) {
         const handles = opts.handle
             ? map$1(filteredItems, (el) => el.querySelector(opts.handle || ""))
             : toArray$3(filteredItems);
-        const i = findIndex$1(handles, (handle) => handle.contains(t));
+        const i = findIndex(handles, (handle) => handle.contains(t));
         if (i < 0)
             return;
         const draggingItem = filteredItems[i];
@@ -11986,7 +12002,7 @@ function bindContainer(registerEvent, container, opts) {
                     ghostNode.style.left = draggingItem.style.left;
                     ghostNode.style.top = draggingItem.style.top;
                     if (ghostClass) {
-                        ghostNode.classList.add(...compact$1(split$1(ghostClass, " ")));
+                        ghostNode.classList.add(...compact(split(ghostClass, " ")));
                     }
                     ghostNode.classList.toggle(CLASS_SORTABLE_GHOST, true);
                     ghostContainer.appendChild(ghostNode);
