@@ -18,19 +18,20 @@ import {
   isString,
   isUndefined,
 } from "myfx/is";
-import { assign } from "myfx/object";
+import { assign, get } from "myfx/object";
 import { split } from "myfx/string";
 import { closest } from "myfx/tree";
 
+import { isCustomElement } from "myfx";
 import { UiiTransform, wrapper } from "./transform";
-import { DraggableOptions, Uii } from "./types";
+import { DraggableOptions, Uii, UII_KEY } from "./types";
 import {
   EDGE_THRESHOLD,
-  THRESHOLD,
   getCenterXy,
   getMatrixInfo,
   getPointInContainer,
-  getRectInContainer
+  getRectInContainer,
+  THRESHOLD
 } from "./utils";
 
 const DRAGGER_GROUPS: Record<string, Array<HTMLElement>> = {};
@@ -39,7 +40,10 @@ const CLASS_DRAGGABLE_HANDLE = "uii-draggable-handle";
 const CLASS_DRAGGABLE_ACTIVE = "uii-draggable-active";
 const CLASS_DRAGGABLE_GHOST = "uii-draggable-ghost";
 
-
+const HANDLE_MAP = new WeakMap();
+const OPTION_MAP = new WeakMap();
+const BINDED_CONTAINER = new WeakSet()
+const WATCH_MAP: Record<string, Draggable> = {};
 /**
  * 用于表示一个或多个可拖动元素的定义
  * 每个拖动元素可以有独立handle，也可以公用一个handle
@@ -52,7 +56,6 @@ const CLASS_DRAGGABLE_GHOST = "uii-draggable-ghost";
  * @public
  */
 export class Draggable extends Uii {
-  #handleMap = new WeakMap();
   #container: HTMLElement | null = null;
 
   constructor(
@@ -80,14 +83,7 @@ export class Draggable extends Uii {
     );
 
     if (this.opts.handle) {
-      each(this.ele, (el) => {
-        const h = el.querySelector(this.opts.handle);
-        if (!h) {
-          console.error('No handle found "' + this.opts.handle + '"');
-          return false;
-        }
-        this.#handleMap.set(el, h);
-      });
+      this.#initHandle(this.ele)
     }
 
     this.onOptionChanged(this.opts);
@@ -120,21 +116,41 @@ export class Draggable extends Uii {
       } else {
         con = isEmpty(this.ele) ? null : this.ele[0].parentElement;
       }
+      let bindTarget = con || document.body
+      if (BINDED_CONTAINER.has(bindTarget)) return
 
-      this.bindEvent(con || document.body, this.opts, this.#handleMap);
+      WATCH_MAP[this.eleString] = this
+      this.bindEvent(bindTarget);
+      BINDED_CONTAINER.add(bindTarget)
     } else {
       each(this.ele, (el) => {
-        this.bindEvent(el, this.opts, this.#handleMap);
+        this.bindEvent(el);
       });
     }
   }
 
+  #initHandle(ele: HTMLElement[]) {
+    each(ele, (el) => {
+      let h
+      if (isString(this.opts.handle)) {
+        h = el.querySelector(this.opts.handle);
+        if (!h) {
+          console.error('No handle found "' + this.opts.handle + '"');
+          return false;
+        }
+      } else if (isElement(this.opts.handle)) {
+        h = this.opts.handle
+      }
+
+      HANDLE_MAP.set(el, h);
+    });
+  }
   //初始化样式
   #initStyle(draggableList: HTMLElement[]) {
     each(draggableList, (el) => {
       if (isDefined(this.opts.type)) el.dataset.dropType = this.opts.type;
       el.classList.toggle(CLASS_DRAGGABLE, true);
-      const ee = this.#handleMap.get(el) || el;
+      const ee = HANDLE_MAP.get(el) || el;
       ee.classList.toggle(CLASS_DRAGGABLE_HANDLE, true);
 
       if (!isUndefined(this.opts.cursor)) {
@@ -144,13 +160,13 @@ export class Draggable extends Uii {
           el.dataset.cursorActive = this.opts.cursor.active || "move";
         }
       }
+
+      OPTION_MAP.set(el, this.opts)
     });
   }
 
   bindEvent(
-    bindTarget: Element,
-    opts: DraggableOptions,
-    handleMap: WeakMap<Element, Element>
+    bindTarget: Element
   ) {
     const container = this.#container;
     let draggableList: any = this.ele;
@@ -168,25 +184,38 @@ export class Draggable extends Uii {
         let t = ev.target as HTMLElement;
         if (!t) return true;
 
-        //refresh draggableList
-        if (opts.watch && eleString) {
-          draggableList = bindTarget.querySelectorAll(eleString);
-          initStyle(draggableList);
-        }
-
+        let opts: Record<string, any> = {}
         //find drag dom & handle
         let findRs = closest<HTMLElement | SVGGraphicsElement>(
           t,
-          (node) => includes(draggableList, node),
-          "parentNode"
+          (node: Element) => node && get(node, UII_KEY),
+          "parentElement"
         );
-        if (!findRs) return true;
-        const dragDom: HTMLElement | SVGGraphicsElement = findRs;
+        if (!findRs) {
+          let toBreak = true
+          each(WATCH_MAP, (v, k) => {
+            draggableList = bindTarget.querySelectorAll(eleString);
+            if (!isEmpty(draggableList) && (findRs = closest<HTMLElement | SVGGraphicsElement>(t, (node) => includes(draggableList, node), "parentNode"))) {
+              initStyle(draggableList);
+              opts = v.opts
+              v.#initHandle(draggableList)
+              toBreak = false
+              return false
+            }
+          })
+          if (toBreak)
+            return true;
+        }
+        const dragDom: HTMLElement | SVGGraphicsElement = findRs!;
 
-        let handle = handleMap.get(dragDom);
-        if (handle && !handle.contains(t as Node)) {
+        let handle = HANDLE_MAP.get(dragDom) as HTMLElement;
+        if (handle && !isCustomElement(t) && !handle.contains(t as Node)) {
           return true;
         }
+
+        if (isEmpty(opts))
+          opts = OPTION_MAP.get(dragDom)
+        if (!opts || isEmpty(opts)) return true
 
         if (opts.self && dragDom !== t) return true;
 
@@ -194,7 +223,7 @@ export class Draggable extends Uii {
         const onPointerDown = opts.onPointerDown;
         if (
           onPointerDown &&
-          onPointerDown({ draggable: dragDom }, ev) === false
+          onPointerDown({ draggable: dragDom, handle }, ev) === false
         )
           return true;
 
@@ -326,8 +355,8 @@ export class Draggable extends Uii {
 
           const grid = opts.grid;
           if (isArray(grid)) {
-            gridX = grid[0];
-            gridY = grid[1];
+            gridX = grid[0] as number;
+            gridY = grid[1] as number;
           } else if (isNumber(grid)) {
             gridX = gridY = grid;
           }
@@ -635,7 +664,7 @@ export class Draggable extends Uii {
           let moveToGhost = true;
           if (onEnd) {
             moveToGhost =
-              onEnd({ draggable: dragDom, x: endX, y: endY, transform }, ev) ===
+              onEnd({ draggable: dragDom, x: endX, y: endY, transform, ghost: ghostNode }, ev) ===
                 false
                 ? false
                 : true;
@@ -654,17 +683,17 @@ export class Draggable extends Uii {
           if (ghost) {
             ghostNode.parentNode?.removeChild(ghostNode);
             if (moveToGhost !== false) {
-              wrapper(dragDom, opts.useTransform).moveTo(
-                transform.x,
-                transform.y
-              );
+              let transf = wrapper(dragDom, opts.useTransform)
+              if (direction === "v") {
+                transf.moveToY(endY);
+              } else if (direction === "h") {
+                transf.moveToX(endX);
+              } else {
+                transf.moveTo(endX, endY);
+              }
             }
           }
         });
-      },
-      {
-        threshold: this.opts.threshold || 0,
-        lockPage: true,
       }
     );
   }

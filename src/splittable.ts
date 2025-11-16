@@ -7,7 +7,7 @@ import { each, includes, map, reject } from 'myfx/collection';
 import { isArray, isBlank, isEmpty, isString } from 'myfx/is';
 import { assign } from 'myfx/object';
 import { SplittableOptions, Uii } from './types';
-import { isVisible, THRESHOLD } from './utils';
+import { isVisible } from './utils';
 
 const CLASS_SPLITTABLE = "uii-splittable";
 const CLASS_SPLITTABLE_HANDLE = "uii-splittable-handle";
@@ -94,12 +94,12 @@ export class Splittable extends Uii {
           this.#bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, children[i] as HTMLElement, children[i + 1] as HTMLElement)
         }
       } else {
-        each(handleDoms, (h, i: number) => {
-          const isRoot = h.parentNode.classList.contains(CLASS_SPLITTABLE)
+        each(handleDoms, (h: HTMLElement, i: number) => {
+          const isRoot = h.parentElement?.classList.contains(CLASS_SPLITTABLE)
           let dom1: HTMLElement, dom2: HTMLElement
           if (isRoot) {
-            dom1 = h.previousElementSibling
-            dom2 = h.nextElementSibling
+            dom1 = h.previousElementSibling as HTMLElement
+            dom2 = h.nextElementSibling as HTMLElement
           } else {
             let domCon = getRootEl(h, con) as HTMLElement
             let domL = domCon.previousElementSibling;
@@ -131,7 +131,7 @@ export class Splittable extends Uii {
     const child = container.children[0] as HTMLElement
     let lastY = child.offsetTop
     let lastH = child.offsetHeight
-    each<HTMLElement>(container.children, c => {
+    each<Element>(container.children, (c: HTMLElement) => {
       if (c.offsetTop > lastH + lastY) {
         dir = 'v'
         return false
@@ -362,9 +362,6 @@ export class Splittable extends Uii {
         }
         onEnd && onEnd({ size1: originSize, size2: originSize1 }, ev)
       })
-    }, {
-      threshold: THRESHOLD,
-      lockPage: true
     })
 
   }

@@ -1,5 +1,5 @@
-/* uiik 1.3.7 @holyhigh2 https://github.com/holyhigh2/uiik */
-(function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35730/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
+/* uiik 1.4.1 @holyhigh2 https://github.com/holyhigh2/uiik */
+(function(l, r) { if (!l || l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (self.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(self.document);
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -34,56 +34,13 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 };
 
 /**
-   * myfx/collection v1.1.0
+   * myfx/collection v1.14.0
    * A modular utility library with more utils, higher performance and simpler declarations ...
    * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   * (c) 2021-2025 @holyhigh2 may be freely distributed under the MIT license
    */
-  /**
- * 判断参数是否为undefined
- * @example
- * //true
- * console.log(_.isUndefined(undefined))
- * //false
- * console.log(_.isUndefined(null))
- *
- * @param v
- * @returns
- */
-function isUndefined$3(v) {
-    return v === undefined;
-}
-
-/**
- * 判断参数是否为函数对象
- *
- * @example
- * //true
- * console.log(_.isFunction(new Function()))
- * //true
- * console.log(_.isFunction(()=>{}))
- *
- * @param v
- * @returns
- */
-function isFunction$4(v) {
-    return typeof v == 'function' || v instanceof Function;
-}
-
-/**
- * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
- *
- * @example
- * //true
- * console.log(_.isString(new String('')))
- * //true
- * console.log(_.isString(''))
- *
- * @param v
- * @returns
- */
-function isString$4(v) {
-    return typeof v === 'string' || v instanceof String;
+  function identity$3(v) {
+    return v;
 }
 
 /**
@@ -99,14 +56,30 @@ function isString$4(v) {
  * @returns
  */
 function isArray$4(v) {
-    // 使用 instanceof Array 无法鉴别某些场景，比如
-    // Array.prototype instanceof Array => false
-    // Array.isArray(Array.prototype) => true
-    // typeof new Proxy([],{}) => object
-    // Array.isArray(new Proxy([],{})) => true
     return Array.isArray(v);
 }
 
+/**
+ * 判断参数是否为函数对象
+ *
+ * @example
+ * //true
+ * console.log(_.isFunction(new Function()))
+ * //true
+ * console.log(_.isFunction(()=>{}))
+ *
+ * @param v
+ * @returns
+ */
+function isFunction$4(v) {
+    return v instanceof Function || typeof v == 'function';
+}
+
+/**
+ * 内部使用类型
+ *
+ * @packageDocumentation
+ */
 const PRIMITIVE_TYPES$4 = [
     'string',
     'number',
@@ -115,6 +88,7 @@ const PRIMITIVE_TYPES$4 = [
     'undefined',
     'symbol',
 ];
+
 /**
  * 判断值是不是一个非基本类型外的值，如果true则认为值是一个对象
  * 同样，该方法还可以用来判断一个值是不是基本类型
@@ -136,8 +110,35 @@ function isObject$4(v) {
     return null !== v && PRIMITIVE_TYPES$4.indexOf(typeof v) < 0;
 }
 
-function identity$3(v) {
-    return v;
+/**
+ * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
+ *
+ * @example
+ * //true
+ * console.log(_.isString(new String('')))
+ * //true
+ * console.log(_.isString(''))
+ *
+ * @param v
+ * @returns
+ */
+function isString$4(v) {
+    return v instanceof String || Object.prototype.toString.call(v) === '[object String]';
+}
+
+/**
+ * 判断参数是否为undefined
+ * @example
+ * //true
+ * console.log(_.isUndefined(undefined))
+ * //false
+ * console.log(_.isUndefined(null))
+ *
+ * @param v
+ * @returns
+ */
+function isUndefined$3(v) {
+    return v === undefined;
 }
 
 function toPath$1$3(path) {
@@ -145,14 +146,14 @@ function toPath$1$3(path) {
     if (isArray$4(chain)) {
         chain = chain.join('.');
     }
-    else {
-        chain += '';
+    let rs = chain + '';
+    if (rs.includes('[')) {
+        rs = rs.replace(/\[(['"])?([^\]'"]+)\1?\]/gm, '.$2');
     }
-    const rs = (chain + '')
-        .replace(/\[([^\]]+)\]/gm, '.$1')
-        .replace(/^\./g, '')
-        .split('.');
-    return rs;
+    if (rs[0] === '.') {
+        rs = rs.substring(1);
+    }
+    return rs.split('.');
 }
 
 /**
@@ -180,6 +181,11 @@ function toPath$1$3(path) {
 function get$3(obj, path, defaultValue) {
     if (!isObject$4(obj))
         return defaultValue;
+    if (!isArray$4(path) || (path.length === 1 && (path = path[0]) !== undefined)) {
+        let v = obj[path];
+        if (v !== undefined)
+            return v;
+    }
     const chain = toPath$1$3(path);
     let target = obj;
     for (let i = 0; i < chain.length; i++) {
@@ -216,22 +222,8 @@ function prop$2(path) {
     };
 }
 
-/**
- * 解析path并返回数组
- * @example
- * //['a', 'b', '2', 'c']
- * console.log(_.toPath('a.b[2].c'))
- * //['a', 'b', 'c', '1']
- * console.log(_.toPath(['a','b','c[1]']))
- * //['1']
- * console.log(_.toPath(1))
- *
- * @param path 属性路径，可以是数字索引，字符串key，或者多级属性数组
- * @returns path数组
- * @since 0.16.0
- */
-function toPath$3(path) {
-    return toPath$1$3(path);
+function eq$3(a, b) {
+    return Object.is(a, b);
 }
 
 /**
@@ -255,10 +247,21 @@ function isNil$3(v) {
     return v === null || v === undefined;
 }
 
-function eq$3(a, b) {
-    if (Number.isNaN(a) && Number.isNaN(b))
-        return true;
-    return a === b;
+/**
+ * 判断值是不是Node的实例
+ *
+ * @example
+ * //true
+ * console.log(_.isNode(document.body.attributes[0]))
+ * //true
+ * console.log(_.isNode(document))
+ *
+ * @param v
+ * @returns
+ * @since 1.5.0
+ */
+function isNode$2(v) {
+    return typeof v === 'object' && v instanceof (globalThis.Node || Object);
 }
 
 /**
@@ -268,9 +271,9 @@ function eq$3(a, b) {
  * @example
  * let target = {a:{x:1,y:2},b:1}
  * //true
- * console.log(_.isMatchWith(target,{b:1}))
+ * console.log(_.isMatchWith(target,{b:1},_.eq))
  * //false
- * console.log(_.isMatchWith(target,{b:'1'}))
+ * console.log(_.isMatchWith(target,{b:'1'},_.eq))
  *
  * target = {a:null,b:0}
  * //true
@@ -278,11 +281,11 @@ function eq$3(a, b) {
  *
  * @param target 如果不是对象类型，返回false
  * @param props 对比属性对象，如果是nil，返回true
- * @param [comparator=eq] 比较器，参数(object[k],props[k],k,object,props)，返回true表示匹配
+ * @param comparator 比较器。参数(object[k],props[k],k,object,props)，返回true表示匹配
  * @returns 匹配所有props返回true
  * @since 0.18.1
  */
-function isMatchWith$2(target, props, comparator = eq$3) {
+function isMatchWith$2(target, props, comparator) {
     if (isNil$3(props))
         return true;
     const ks = Object.keys(props);
@@ -293,7 +296,7 @@ function isMatchWith$2(target, props, comparator = eq$3) {
         const k = ks[i];
         const v1 = target[k];
         const v2 = props[k];
-        if (isObject$4(v1) && isObject$4(v2)) {
+        if (isObject$4(v1) && isObject$4(v2) && !isNode$2(v1) && !isNode$2(v2) && !isFunction$4(v1) && !isFunction$4(v2)) {
             if (!isMatchWith$2(v1, v2, comparator)) {
                 rs = false;
                 break;
@@ -359,6 +362,24 @@ function matcher$2(props) {
     };
 }
 
+/**
+ * 解析path并返回数组
+ * @example
+ * //['a', 'b', '2', 'c']
+ * console.log(_.toPath('a.b[2].c'))
+ * //['a', 'b', 'c', '1']
+ * console.log(_.toPath(['a','b','c[1]']))
+ * //['1']
+ * console.log(_.toPath(1))
+ *
+ * @param path 属性路径，可以是数字索引，字符串key，或者多级属性数组
+ * @returns path数组
+ * @since 0.16.0
+ */
+function toPath$3(path) {
+    return toPath$1$3(path);
+}
+
 function iteratee$2(value) {
     if (isUndefined$3(value)) {
         return identity$3;
@@ -399,32 +420,16 @@ function isArrayLike$4(v) {
         return false;
     // 具有length属性
     const list = v;
-    if (list.length !== undefined) {
-        const proto = list.constructor.prototype;
+    if ('length' in list) {
+        const proto = Reflect.getPrototypeOf(list);
         // NodeList/HTMLCollection/CSSRuleList/...
-        if (isFunction$4(proto.item))
+        if (isFunction$4(proto?.item))
             return true;
         // arguments
         if (isFunction$4(list[Symbol.iterator]))
             return true;
     }
     return false;
-}
-
-/**
- * 判断值是不是一个Set对象
- *
- * @example
- * //false
- * console.log(_.isSet(new WeakSet))
- * //true
- * console.log(_.isSet(new Set))
- *
- * @param v
- * @returns
- */
-function isSet$3(v) {
-    return v instanceof Set;
 }
 
 /**
@@ -440,93 +445,65 @@ function isSet$3(v) {
  * @returns
  */
 function isMap$3(v) {
-    return v instanceof Map;
+    return v instanceof Map || Object.prototype.toString.call(v) === '[object Map]';
 }
 
-function _eachIterator$2(collection, callback, forRight) {
+/**
+ * 判断值是不是一个Set对象
+ *
+ * @example
+ * //false
+ * console.log(_.isSet(new WeakSet))
+ * //true
+ * console.log(_.isSet(new Set))
+ *
+ * @param v
+ * @returns
+ */
+function isSet$3(v) {
+    return v instanceof Set || Object.prototype.toString.call(v) === '[object Set]';
+}
+
+function each$2(collection, callback) {
     let values;
     let keys;
     if (isString$4(collection) || isArrayLike$4(collection)) {
         let size = collection.length;
-        if (forRight) {
-            while (size--) {
-                const r = callback(collection[size], size, collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            for (let i = 0; i < size; i++) {
-                const r = callback(collection[i], i, collection);
-                if (r === false)
-                    return;
-            }
+        for (let i = 0; i < size; i++) {
+            const r = callback(collection[i], i, collection);
+            if (r === false)
+                return;
         }
     }
     else if (isSet$3(collection)) {
         let size = collection.size;
-        if (forRight) {
-            values = Array.from(collection);
-            while (size--) {
-                const r = callback(values[size], size, collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            values = collection.values();
-            for (let i = 0; i < size; i++) {
-                const r = callback(values.next().value, i, collection);
-                if (r === false)
-                    return;
-            }
+        values = collection.values();
+        for (let i = 0; i < size; i++) {
+            const r = callback(values.next().value, i, collection);
+            if (r === false)
+                return;
         }
     }
     else if (isMap$3(collection)) {
         let size = collection.size;
         keys = collection.keys();
         values = collection.values();
-        if (forRight) {
-            keys = Array.from(keys);
-            values = Array.from(values);
-            while (size--) {
-                const r = callback(values[size], keys[size], collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            for (let i = 0; i < size; i++) {
-                const r = callback(values.next().value, keys.next().value, collection);
-                if (r === false)
-                    return;
-            }
+        for (let i = 0; i < size; i++) {
+            const r = callback(values.next().value, keys.next().value, collection);
+            if (r === false)
+                return;
         }
     }
     else if (isObject$4(collection)) {
         keys = Object.keys(collection);
         let size = keys.length;
-        if (forRight) {
-            while (size--) {
-                const k = keys[size];
-                const r = callback(collection[k], k, collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            for (let i = 0; i < size; i++) {
-                const k = keys[i];
-                const r = callback(collection[k], k, collection);
-                if (r === false)
-                    return;
-            }
+        for (let i = 0; i < size; i++) {
+            const k = keys[i];
+            const r = callback(collection[k], k, collection);
+            if (r === false)
+                return;
         }
     }
-}
-
-function each$2(collection, callback) {
-    _eachIterator$2(collection, callback, false);
 }
 
 function find$1(collection, predicate) {
@@ -542,38 +519,36 @@ function find$1(collection, predicate) {
     return rs;
 }
 
-function map$1(collection, itee) {
-    const rs = [];
-    const cb = iteratee$2(itee);
-    each$2(collection, (v, k, c) => {
-        const r = cb(v, k, c);
-        rs.push(r);
-    });
-    return rs;
-}
-
 /**
- * 返回对象的所有key数组
- *
- * > 只返回对象的自身可枚举属性
+ * 判断值是不是迭代器对象
  *
  * @example
- * let f = new Function("this.a=1;this.b=2;");
- * f.prototype.c = 3;
- * //[a,b]
- * console.log(_.keys(new f()))
+ * //true
+ * console.log(_.isIterator(new Map()))
+ * //true
+ * console.log(_.isIterator(new Map().values()))
+ * //false
+ * console.log(_.isIterator({a:1}))
  *
- * @param obj
- * @returns 对象的key
+ * @param v
+ * @returns
+ * @since 1.10.0
  */
-function keys$3(obj) {
+function isIterator$2(v) {
+    return typeof v === 'object' && v !== null && Symbol.iterator in v;
+}
+
+function keys$2(obj) {
     if (obj === null || obj === undefined)
         return [];
+    if (isMap$3(obj)) {
+        return Array.from(obj.keys());
+    }
     return Object.keys(obj);
 }
 
 /**
- * 返回对象的所有value数组
+ * 返回对象/Map的所有value数组
  * <div class="alert alert-secondary">
       只返回对象的自身可枚举属性
     </div>
@@ -586,10 +561,13 @@ function keys$3(obj) {
  * console.log(_.values(new f()))
  *
  * @param obj
- * @returns 对象根属性对应的值列表
+ * @returns 值列表
  */
-function values$3(obj) {
-    return keys$3(obj).map((k) => obj[k]);
+function values$2(obj) {
+    if (isMap$3(obj)) {
+        return Array.from(obj.values());
+    }
+    return keys$2(obj).map((k) => obj[k]);
 }
 
 /**
@@ -608,12 +586,14 @@ function values$3(obj) {
  * console.log(_.toArray({x:1,y:2,z:'b'}))
  * //[[1, 'a'], [3, 'b'], ['a', 5]]
  * console.log(_.toArray(new Map([[1,'a'],[3,'b'],['a',5]])))
+ * //[1, 3, 'a']
+ * console.log(_.toArray(new Map([[1,'a'],[3,'b'],['a',5]])).keys())
  *
  * @param collection 如果是Map/Object对象会转换为值列表
  *
  * @returns 转换后的数组对象
  */
-function toArray$3(collection) {
+function toArray$2(collection) {
     if (isArray$4(collection))
         return collection.concat();
     if (isFunction$4(collection))
@@ -630,8 +610,11 @@ function toArray$3(collection) {
     else if (isMap$3(collection)) {
         return Array.from(collection.values());
     }
+    else if (isIterator$2(collection)) {
+        return Array.from(collection);
+    }
     else if (isObject$4(collection)) {
-        return values$3(collection);
+        return values$2(collection);
     }
     return [collection];
 }
@@ -656,9 +639,19 @@ function toArray$3(collection) {
 function flat$1(array, depth = 1) {
     if (depth < 1)
         return array.concat();
-    const rs = toArray$3(array).reduce((acc, val) => {
+    const rs = toArray$2(array).reduce((acc, val) => {
         return acc.concat(Array.isArray(val) && depth > 0 ? flat$1(val, depth - 1) : val);
     }, []);
+    return rs;
+}
+
+function map$1(collection, itee) {
+    const rs = [];
+    const cb = iteratee$2(itee);
+    each$2(collection, (v, k, c) => {
+        const r = cb(v, k, c);
+        rs.push(r);
+    });
     return rs;
 }
 
@@ -676,13 +669,15 @@ function flatMap$1(collection, itee, depth) {
  * console.log(_.slice([1,2,3,4,5],1))
  *
  *
- * @param array 数组
+ * @param array 数组，非数组返回空数组
  * @param [begin=0] 切片起始下标，包含下标位置元素
  * @param [end] 切片结束下标，<b>不包含</b>下标位置元素
  * @returns 切片元素组成的新数组
  */
-function slice$2(array, begin, end) {
-    return toArray$3(array).slice(begin || 0, end);
+function slice$1(array, begin, end) {
+    if (!Array.isArray(array))
+        return [];
+    return array.slice(begin || 0, end);
 }
 
 /**
@@ -718,7 +713,7 @@ function includes$1(collection, value, fromIndex) {
         return collection.includes(value, fromIndex);
     }
     collection = isArrayLike$4(collection)
-        ? slice$2(collection, fromIndex)
+        ? slice$1(toArray$2(collection), fromIndex)
         : collection;
     each$2(collection, (v) => {
         if (eq$3(v, value)) {
@@ -791,10 +786,10 @@ function some$1(collection, predicate) {
 }
 
 /**
-   * myfx/is v1.1.0
+   * myfx/is v1.14.0
    * A modular utility library with more utils, higher performance and simpler declarations ...
    * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   * (c) 2021-2025 @holyhigh2 may be freely distributed under the MIT license
    */
   /**
  * 判断参数是否为Array对象的实例
@@ -809,30 +804,30 @@ function some$1(collection, predicate) {
  * @returns
  */
 function isArray$3(v) {
-    // 使用 instanceof Array 无法鉴别某些场景，比如
-    // Array.prototype instanceof Array => false
-    // Array.isArray(Array.prototype) => true
-    // typeof new Proxy([],{}) => object
-    // Array.isArray(new Proxy([],{})) => true
     return Array.isArray(v);
 }
 
 /**
- * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
+ * 判断参数是否为函数对象
  *
  * @example
  * //true
- * console.log(_.isString(new String('')))
+ * console.log(_.isFunction(new Function()))
  * //true
- * console.log(_.isString(''))
+ * console.log(_.isFunction(()=>{}))
  *
  * @param v
  * @returns
  */
-function isString$3(v) {
-    return typeof v === 'string' || v instanceof String;
+function isFunction$3(v) {
+    return v instanceof Function || typeof v == 'function';
 }
 
+/**
+ * 内部使用类型
+ *
+ * @packageDocumentation
+ */
 const PRIMITIVE_TYPES$3 = [
     'string',
     'number',
@@ -841,6 +836,7 @@ const PRIMITIVE_TYPES$3 = [
     'undefined',
     'symbol',
 ];
+
 /**
  * 判断值是不是一个非基本类型外的值，如果true则认为值是一个对象
  * 同样，该方法还可以用来判断一个值是不是基本类型
@@ -863,19 +859,19 @@ function isObject$3(v) {
 }
 
 /**
- * 判断参数是否为函数对象
+ * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
  *
  * @example
  * //true
- * console.log(_.isFunction(new Function()))
+ * console.log(_.isString(new String('')))
  * //true
- * console.log(_.isFunction(()=>{}))
+ * console.log(_.isString(''))
  *
  * @param v
  * @returns
  */
-function isFunction$3(v) {
-    return typeof v == 'function' || v instanceof Function;
+function isString$3(v) {
+    return v instanceof String || Object.prototype.toString.call(v) === '[object String]';
 }
 
 /**
@@ -899,10 +895,10 @@ function isArrayLike$3(v) {
         return false;
     // 具有length属性
     const list = v;
-    if (list.length !== undefined) {
-        const proto = list.constructor.prototype;
+    if ('length' in list) {
+        const proto = Reflect.getPrototypeOf(list);
         // NodeList/HTMLCollection/CSSRuleList/...
-        if (isFunction$3(proto.item))
+        if (isFunction$3(proto?.item))
             return true;
         // arguments
         if (isFunction$3(list[Symbol.iterator]))
@@ -946,7 +942,7 @@ function isBlank$1(v) {
  * @returns
  */
 function isBoolean$1(v) {
-    return typeof v === 'boolean' || v instanceof Boolean;
+    return v instanceof Boolean || Object.prototype.toString.call(v) === '[object Boolean]';
 }
 
 /**
@@ -978,7 +974,7 @@ function isDefined$1(v) {
  * @since 1.0.0
  */
 function isElement$1(v) {
-    return typeof v === 'object' && v instanceof Element;
+    return typeof v === 'object' && v instanceof (globalThis.Element || Object);
 }
 
 /**
@@ -1050,7 +1046,7 @@ function isNaN$2(v) {
  * @returns
  */
 function isNumber$1(v) {
-    return typeof v === 'number' || v instanceof Number;
+    return v instanceof Number || Object.prototype.toString.call(v) === '[object Number]';
 }
 
 /**
@@ -1069,15 +1065,20 @@ function isUndefined$2(v) {
 }
 
 /**
-   * myfx/object v1.1.0
+   * myfx/object v1.14.0
    * A modular utility library with more utils, higher performance and simpler declarations ...
    * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   * (c) 2021-2025 @holyhigh2 may be freely distributed under the MIT license
    */
   function identity$2(v) {
     return v;
 }
 
+/**
+ * 内部使用类型
+ *
+ * @packageDocumentation
+ */
 const PRIMITIVE_TYPES$2 = [
     'string',
     'number',
@@ -1086,6 +1087,7 @@ const PRIMITIVE_TYPES$2 = [
     'undefined',
     'symbol',
 ];
+
 /**
  * 判断值是不是一个非基本类型外的值，如果true则认为值是一个对象
  * 同样，该方法还可以用来判断一个值是不是基本类型
@@ -1107,6 +1109,18 @@ function isObject$2(v) {
     return null !== v && PRIMITIVE_TYPES$2.indexOf(typeof v) < 0;
 }
 
+function checkTarget$1(target) {
+    if (target === null || target === undefined)
+        return {};
+    if (!isObject$2(target))
+        return new target.constructor(target);
+    if (!Object.isExtensible(target) ||
+        Object.isFrozen(target) ||
+        Object.isSealed(target)) {
+        return target;
+    }
+}
+
 function eachSources$1(target, sources, handler, afterHandler) {
     sources.forEach((src) => {
         if (!isObject$2(src))
@@ -1119,18 +1133,6 @@ function eachSources$1(target, sources, handler, afterHandler) {
             afterHandler(v, src[k], target[k], k, src, target);
         });
     });
-}
-
-function checkTarget$1(target) {
-    if (target === null || target === undefined)
-        return {};
-    if (!isObject$2(target))
-        return new target.constructor(target);
-    if (!Object.isExtensible(target) ||
-        Object.isFrozen(target) ||
-        Object.isSealed(target)) {
-        return target;
-    }
 }
 
 /**
@@ -1188,19 +1190,35 @@ function assign$1(target, ...sources) {
 }
 
 /**
- * 判断参数是否为函数对象
+ * 判断值是不是一个Map对象
  *
  * @example
  * //true
- * console.log(_.isFunction(new Function()))
- * //true
- * console.log(_.isFunction(()=>{}))
+ * console.log(_.isMap(new Map()))
+ * //false
+ * console.log(_.isMap(new WeakMap()))
  *
  * @param v
  * @returns
  */
-function isFunction$2(v) {
-    return typeof v == 'function' || v instanceof Function;
+function isMap$2(v) {
+    return v instanceof Map || Object.prototype.toString.call(v) === '[object Map]';
+}
+
+/**
+ * 判断值是不是一个Set对象
+ *
+ * @example
+ * //false
+ * console.log(_.isSet(new WeakSet))
+ * //true
+ * console.log(_.isSet(new Set))
+ *
+ * @param v
+ * @returns
+ */
+function isSet$2(v) {
+    return v instanceof Set || Object.prototype.toString.call(v) === '[object Set]';
 }
 
 /**
@@ -1216,7 +1234,23 @@ function isFunction$2(v) {
  * @returns
  */
 function isString$2(v) {
-    return typeof v === 'string' || v instanceof String;
+    return v instanceof String || Object.prototype.toString.call(v) === '[object String]';
+}
+
+/**
+ * 判断参数是否为函数对象
+ *
+ * @example
+ * //true
+ * console.log(_.isFunction(new Function()))
+ * //true
+ * console.log(_.isFunction(()=>{}))
+ *
+ * @param v
+ * @returns
+ */
+function isFunction$2(v) {
+    return v instanceof Function || typeof v == 'function';
 }
 
 /**
@@ -1232,11 +1266,6 @@ function isString$2(v) {
  * @returns
  */
 function isArray$2(v) {
-    // 使用 instanceof Array 无法鉴别某些场景，比如
-    // Array.prototype instanceof Array => false
-    // Array.isArray(Array.prototype) => true
-    // typeof new Proxy([],{}) => object
-    // Array.isArray(new Proxy([],{})) => true
     return Array.isArray(v);
 }
 
@@ -1245,14 +1274,14 @@ function toPath$1$2(path) {
     if (isArray$2(chain)) {
         chain = chain.join('.');
     }
-    else {
-        chain += '';
+    let rs = chain + '';
+    if (rs.includes('[')) {
+        rs = rs.replace(/\[(['"])?([^\]'"]+)\1?\]/gm, '.$2');
     }
-    const rs = (chain + '')
-        .replace(/\[([^\]]+)\]/gm, '.$1')
-        .replace(/^\./g, '')
-        .split('.');
-    return rs;
+    if (rs[0] === '.') {
+        rs = rs.substring(1);
+    }
+    return rs.split('.');
 }
 
 /**
@@ -1280,6 +1309,11 @@ function toPath$1$2(path) {
 function get$2(obj, path, defaultValue) {
     if (!isObject$2(obj))
         return defaultValue;
+    if (!isArray$2(path) || (path.length === 1 && (path = path[0]) !== undefined)) {
+        let v = obj[path];
+        if (v !== undefined)
+            return v;
+    }
     const chain = toPath$1$2(path);
     let target = obj;
     for (let i = 0; i < chain.length; i++) {
@@ -1293,44 +1327,8 @@ function get$2(obj, path, defaultValue) {
     return target;
 }
 
-/**
- * 返回对象的所有key数组
- *
- * > 只返回对象的自身可枚举属性
- *
- * @example
- * let f = new Function("this.a=1;this.b=2;");
- * f.prototype.c = 3;
- * //[a,b]
- * console.log(_.keys(new f()))
- *
- * @param obj
- * @returns 对象的key
- */
-function keys$2(obj) {
-    if (obj === null || obj === undefined)
-        return [];
-    return Object.keys(obj);
-}
-
 function noop$1() {
     return undefined;
-}
-
-/**
- * 判断值是不是一个Set对象
- *
- * @example
- * //false
- * console.log(_.isSet(new WeakSet))
- * //true
- * console.log(_.isSet(new Set))
- *
- * @param v
- * @returns
- */
-function isSet$2(v) {
-    return v instanceof Set;
 }
 
 /**
@@ -1354,10 +1352,10 @@ function isArrayLike$2(v) {
         return false;
     // 具有length属性
     const list = v;
-    if (list.length !== undefined) {
-        const proto = list.constructor.prototype;
+    if ('length' in list) {
+        const proto = Reflect.getPrototypeOf(list);
         // NodeList/HTMLCollection/CSSRuleList/...
-        if (isFunction$2(proto.item))
+        if (isFunction$2(proto?.item))
             return true;
         // arguments
         if (isFunction$2(list[Symbol.iterator]))
@@ -1366,84 +1364,46 @@ function isArrayLike$2(v) {
     return false;
 }
 
-/**
- * 判断值是不是一个Map对象
- *
- * @example
- * //true
- * console.log(_.isMap(new Map()))
- * //false
- * console.log(_.isMap(new WeakMap()))
- *
- * @param v
- * @returns
- */
-function isMap$2(v) {
-    return v instanceof Map;
-}
-
-/**
- * 返回对象的所有value数组
- * <div class="alert alert-secondary">
-      只返回对象的自身可枚举属性
-    </div>
- *
- *
- * @example
- * let f = new Function("this.a=1;this.b=2;");
- * f.prototype.c = 3;
- * //[1,2]
- * console.log(_.values(new f()))
- *
- * @param obj
- * @returns 对象根属性对应的值列表
- */
-function values$2(obj) {
-    return keys$2(obj).map((k) => obj[k]);
-}
-
-/**
- * 把一个集合对象转为array对象。对于非集合对象，
- * <ul>
- * <li>字符串 - 每个字符都会变成数组的元素</li>
- * <li>其他情况 - 返回包含一个collection元素的数组</li>
- * </ul>
- *
- * @example
- * //[1,2,3]
- * console.log(_.toArray(new Set([1,2,3])))
- * //['a','b','c']
- * console.log(_.toArray('abc'))
- * //[1,2,'b']
- * console.log(_.toArray({x:1,y:2,z:'b'}))
- * //[[1, 'a'], [3, 'b'], ['a', 5]]
- * console.log(_.toArray(new Map([[1,'a'],[3,'b'],['a',5]])))
- *
- * @param collection 如果是Map/Object对象会转换为值列表
- *
- * @returns 转换后的数组对象
- */
-function toArray$2(collection) {
-    if (isArray$2(collection))
-        return collection.concat();
-    if (isFunction$2(collection))
-        return [collection];
-    if (isSet$2(collection)) {
-        return Array.from(collection);
+function each$1(collection, callback) {
+    let values;
+    let keys;
+    if (isString$2(collection) || isArrayLike$2(collection)) {
+        let size = collection.length;
+        for (let i = 0; i < size; i++) {
+            const r = callback(collection[i], i, collection);
+            if (r === false)
+                return;
+        }
     }
-    else if (isString$2(collection)) {
-        return collection.split('');
-    }
-    else if (isArrayLike$2(collection)) {
-        return Array.from(collection);
+    else if (isSet$2(collection)) {
+        let size = collection.size;
+        values = collection.values();
+        for (let i = 0; i < size; i++) {
+            const r = callback(values.next().value, i, collection);
+            if (r === false)
+                return;
+        }
     }
     else if (isMap$2(collection)) {
-        return Array.from(collection.values());
+        let size = collection.size;
+        keys = collection.keys();
+        values = collection.values();
+        for (let i = 0; i < size; i++) {
+            const r = callback(values.next().value, keys.next().value, collection);
+            if (r === false)
+                return;
+        }
     }
     else if (isObject$2(collection)) {
-        return values$2(collection);
+        keys = Object.keys(collection);
+        let size = keys.length;
+        for (let i = 0; i < size; i++) {
+            const k = keys[i];
+            const r = callback(collection[k], k, collection);
+            if (r === false)
+                return;
+        }
     }
-    return [collection];
 }
 
 /**
@@ -1465,8 +1425,17 @@ function toArray$2(collection) {
 function concat$1(...arrays) {
     if (arrays.length < 1)
         return [];
-    arrays = arrays.map((alk) => (isArrayLike$2(alk) ? toArray$2(alk) : alk));
-    return toArray$2(arrays[0]).concat(...arrays.slice(1));
+    let rs = [];
+    for (let i = 0; i < arrays.length; i++) {
+        const item = arrays[i];
+        if (isArrayLike$2(item)) {
+            each$1(item, (v) => rs.push(v));
+        }
+        else {
+            rs.push(item);
+        }
+    }
+    return rs;
 }
 
 /**
@@ -1479,8 +1448,9 @@ function concat$1(...arrays) {
  * console.log(_.mergeWith({x:1,y:{a:1,b:2,c:3}},{x:2,y:{a:2,d:3}},{y:{b:4}},(sv,tv,k)=>k=='d'?sv*9:undefined))
  *
  * @param target 目标对象
- * @param sources 1-n个源对象
- * @param [handler=noop] (src[k],target[k],k,src,target,chain) 自定义赋值处理器，返回赋予target[k]的值
+ * @param sources (...src[,handler(src[k],target[k],k,src,target,chain)])
+ * src - 1-n个源对象;
+ * handler - 自定义赋值处理器，返回赋予target[k]的值。默认使用<code>noop</code>
  * @returns 返回target
  * @since 0.22.0
  */
@@ -1543,6 +1513,68 @@ function walkSources$1(target, src, handler, stack) {
  */
 function merge$1(target, ...sources) {
     return mergeWith$1(target, ...sources, noop$1);
+}
+
+/**
+ * 通过path设置对象属性值。如果路径不存在则创建，索引会创建数组，属性会创建对象
+ * <div class="alert alert-secondary">
+      该函数会修改源对象
+    </div>
+
+    @example
+ * //{"a":1,"b":{"c":[undefined,{"x":10}]}}
+ * console.log(_.set({a:1},'b.c.1.x',10))
+ *
+ * @param obj 需要设置属性值的对象，如果obj不是对象(isObject返回false)，直接返回obj
+ * @param path 属性路径，可以是索引数字，字符串key，或者多级属性数组
+ * @param value 任何值
+ * @returns obj 修改后的源对象
+ * @since 0.16.0
+ */
+function set$1(obj, path, value) {
+    if (!isObject$2(obj))
+        return obj;
+    const chain = toPath$1$2(path);
+    let target = obj;
+    for (let i = 0; i < chain.length; i++) {
+        const seg = chain[i];
+        const nextSeg = chain[i + 1];
+        let tmp = target[seg];
+        if (nextSeg) {
+            let next = !tmp ? (isNaN(parseInt(nextSeg)) ? {} : []) : tmp;
+            if (!tmp) {
+                tmp = target[seg] = next;
+            }
+        }
+        else {
+            target[seg] = value;
+            break;
+        }
+        target = tmp;
+    }
+    return obj;
+}
+
+/**
+   * myfx/tree v1.14.0
+   * A modular utility library with more utils, higher performance and simpler declarations ...
+   * https://github.com/holyhigh2/myfx
+   * (c) 2021-2025 @holyhigh2 may be freely distributed under the MIT license
+   */
+
+function closest$1(node, predicate, parentKey) {
+    let p = node;
+    let t = null;
+    let k = true;
+    let i = 0;
+    while (k && p) {
+        if (predicate(p, i++, () => { k = false; })) {
+            t = p;
+            break;
+        }
+        p = p[parentKey];
+    }
+    return t;
 }
 
 /* eslint-disable max-len */
@@ -2127,15 +2159,20 @@ function isVisible(el) {
 }
 
 var _Uii_listeners;
+const UII_KEY = '__uii_target_';
+const UII_MAP = {};
+let UiiSn = 0;
 /**
  * A Base class for all Uii classes
  */
 class Uii {
     constructor(ele, opts) {
+        var _a;
         this.enabled = true;
         _Uii_listeners.set(this, []);
         this.opts = opts || {};
         this.opts.mouseButton = this.opts.mouseButton || 'left';
+        this.opts.eventCapture = (_a = this.opts.eventCapture) !== null && _a !== void 0 ? _a : true;
         if (isArrayLike$3(ele) && !isString$3(ele)) {
             this.ele = map$1(ele, (el) => {
                 let e = isString$3(el) ? document.querySelector(el) : el;
@@ -2156,9 +2193,12 @@ class Uii {
                 return;
             }
             this.ele = isArrayLike$3(el)
-                ? toArray$3(el)
+                ? toArray$2(el)
                 : [el];
         }
+        let uid = UiiSn++ + '';
+        UII_MAP[uid] = this;
+        this._bindUiik(uid);
     }
     /**
      * 销毁uii对象，包括卸载事件、清空元素等
@@ -2170,12 +2210,13 @@ class Uii {
         __classPrivateFieldSet(this, _Uii_listeners, [], "f");
     }
     //通用指针事件处理接口
-    addPointerDown(el, pointerDown, opts) {
+    addPointerDown(el, pointerDown) {
         const onPointerDown = pointerDown;
-        const threshold = opts.threshold || 0;
-        const toLockPage = opts.lockPage || false;
         const uiiOptions = this.opts;
+        let threshold = 0;
+        let toLockPage = true;
         this.registerEvent(el, "mousedown", (e) => {
+            var _a;
             if (uiiOptions.mouseButton) {
                 switch (uiiOptions.mouseButton) {
                     case "left":
@@ -2229,6 +2270,12 @@ class Uii {
                 e.preventDefault();
                 return false;
             }
+            let target = closest$1(t, (node) => node && get$2(node, UII_KEY), "parentElement");
+            if (target) {
+                let uiiInstance = UII_MAP[get$2(target, UII_KEY)];
+                threshold = uiiInstance.opts.threshold || 0;
+                toLockPage = (_a = uiiInstance.opts.lockPage) !== null && _a !== void 0 ? _a : true;
+            }
             let matrixInfo = getMatrixInfo(el, true);
             //函数
             const pointerMove = (ev) => {
@@ -2280,7 +2327,7 @@ class Uii {
             window.addEventListener("blur", pointerEnd);
             e.preventDefault();
             return false;
-        }, true);
+        }, this.opts.eventCapture);
     }
     /**
      * 注册事件，以便在{@link destroy}方法中卸载
@@ -2340,6 +2387,14 @@ class Uii {
     setOption(name, value) {
         this.opts[name] = value;
         this.onOptionChanged(this.opts);
+    }
+    /**
+     * @internal
+     */
+    _bindUiik(uid) {
+        each$2(this.ele, el => {
+            set$1(el, UII_KEY, uid);
+        });
     }
     /**
      * @internal
@@ -2422,7 +2477,8 @@ class Splittable extends Uii {
             }
             else {
                 each$2(handleDoms, (h, i) => {
-                    const isRoot = h.parentNode.classList.contains(CLASS_SPLITTABLE);
+                    var _a;
+                    const isRoot = (_a = h.parentElement) === null || _a === void 0 ? void 0 : _a.classList.contains(CLASS_SPLITTABLE);
                     let dom1, dom2;
                     if (isRoot) {
                         dom1 = h.previousElementSibling;
@@ -2458,7 +2514,7 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
     const child = container.children[0];
     let lastY = child.offsetTop;
     let lastH = child.offsetHeight;
-    each$2(container.children, c => {
+    each$2(container.children, (c) => {
         if (c.offsetTop > lastH + lastY) {
             dir = 'v';
             return false;
@@ -2659,9 +2715,6 @@ _Splittable_instances = new WeakSet(), _Splittable_checkDirection = function _Sp
             }
             onEnd && onEnd({ size1: originSize, size2: originSize1 }, ev);
         });
-    }, {
-        threshold: THRESHOLD,
-        lockPage: true
     });
 };
 /**
@@ -2675,13 +2728,585 @@ function newSplittable(container, opts) {
 }
 
 /**
-   * myfx v1.1.0
+   * myfx v1.14.0
    * A modular utility library with more utils, higher performance and simpler declarations ...
    * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   * (c) 2021-2025 @holyhigh2 may be freely distributed under the MIT license
    */
-  function _getGrouped(str) {
-    return (str.match(/[A-Z]{2,}|([^\s-_]([^\s-_A-Z]+)?(?=[\s-_A-Z]))|([^\s-_]+(?=$))/g) || []);
+  /**
+ * 判断参数是否为Array对象的实例
+ *
+ * @example
+ * //true
+ * console.log(_.isArray([]))
+ * //false
+ * console.log(_.isArray(document.body.children))
+ *
+ * @param v
+ * @returns
+ */
+function isArray$1(v) {
+    return Array.isArray(v);
+}
+
+/**
+ * 判断参数是否为函数对象
+ *
+ * @example
+ * //true
+ * console.log(_.isFunction(new Function()))
+ * //true
+ * console.log(_.isFunction(()=>{}))
+ *
+ * @param v
+ * @returns
+ */
+function isFunction$1(v) {
+    return v instanceof Function || typeof v == 'function';
+}
+
+/**
+ * 内部使用类型
+ *
+ * @packageDocumentation
+ */
+const PRIMITIVE_TYPES$1 = [
+    'string',
+    'number',
+    'bigint',
+    'boolean',
+    'undefined',
+    'symbol',
+];
+
+/**
+ * 判断值是不是一个非基本类型外的值，如果true则认为值是一个对象
+ * 同样，该方法还可以用来判断一个值是不是基本类型
+ *
+ * @example
+ * //false
+ * console.log(_.isObject(1))
+ * //true
+ * console.log(_.isObject(new String()))
+ * //false
+ * console.log(_.isObject(true))
+ * //false
+ * console.log(_.isObject(null))
+ *
+ * @param v value
+ * @returns 是否对象。如果值是null返回false，即使typeof null === 'object'
+ */
+function isObject$1(v) {
+    return null !== v && PRIMITIVE_TYPES$1.indexOf(typeof v) < 0;
+}
+
+/**
+ * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
+ *
+ * @example
+ * //true
+ * console.log(_.isString(new String('')))
+ * //true
+ * console.log(_.isString(''))
+ *
+ * @param v
+ * @returns
+ */
+function isString$1(v) {
+    return v instanceof String || Object.prototype.toString.call(v) === '[object String]';
+}
+
+/**
+ * 判断参数是否为类数组对象
+ *
+ * @example
+ * //true
+ * console.log(_.isArrayLike('abc123'))
+ * //true
+ * console.log(_.isArrayLike([]))
+ * //true
+ * console.log(_.isArrayLike(document.body.children))
+ *
+ * @param v
+ * @returns
+ */
+function isArrayLike$1(v) {
+    if (isString$1(v) && v.length > 0)
+        return true;
+    if (!isObject$1(v))
+        return false;
+    // 具有length属性
+    const list = v;
+    if ('length' in list) {
+        const proto = Reflect.getPrototypeOf(list);
+        // NodeList/HTMLCollection/CSSRuleList/...
+        if (isFunction$1(proto?.item))
+            return true;
+        // arguments
+        if (isFunction$1(list[Symbol.iterator]))
+            return true;
+    }
+    return false;
+}
+
+/**
+ * 判断值是不是迭代器对象
+ *
+ * @example
+ * //true
+ * console.log(_.isIterator(new Map()))
+ * //true
+ * console.log(_.isIterator(new Map().values()))
+ * //false
+ * console.log(_.isIterator({a:1}))
+ *
+ * @param v
+ * @returns
+ * @since 1.10.0
+ */
+function isIterator$1(v) {
+    return typeof v === 'object' && v !== null && Symbol.iterator in v;
+}
+
+/**
+ * 判断值是不是一个Map对象
+ *
+ * @example
+ * //true
+ * console.log(_.isMap(new Map()))
+ * //false
+ * console.log(_.isMap(new WeakMap()))
+ *
+ * @param v
+ * @returns
+ */
+function isMap$1(v) {
+    return v instanceof Map || Object.prototype.toString.call(v) === '[object Map]';
+}
+
+/**
+ * 判断值是不是一个Set对象
+ *
+ * @example
+ * //false
+ * console.log(_.isSet(new WeakSet))
+ * //true
+ * console.log(_.isSet(new Set))
+ *
+ * @param v
+ * @returns
+ */
+function isSet$1(v) {
+    return v instanceof Set || Object.prototype.toString.call(v) === '[object Set]';
+}
+
+function keys$1(obj) {
+    if (obj === null || obj === undefined)
+        return [];
+    if (isMap$1(obj)) {
+        return Array.from(obj.keys());
+    }
+    return Object.keys(obj);
+}
+
+/**
+ * 返回对象/Map的所有value数组
+ * <div class="alert alert-secondary">
+      只返回对象的自身可枚举属性
+    </div>
+ *
+ *
+ * @example
+ * let f = new Function("this.a=1;this.b=2;");
+ * f.prototype.c = 3;
+ * //[1,2]
+ * console.log(_.values(new f()))
+ *
+ * @param obj
+ * @returns 值列表
+ */
+function values$1(obj) {
+    if (isMap$1(obj)) {
+        return Array.from(obj.values());
+    }
+    return keys$1(obj).map((k) => obj[k]);
+}
+
+/**
+ * 把一个集合对象转为array对象。对于非集合对象，
+ * <ul>
+ * <li>字符串 - 每个字符都会变成数组的元素</li>
+ * <li>其他情况 - 返回包含一个collection元素的数组</li>
+ * </ul>
+ *
+ * @example
+ * //[1,2,3]
+ * console.log(_.toArray(new Set([1,2,3])))
+ * //['a','b','c']
+ * console.log(_.toArray('abc'))
+ * //[1,2,'b']
+ * console.log(_.toArray({x:1,y:2,z:'b'}))
+ * //[[1, 'a'], [3, 'b'], ['a', 5]]
+ * console.log(_.toArray(new Map([[1,'a'],[3,'b'],['a',5]])))
+ * //[1, 3, 'a']
+ * console.log(_.toArray(new Map([[1,'a'],[3,'b'],['a',5]])).keys())
+ *
+ * @param collection 如果是Map/Object对象会转换为值列表
+ *
+ * @returns 转换后的数组对象
+ */
+function toArray$1(collection) {
+    if (isArray$1(collection))
+        return collection.concat();
+    if (isFunction$1(collection))
+        return [collection];
+    if (isSet$1(collection)) {
+        return Array.from(collection);
+    }
+    else if (isString$1(collection)) {
+        return collection.split('');
+    }
+    else if (isArrayLike$1(collection)) {
+        return Array.from(collection);
+    }
+    else if (isMap$1(collection)) {
+        return Array.from(collection.values());
+    }
+    else if (isIterator$1(collection)) {
+        return Array.from(collection);
+    }
+    else if (isObject$1(collection)) {
+        return values$1(collection);
+    }
+    return [collection];
+}
+
+/**
+ * 向数组末尾追加一个或多个元素并返回
+ *
+ * > 该函数会修改原数组
+ *
+ * @example
+ * //[1, 2, 3, 4]
+ * let ary = [1,2];
+ * _.append(ary,3,4);
+ * console.log(ary);
+ * //[1, 2, Array(2), 5]
+ * ary = [1,2];
+ * _.append(ary,[3,4],5);
+ * console.log(ary);
+ * //[1, 2, 3, 4]
+ * ary = [1,2];
+ * _.append(ary,...[3,4]);
+ * console.log(ary);
+ *
+ * @param array 数组对象。如果非数组类型会自动转为数组
+ * @param values 1-n个需要插入列表的值
+ * @returns 插入值后的数组对象
+ */
+function append(array, ...values) {
+    const rs = isArray$1(array) ? array : toArray$1(array);
+    rs.push(...values);
+    return rs;
+}
+
+/**
+ * 把指定数组拆分成多个长度为size的子数组，并返回子数组组成的二维数组
+ * @example
+ * //[[1,2],[3,4]]
+ * console.log(_.chunk([1,2,3,4],2))
+ * //[[1,2,3],[4]]
+ * console.log(_.chunk([1,2,3,4],3))
+ *
+ * @param array 数组，非数组返回空数组
+ * @param [size=1] 子数组长度
+ * @returns 拆分后的新数组
+ * @since 0.23.0
+ */
+function chunk(array, size = 1) {
+    const rs = [];
+    if (!Array.isArray(array))
+        return rs;
+    const sizeNum = (size || 1) >> 0;
+    array.forEach((v, i) => {
+        if (i % sizeNum == 0) {
+            rs.push(array.slice(i, i + sizeNum));
+        }
+    });
+    return rs;
+}
+
+function identity$1(v) {
+    return v;
+}
+
+/**
+ * 对集合内的假值进行剔除，并返回剔除后的新数组。假值包括 null/undefined/NaN/0/''/false
+ * @example
+ * //[1,2,4,'a','1']
+ * console.log(_.compact([0,1,false,2,4,undefined,'a','1','',null]))
+ *
+ * @param array 数组
+ * @returns 转换后的新数组对象
+ */
+function compact$1(array) {
+    return toArray$1(array).filter(identity$1);
+}
+
+function each(collection, callback) {
+    let values;
+    let keys;
+    if (isString$1(collection) || isArrayLike$1(collection)) {
+        let size = collection.length;
+        for (let i = 0; i < size; i++) {
+            const r = callback(collection[i], i, collection);
+            if (r === false)
+                return;
+        }
+    }
+    else if (isSet$1(collection)) {
+        let size = collection.size;
+        values = collection.values();
+        for (let i = 0; i < size; i++) {
+            const r = callback(values.next().value, i, collection);
+            if (r === false)
+                return;
+        }
+    }
+    else if (isMap$1(collection)) {
+        let size = collection.size;
+        keys = collection.keys();
+        values = collection.values();
+        for (let i = 0; i < size; i++) {
+            const r = callback(values.next().value, keys.next().value, collection);
+            if (r === false)
+                return;
+        }
+    }
+    else if (isObject$1(collection)) {
+        keys = Object.keys(collection);
+        let size = keys.length;
+        for (let i = 0; i < size; i++) {
+            const k = keys[i];
+            const r = callback(collection[k], k, collection);
+            if (r === false)
+                return;
+        }
+    }
+}
+
+/**
+ * 合并数组或值并返回新数组，元素可以重复。基于 `Array.prototype.concat` 实现
+ *
+ * @example
+ * //[a/b/a]
+ * console.log(_.concat([{name:'a'},{name:'b'}],[{name:'a'}]))
+ * //[1, 2, 3, 1, 2]
+ * console.log(_.concat([1,2,3],[1,2]))
+ * //[1, 2, 3, 1, 2, null, 0]
+ * console.log(_.concat([1,2,3],[1,2],null,0))
+ * //[1, 2, 3, 1, 2, doms..., 0, null]
+ * console.log(_.concat([1,2,3],[1,2],document.body.children,0,null))
+ *
+ * @param arrays 1-n个数组对象
+ * @returns 如果参数为空，返回空数组
+ */
+function concat(...arrays) {
+    if (arrays.length < 1)
+        return [];
+    let rs = [];
+    for (let i = 0; i < arrays.length; i++) {
+        const item = arrays[i];
+        if (isArrayLike$1(item)) {
+            each(item, (v) => rs.push(v));
+        }
+        else {
+            rs.push(item);
+        }
+    }
+    return rs;
+}
+
+/**
+ * 对所有集合做差集并返回差集元素组成的新数组
+ *
+ * @example
+ * //[1]
+ * console.log(_.except([1,2,3],[2,3]))
+ * //[1,4]
+ * console.log(_.except([1,2,3],[2,3],[3,2,1,4]))
+ * //[{name: "b"}]
+ * console.log(_.except([{name:'a'},{name:'b'}],[{name:'a'}],v=>v.name))
+ * //[2, 3, "2", "3"] '2'和2不相等
+ * console.log(_.except([1,2,3],[1,'2',3],[2,'3',1]))
+ *
+ * @param params (...arrays[,identifier(v)])
+ * arrays - 1-n个数组或arraylike对象，非arraylike参数会被忽略;
+ * identifier - 标识函数，用来对每个元素返回唯一标识，标识相同的值会认为相等。使用<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Equality_comparisons_and_sameness#Same-value-zero_equality">SameValueZero</a> 算法进行值比较。如果为空，直接使用值自身比较
+ * @returns 差集元素组成的新数组
+ */
+function except(...params) {
+    let comparator;
+    let list = params;
+    const sl = params.length;
+    if (sl > 2) {
+        const lp = params[sl - 1];
+        if (isFunction$1(lp)) {
+            comparator = lp;
+            list = params.slice(0, params.length - 1);
+        }
+    }
+    list = list.filter((v) => isArrayLike$1(v) || isArray$1(v));
+    if (list.length < 1)
+        return list;
+    const len = list.length;
+    const kvMap = new Map();
+    // 遍历所有元素
+    for (let j = 0; j < len; j++) {
+        const ary = list[j];
+        const localMap = new Map();
+        for (let i = 0; i < ary.length; i++) {
+            const v = ary[i];
+            const id = comparator ? comparator(v) : v;
+            if (!kvMap.get(id)) {
+                // 防止组内重复
+                kvMap.set(id, { i: 0, v: v });
+            }
+            if (kvMap.get(id) && !localMap.get(id)) {
+                kvMap.get(id).i++;
+                // 相同id本组内不再匹配
+                localMap.set(id, true);
+            }
+        }
+    }
+    const rs = [];
+    each(kvMap, (v) => {
+        if (v.i < len) {
+            rs.push(v.v);
+        }
+    });
+    return rs;
+}
+
+/**
+ * 使用固定值填充arrayLike中从起始索引到终止索引内的全部元素
+ *
+ * @example
+ * //[6, 6, 6]
+ * console.log(_.fill(new Array(3), 6))
+ * //[1, 'x', 'x', 'x', 5]
+ * console.log(_.fill([1, 2, 3, 4, 5], 'x', 1, 4))
+ *
+ * @param array 数组
+ * @param value 填充值
+ * @param [start=0] 起始索引，包含
+ * @param [end] 终止索引，不包含
+ * @returns 填充后的新数组
+ */
+function fill(array, value, start = 0, end) {
+    const rs = toArray$1(array);
+    rs.fill(value, start, end);
+    return rs;
+}
+
+/**
+ * 判断参数是否为undefined
+ * @example
+ * //true
+ * console.log(_.isUndefined(undefined))
+ * //false
+ * console.log(_.isUndefined(null))
+ *
+ * @param v
+ * @returns
+ */
+function isUndefined$1(v) {
+    return v === undefined;
+}
+
+function toPath$1$1(path) {
+    let chain = path;
+    if (isArray$1(chain)) {
+        chain = chain.join('.');
+    }
+    let rs = chain + '';
+    if (rs.includes('[')) {
+        rs = rs.replace(/\[(['"])?([^\]'"]+)\1?\]/gm, '.$2');
+    }
+    if (rs[0] === '.') {
+        rs = rs.substring(1);
+    }
+    return rs.split('.');
+}
+
+/**
+ * 通过path获取对象属性值
+ *
+ * @example
+ * //2
+ * console.log(_.get([1,2,3],1))
+ * //Holyhigh
+ * console.log(_.get({a:{b:[{x:'Holyhigh'}]}},['a','b',0,'x']))
+ * //Holyhigh2
+ * console.log(_.get({a:{b:[{x:'Holyhigh2'}]}},'a.b.0.x'))
+ * //Holyhigh
+ * console.log(_.get({a:{b:[{x:'Holyhigh'}]}},'a.b[0].x'))
+ * //hi
+ * console.log(_.get([[null,[null,null,'hi']]],'[0][1][2]'))
+ * //not find
+ * console.log(_.get({},'a.b[0].x','not find'))
+ *
+ * @param obj 需要获取属性值的对象，如果obj不是对象(isObject返回false)，则返回defaultValue
+ * @param path 属性路径，可以是索引数字，字符串key，或者多级属性数组
+ * @param [defaultValue] 如果path未定义，返回默认值
+ * @returns 属性值或默认值
+ */
+function get$1(obj, path, defaultValue) {
+    if (!isObject$1(obj))
+        return defaultValue;
+    if (!isArray$1(path) || (path.length === 1 && (path = path[0]) !== undefined)) {
+        let v = obj[path];
+        if (v !== undefined)
+            return v;
+    }
+    const chain = toPath$1$1(path);
+    let target = obj;
+    for (let i = 0; i < chain.length; i++) {
+        const seg = chain[i];
+        target = target[seg];
+        if (!target)
+            break;
+    }
+    if (target === undefined)
+        target = defaultValue;
+    return target;
+}
+
+/**
+ * 创建一个函数，该函数返回指定对象的path属性值
+ * @example
+ * const libs = [
+ *  {name:'func.js',platform:['web','nodejs'],tags:{utils:true},js:false},
+ *  {name:'juth2',platform:['web','java'],tags:{utils:false,middleware:true},js:true},
+ *  {name:'soya2d',platform:['web'],tags:{utils:true},js:true}
+ * ];
+ * //[true,false,true]
+ * console.log(_.map(libs,_.prop('tags.utils')))
+ * //nodejs
+ * console.log(_.prop(['platform',1])(libs[0]))
+ *
+ * @param path
+ * @returns 接收一个对象作为参数的函数
+ * @since 0.17.0
+ */
+function prop$1(path) {
+    return (obj) => {
+        return get$1(obj, path);
+    };
+}
+
+function eq$1(a, b) {
+    return Object.is(a, b);
 }
 
 /**
@@ -2703,6 +3328,1387 @@ function newSplittable(container, opts) {
  */
 function isNil$2(v) {
     return v === null || v === undefined;
+}
+
+/**
+ * 判断值是不是Node的实例
+ *
+ * @example
+ * //true
+ * console.log(_.isNode(document.body.attributes[0]))
+ * //true
+ * console.log(_.isNode(document))
+ *
+ * @param v
+ * @returns
+ * @since 1.5.0
+ */
+function isNode$1(v) {
+    return typeof v === 'object' && v instanceof (globalThis.Node || Object);
+}
+
+/**
+ * 检测props对象中的所有属性是否在object中存在并使用自定义比较器对属性值进行对比。可以用于对象的深度对比。
+ * 当comparator参数是默认值时，与<code>isMath</code>函数相同
+ *
+ * @example
+ * let target = {a:{x:1,y:2},b:1}
+ * //true
+ * console.log(_.isMatchWith(target,{b:1},_.eq))
+ * //false
+ * console.log(_.isMatchWith(target,{b:'1'},_.eq))
+ *
+ * target = {a:null,b:0}
+ * //true
+ * console.log(_.isMatchWith(target,{a:'',b:'0'},(a,b)=>_.isEmpty(a) && _.isEmpty(b)?true:a==b))
+ *
+ * @param target 如果不是对象类型，返回false
+ * @param props 对比属性对象，如果是nil，返回true
+ * @param comparator 比较器。参数(object[k],props[k],k,object,props)，返回true表示匹配
+ * @returns 匹配所有props返回true
+ * @since 0.18.1
+ */
+function isMatchWith$1(target, props, comparator) {
+    if (isNil$2(props))
+        return true;
+    const ks = Object.keys(props);
+    if (!isObject$1(target))
+        return false;
+    let rs = true;
+    for (let i = ks.length; i--;) {
+        const k = ks[i];
+        const v1 = target[k];
+        const v2 = props[k];
+        if (isObject$1(v1) && isObject$1(v2) && !isNode$1(v1) && !isNode$1(v2) && !isFunction$1(v1) && !isFunction$1(v2)) {
+            if (!isMatchWith$1(v1, v2, comparator)) {
+                rs = false;
+                break;
+            }
+        }
+        else {
+            if (!comparator(v1, v2, k, target, props)) {
+                rs = false;
+                break;
+            }
+        }
+    }
+    return rs;
+}
+
+/**
+ * 检测props对象中的所有属性是否在object中存在，可用于对象的深度对比。
+ * 使用<code>eq</code>作为值对比逻辑
+ *
+ * @example
+ * let target = {a:{x:1,y:2},b:1}
+ * //true
+ * console.log(_.isMatch(target,{b:1}))
+ * //true
+ * console.log(_.isMatch(target,{a:{x:1}}))
+ *
+ * target = [{x:1,y:2},{b:1}]
+ * //true
+ * console.log(_.isMatch(target,{1:{b:1}}))
+ * //true
+ * console.log(_.isMatch(target,[{x:1}]))
+ *
+ * @param object
+ * @param props 对比属性对象，如果是null，返回true
+ * @returns 匹配所有props返回true
+ * @since 0.17.0
+ */
+function isMatch$1(object, props) {
+    return isMatchWith$1(object, props, eq$1);
+}
+
+/**
+ * 创建一个函数，该函数接收一个对象为参数并返回对该对象使用props进行验证的的断言结果。
+ *
+ *
+ * @example
+ * const libs = [
+ *  {name:'func.js',platform:['web','nodejs'],tags:{utils:true},js:true},
+ *  {name:'juth2',platform:['web','java'],tags:{utils:false,middleware:true},js:false},
+ *  {name:'soya2d',platform:['web'],tags:{utils:true},js:false}
+ * ];
+ *
+ * //[{func.js...}]
+ * console.log(_.filter(libs,_.matcher({tags:{utils:true},js:true})))
+ *
+ * @param props 断言条件对象
+ * @returns matcher(v)函数
+ * @since 0.17.0
+ */
+function matcher$1(props) {
+    return (obj) => {
+        return isMatch$1(obj, props);
+    };
+}
+
+/**
+ * 解析path并返回数组
+ * @example
+ * //['a', 'b', '2', 'c']
+ * console.log(_.toPath('a.b[2].c'))
+ * //['a', 'b', 'c', '1']
+ * console.log(_.toPath(['a','b','c[1]']))
+ * //['1']
+ * console.log(_.toPath(1))
+ *
+ * @param path 属性路径，可以是数字索引，字符串key，或者多级属性数组
+ * @returns path数组
+ * @since 0.16.0
+ */
+function toPath$2(path) {
+    return toPath$1$1(path);
+}
+
+function iteratee$1(value) {
+    if (isUndefined$1(value)) {
+        return identity$1;
+    }
+    else if (isFunction$1(value)) {
+        return value;
+    }
+    else if (isString$1(value)) {
+        return prop$1(value);
+    }
+    else if (isArray$1(value)) {
+        return prop$1(toPath$2(value));
+    }
+    else if (isObject$1(value)) {
+        return matcher$1(value);
+    }
+    return () => false;
+}
+
+/**
+ * 对集合内的所有元素进行断言并返回第一个匹配的元素索引
+ *
+ * @example
+ * //3 查询数组的索引
+ * console.log(_.findIndex(['a','b','c',1,3,6],_.isNumber))
+ * //0
+ * console.log(_.findIndex([{a:1},{a:2},{a:3}],'a'))
+ * //2
+ * console.log(_.findIndex([{a:1},{a:2},{a:3}],{a:3}))
+ *
+ * @param array 数组，非数组返回-1
+ * @param predicate (value[,index[,array]]);断言
+ * <br>当断言是函数时回调参数见定义
+ * <br>其他类型请参考 {@link utils!iteratee}
+ * @param fromIndex 从0开始的起始索引，设置该参数可以减少实际遍历次数。默认0
+ * @returns 第一个匹配断言的元素索引或-1
+ */
+function findIndex$1(array, predicate, fromIndex) {
+    if (!Array.isArray(array))
+        return -1;
+    let rs = -1;
+    let fromIndexNum = fromIndex || 0;
+    const itee = iteratee$1(predicate);
+    for (let i = fromIndexNum; i < array.length; i++) {
+        const v = array[i];
+        const r = itee(v, i, array);
+        if (r) {
+            rs = i + fromIndexNum;
+            break;
+        }
+    }
+    return rs;
+}
+
+/**
+ * 获取集合对象的内容数量，对于map/object对象获取的是键/值对的数量
+ *
+ * @example
+ * //3
+ * console.log(_.size({a:1,b:2,c:{x:1}}))
+ * //0
+ * console.log(_.size(null))
+ * //3
+ * console.log(_.size(new Set([1,2,3])))
+ * //2
+ * console.log(_.size([1,[2,[3]]]))
+ * //2
+ * console.log(_.size(document.body.children))
+ * //4
+ * console.log(_.size(document.body.childNodes))
+ * //3 arguments已不推荐使用，请使用Rest参数
+ * console.log((function(){return _.size(arguments)})('a',2,'b'))
+ * //7
+ * console.log(_.size('func.js'))
+ *
+ * @param collection
+ * @returns 集合长度，对于null/undefined/WeakMap/WeakSet返回0
+ */
+function size(collection) {
+    if (isNil$2(collection))
+        return 0;
+    if ((collection.length))
+        return collection.length;
+    if (isMap$1(collection) || isSet$1(collection))
+        return collection.size;
+    if (isObject$1(collection))
+        return Object.keys(collection).length;
+    return 0;
+}
+
+/**
+ * 对集合内的所有元素进行断言并返回最后一个匹配的元素索引
+ *
+ * @example
+ * //5 查询数组的索引
+ * console.log(_.findLastIndex(['a','b','c',1,3,6],_.isNumber))
+ * //2
+ * console.log(_.findLastIndex([{a:1},{a:2},{a:3}],'a'))
+ *
+ * @param array 数组，非数组返回-1
+ * @param predicate (value[,index[,array]]);断言
+ * <br>当断言是函数时回调参数见定义
+ * <br>其他类型请参考 {@link utils!iteratee}
+ * @param [fromIndex=array.length - 1] 从集合长度-1开始的起始索引。设置该参数可以减少实际遍历次数
+ * @returns 最后一个匹配断言的元素索引或-1
+ * @since 0.19.0
+ */
+function findLastIndex(array, predicate, fromIndex) {
+    if (!Array.isArray(array))
+        return -1;
+    let rs = -1;
+    let fromIndexNum = fromIndex ?? size(array) - 1;
+    const itee = iteratee$1(predicate);
+    for (let i = fromIndexNum; i >= 0; i--) {
+        const v = array[i];
+        const r = itee(v, i, array);
+        if (r) {
+            rs = i;
+            break;
+        }
+    }
+    return rs;
+}
+
+/**
+ * 按照指定的嵌套深度递归遍历数组，并将所有元素与子数组中的元素合并为一个新数组返回
+ *
+ * @example
+ * //[1,2,3,4,5]
+ * console.log(_.flat([1,[2,3],[4,5]]))
+ * //[1,2,3,4,5,[6,7]]
+ * console.log(_.flat([1,[2,3],[4,5,[6,7]]]))
+ * //[1,2,3,[4]]
+ * console.log(_.flat([1,[2,[3,[4]]]],2))
+ * //[1,2,1,3,4]
+ * console.log(_.flat(new Set([1,1,[2,[1,[3,4]]]]),Infinity))
+ *
+ * @param array 数组
+ * @param [depth=1] 嵌套深度
+ * @returns 扁平化后的新数组
+ */
+function flat(array, depth = 1) {
+    if (depth < 1)
+        return array.concat();
+    const rs = toArray$1(array).reduce((acc, val) => {
+        return acc.concat(Array.isArray(val) && depth > 0 ? flat(val, depth - 1) : val);
+    }, []);
+    return rs;
+}
+
+/**
+ * 无限深度遍历数组，并将所有元素与子数组中的元素合并为一个新数组返回
+ *
+ * @example
+ * //[1,2,1,3,4]
+ * console.log(_.flatDeep(new Set([1,1,[2,[1,[3,4]]]])))
+ * //[1,2,3,4]
+ * console.log(_.flatDeep([1,[2,[3,[4]]]]))
+ *
+ * @param array 数组
+ * @returns 扁平化后的新数组
+ */
+function flatDeep(array) {
+    return flat(array, Infinity);
+}
+
+/**
+ * 判断参数是否为数字类型值
+ *
+ * @example
+ * //true
+ * console.log(_.isNumber(1))
+ * //true
+ * console.log(_.isNumber(Number.MAX_VALUE))
+ * //false
+ * console.log(_.isNumber('1'))
+ *
+ * @param v
+ * @returns
+ */
+function isNumber(v) {
+    return v instanceof Number || Object.prototype.toString.call(v) === '[object Number]';
+}
+
+/**
+ * 向数组中指定位置插入一个或多个元素并返回
+ *
+ * > 该函数会修改原数组
+ *
+ * @example
+ * //[1, 2, Array(1), 'a', 3, 4]
+ * let ary = [1,2,3,4];
+ * _.insert(ary,2,[1],'a');
+ * console.log(ary);
+ * //[1, 2, 3, 4]
+ * ary = [3,4];
+ * _.insert(ary,0,1,2);
+ * console.log(ary);
+ * //func.js
+ * console.log(_.insert('funcjs',4,'.').join(''));
+ *
+ * @param array 数组对象。如果非数组类型会自动转为数组
+ * @param index 插入位置索引，0 - 列表长度
+ * @param values 1-n个需要插入列表的值
+ * @returns 插入值后的数组对象
+ */
+function insert(array, index, ...values) {
+    const rs = isArray$1(array) ? array : toArray$1(array);
+    if (!isNumber(index) || index < 0)
+        index = 0;
+    rs.splice(index, 0, ...values);
+    return rs;
+}
+
+/**
+ * 对所有集合做交集并返回交集元素组成的新数组
+ * <p>
+ * 关于算法性能可以查看文章<a href="https://www.jianshu.com/p/aa131d573575" target="_holyhigh">《如何实现高性能集合操作(intersect)》</a>
+ * </p>
+ *
+ * @example
+ * //[2]
+ * console.log(_.intersect([1,2,3],[2,3],[1,2]))
+ * //[3]
+ * console.log(_.intersect([1,1,2,2,3],[1,2,3,4,4,4],[3,3,3,3,3,3]))
+ * //[{name: "a"}] 最后一个参数是函数时作为标识函数
+ * console.log(_.intersect([{name:'a'},{name:'b'}],[{name:'a'}],v=>v.name))
+ * //[]
+ * console.log(_.intersect())
+ * //[3] 第三个参数被忽略，然后求交集
+ * console.log(_.intersect([1,2,3],[3],undefined))
+ * //[1] "2"和2不相同，3和"3"不相同
+ * console.log(_.intersect([1,2,3],[1,'2',3],[2,'3',1]))
+ *
+ * @param params (...arrays[,identifier(v)])
+ * arrays - 1-n个数组或arraylike对象，非arraylike参数会被忽略;
+ * identifier - 标识函数，用来对每个元素返回唯一标识，标识相同的值会认为相等。使用<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Equality_comparisons_and_sameness#Same-value-zero_equality">SameValueZero</a> 算法进行值比较。如果为空，直接使用值自身比较
+ * @returns 交集元素组成的新数组
+ */
+function intersect(...params) {
+    let comparator;
+    let list = params;
+    const sl = params.length;
+    if (sl > 2) {
+        const lp = params[sl - 1];
+        if (isFunction$1(lp)) {
+            comparator = lp;
+            list = params.slice(0, sl - 1);
+        }
+    }
+    list = list.filter((v) => isArrayLike$1(v) || isArray$1(v));
+    if (list.length < 1)
+        return list;
+    const len = list.length;
+    // 取得最短集合
+    list.sort((a, b) => a.length - b.length);
+    const kvMap = new Map();
+    // 记录最少id
+    let idLength = 0; // 用于快速匹配
+    for (let i = list[0].length; i--;) {
+        const v = list[0][i];
+        const id = comparator ? comparator(v) : v;
+        if (!kvMap.get(id)) {
+            // 防止组内重复
+            kvMap.set(id, { i: 1, v: v });
+            idLength++;
+        }
+    }
+    for (let j = 1; j < len; j++) {
+        const ary = list[j];
+        const localMap = new Map();
+        let localMatchedCount = 0;
+        for (let i = 0; i < ary.length; i++) {
+            const v = ary[i];
+            const id = comparator ? comparator(v) : v;
+            if (kvMap.get(id) && !localMap.get(id)) {
+                kvMap.get(id).i++;
+                // 相同id本组内不再匹配
+                localMap.set(id, true);
+                // 匹配次数加1
+                localMatchedCount++;
+                // 已经匹配完所有可交集元素，无需继续检查
+                if (localMatchedCount === idLength)
+                    break;
+            }
+        }
+    }
+    const rs = [];
+    each(kvMap, (v) => {
+        if (v.i === len) {
+            rs.push(v.v);
+        }
+    });
+    return rs;
+}
+
+/**
+ * 把arrayLike中所有元素连接成字符串并返回。对于基本类型元素会直接转为字符值，对象类型会调用toString()方法
+ *
+ * @example
+ * //'1/2/3/4'
+ * console.log(_.join([1, 2, 3, 4], '/'))
+ * //'1,2,3,4'
+ * console.log(_.join([1, 2, 3, 4]))
+ *
+ * @param array 数组，非数组返回空字符串
+ * @param [separator=','] 分隔符
+ * @returns 拼接字符串
+ */
+function join(array, separator) {
+    if (!Array.isArray(array))
+        return '';
+    return array.join(separator || ',');
+}
+
+/**
+ * 转换任何对象为数字类型
+ *
+ * @example
+ * //NaN
+ * console.log(_.toNumber(null))
+ * //1
+ * console.log(_.toNumber('1'))
+ * //NaN
+ * console.log(_.toNumber([3,6,9]))
+ * //-0
+ * console.log(_.toNumber(-0))
+ * //NaN
+ * console.log(_.toNumber(NaN))
+ * //NaN
+ * console.log(_.toNumber('123a'))
+ *
+ * @param v 任何值
+ * @returns 对于null/undefined会返回NaN
+ */
+function toNumber(v) {
+    if (v === undefined || v === null)
+        return NaN;
+    return Number(v);
+}
+
+/**
+ * 删除数组末尾或指定索引的一个元素并返回被删除的元素
+ *
+ * > 该函数会修改原数组
+ *
+ * @example
+ * //3, [1, 2]
+ * let ary = [1,2,3];
+ * console.log(_.pop(ary),ary)
+ * //{a: 1}, [{"a":2},{"a":3}]
+ * ary = [{a:1},{a:2},{a:3}];
+ * console.log(_.pop(ary,0),ary)
+ *
+ * @param array 数组对象。如果非数组类型会直接返回null
+ * @param [index=-1] 要删除元素的索引。默认删除最后一个元素
+ * @returns 被删除的值或null
+ */
+function pop(array, index) {
+    index = index || -1;
+    let rs = null;
+    if (Array.isArray(array)) {
+        const i = toNumber(index);
+        if (i > -1) {
+            rs = array.splice(i, 1);
+            if (rs.length < 1)
+                rs = null;
+            else {
+                rs = rs[0];
+            }
+        }
+        else {
+            rs = array.pop();
+        }
+    }
+    return rs;
+}
+
+/**
+ * 对数组进行切片，并返回切片后的新数组，原数组不变。新数组内容是对原数组内容的浅拷贝
+ *
+ * @example
+ * //[2,3,4]
+ * console.log(_.slice([1,2,3,4,5],1,4))
+ * //[2,3,4,5]
+ * console.log(_.slice([1,2,3,4,5],1))
+ *
+ *
+ * @param array 数组，非数组返回空数组
+ * @param [begin=0] 切片起始下标，包含下标位置元素
+ * @param [end] 切片结束下标，<b>不包含</b>下标位置元素
+ * @returns 切片元素组成的新数组
+ */
+function slice(array, begin, end) {
+    if (!Array.isArray(array))
+        return [];
+    return array.slice(begin || 0, end);
+}
+
+/**
+ * 判断集合中是否包含给定的值。使用<code>eq</code>函数进行等值判断。
+ *
+ * @example
+ * //true
+ * console.log(_.includes({a:1,b:2},2))
+ * //false
+ * console.log(_.includes([1,3,5,7,[2]],2))
+ * //true
+ * console.log(_.includes([1,3,5,7,[2]],3))
+ * //false
+ * console.log(_.includes([1,3,5,7,[2]],3,2))
+ * //true
+ * console.log(_.includes([0,null,undefined,NaN],NaN))
+ * //true
+ * console.log(_.includes('abcdefg','abc'))
+ * //false
+ * console.log(_.includes('abcdefg','abc',2))
+ * //false
+ * console.log(_.includes('aBcDeFg','abc'))
+ *
+ * @param collection 如果集合是map/object对象，则只对value进行比对
+ * @param value
+ * @param [fromIndex=0] 从集合的fromIndex 索引处开始查找。如果集合是map/object对象，无效
+ * @returns 如果包含返回true否则返回false
+ */
+function includes(collection, value, fromIndex) {
+    let rs = false;
+    fromIndex = fromIndex || 0;
+    if (isString$1(collection)) {
+        return collection.includes(value, fromIndex);
+    }
+    collection = isArrayLike$1(collection)
+        ? slice(toArray$1(collection), fromIndex)
+        : collection;
+    each(collection, (v) => {
+        if (eq$1(v, value)) {
+            rs = true;
+            return false;
+        }
+    });
+    return rs;
+}
+
+/**
+ * 删除数组中断言结果为true的元素并返回被删除的元素
+ * <div class="alert alert-secondary">
+      该函数会修改原数组
+    </div>
+ *
+ * @example
+ * //[1, 3] [2, 4]
+ * let ary = [1,2,3,4];
+ * console.log(_.remove(ary,x=>x%2),ary)
+ * //[2] [1,3]
+ * ary = [{a:1},{a:2},{a:3}];
+ * console.log(_.remove(ary,v=>v.a===2),ary)
+ * //[3] [1,2]
+ * ary = [{a:1},{a:2},{a:3}];
+ * console.log(_.remove(ary,{a:3}),ary)
+ *
+ * @param array 数组对象，如果参数非数组直接返回
+ * @param predicate (value[,index[,array]]);断言
+ * <br>当断言是函数时回调参数见定义
+ * <br>其他类型请参考 {@link utils!iteratee}
+ * @returns 被删除的元素数组或空数组
+ * @since 0.19.0
+ */
+function remove(array, predicate) {
+    const rs = [];
+    if (!isArray$1(array))
+        return rs;
+    const itee = iteratee$1(predicate);
+    let i = 0;
+    for (let l = 0; l < array.length; l++) {
+        const item = array[l];
+        const r = itee(item, l, array);
+        if (r) {
+            rs.push(item);
+        }
+        else {
+            array[i++] = item;
+        }
+    }
+    array.length = i;
+    return rs;
+}
+
+/**
+ * 与without相同，但会修改原数组
+ * <div class="alert alert-secondary">
+      该函数会修改原数组
+    </div>
+ *
+ * @example
+ * //[1, 1] true
+ * let ary = [1,2,3,4,3,2,1];
+ * let newAry = _.pull(ary,2,3,4)
+ * console.log(newAry,ary === newAry)
+ *
+ * @param array 数组对象
+ * @param values 需要删除的值
+ * @returns 新数组
+ * @since 0.19.0
+ */
+function pull(array, ...values) {
+    remove(array, (item) => includes(values, item));
+    return array;
+}
+
+function range(start = 0, end, step) {
+    let startNum = 0;
+    let endNum = 0;
+    let stepNum = 1;
+    if (isNumber(start) && isUndefined$1(end) && isUndefined$1(step)) {
+        endNum = start >> 0;
+    }
+    else if (isNumber(start) && isNumber(end) && isUndefined$1(step)) {
+        startNum = start >> 0;
+        endNum = end >> 0;
+    }
+    else if (isNumber(start) && isNumber(end) && isNumber(step)) {
+        startNum = start >> 0;
+        endNum = end >> 0;
+        stepNum = step || 1;
+    }
+    const rs = Array(Math.round(Math.abs(endNum - startNum) / stepNum));
+    let rsIndex = 0;
+    if (endNum > startNum) {
+        for (let i = startNum; i < endNum; i += stepNum) {
+            rs[rsIndex++] = i;
+        }
+    }
+    else if (endNum < startNum) {
+        for (let i = startNum; i > endNum; i -= stepNum) {
+            rs[rsIndex++] = i;
+        }
+    }
+    return rs;
+}
+
+/**
+ * 对数组元素位置进行颠倒，返回改变后的数组。
+ *
+ *  @example
+ * //[3, 2, 1]
+ * console.log(_.reverse([1, 2, 3]))
+ *
+ * @param array 数组，类数组或Set
+ * @returns 颠倒后的新数组
+ */
+function reverse(array) {
+    const rs = toArray$1(array);
+    return rs.reverse();
+}
+
+/**
+ * 同<code>sortedIndex</code>，但支持自定义回调用来获取对比值
+ * @example
+ * //2
+ * console.log(_.sortedIndexBy([{a:1},{a:2},{a:3}], {a:2.5},'a'))
+ *
+ * @param array 对象属性标识符数组
+ * @param value 需要插入数组的值
+ * @param itee (value)回调函数，返回排序对比值。默认 identity
+ * @returns array索引
+ * @since 1.0.0
+ */
+function sortedIndexBy(array, value, itee) {
+    let left = 0;
+    let right = size(array);
+    let index = 0;
+    const cb = iteratee$1(itee || identity$1);
+    value = cb(value);
+    while (left < right) {
+        const mid = parseInt((left + right) / 2 + '');
+        if (cb(array[mid]) < value) {
+            left = mid + 1;
+            index = left;
+        }
+        else {
+            right = mid;
+        }
+    }
+    return index;
+}
+
+/**
+ * 使用二分法确定在array保持排序不变的情况下，value可以插入array的最小索引
+ * @example
+ * //1
+ * console.log(_.sortedIndex([1,2,3],1.5))
+ * //1
+ * console.log(_.sortedIndex(['a', 'c'], 'b'))
+ * //0
+ * console.log(_.sortedIndex([{a:1},{a:2},{a:3}], {a:2.5}))
+ *
+ * @param array 对象属性标识符数组
+ * @param value 需要插入数组的值
+ * @returns array索引
+ * @since 1.0.0
+ */
+function sortedIndex(array, value) {
+    return sortedIndexBy(array, value);
+}
+
+function map(collection, itee) {
+    const rs = [];
+    const cb = iteratee$1(itee);
+    each(collection, (v, k, c) => {
+        const r = cb(v, k, c);
+        rs.push(r);
+    });
+    return rs;
+}
+
+/**
+ * 对所有集合做并集并返回并集元素组成的新数组。并集类似concat()但不允许重复值
+ *
+ * @example
+ * //[1, 2, 3]
+ * console.log(_.union([1,2,3],[2,3]))
+ * //[1, 2, 3, "1", "2"]
+ * console.log(_.union([1,2,3],['1','2']))
+ * //[{name: "a"},{name: "b"}]
+ * console.log(_.union([{name:'a'},{name:'b'}],[{name:'a'}],v=>v.name))
+ * //[a/b/a] 没有标识函数无法去重
+ * console.log(_.union([{name:'a'},{name:'b'}],[{name:'a'}]))
+ * //[1, 2, 3, "3"] "3"和3不相等
+ * console.log(_.union([1,2,3],[1,3],[2,'3',1]))
+ *
+ * @param params (...arrays[,identifier(v)])
+ * arrays - 1-n个数组或arraylike对象，非arraylike参数会被忽略;
+ * identifier - 标识函数，用来对每个元素返回唯一标识，标识相同的值会认为相等。使用<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Equality_comparisons_and_sameness#Same-value-zero_equality">SameValueZero</a> 算法进行值比较。如果为空，直接使用值自身比较
+ * @returns 并集元素组成的新数组
+ */
+function union(...params) {
+    let comparator;
+    let list = params;
+    const sl = params.length;
+    if (sl > 2 && isFunction$1(params[sl - 1])) {
+        comparator = params[sl - 1];
+        list = params.slice(0, sl - 1);
+    }
+    list = list.filter((v) => isArrayLike$1(v) || isArray$1(v));
+    if (list.length < 1)
+        return list;
+    let rs;
+    if (comparator) {
+        const kvMap = new Map();
+        flat(list).forEach((v) => {
+            const id = comparator(v);
+            if (!kvMap.get(id)) {
+                kvMap.set(id, v);
+            }
+        });
+        rs = map(kvMap, (v) => v);
+    }
+    else {
+        rs = toArray$1(new Set(flat(list)));
+    }
+    return rs;
+}
+
+/**
+ * 对数组内的值进行去重
+ * @example
+ * // [1,2,4,"a","1",null]
+ * console.log(_.unique([1,2,2,4,4,'a','1','a',null,null]))
+ *
+ * @param array 数组，非数组返回空数组
+ * @returns 转换后的新数组对象
+ */
+function uniq(array) {
+    if (!Array.isArray(array))
+        return [];
+    return toArray$1(new Set(array));
+}
+
+/**
+ * 同<code>uniq</code>，但支持自定义筛选函数
+ * @example
+ * // [{"a":1},{"a":"1"},{"a":2},{"a":"2"}]
+ * console.log(_.uniqBy([{a:1},{a:1},{a:'1'},{a:2},{a:'2'},{a:2}],'a'))
+ * // [{"a":1},{"a":2}]
+ * console.log(_.uniqBy([{a:1},{a:1},{a:'1'},{a:2},{a:'2'},{a:2}],v=>v.a>>0))
+ *
+ * @param array 数组
+ * @param itee (value,index) 筛选函数，返回需要对比的值。默认identity
+ * <br>当iteratee是函数时回调参数见定义
+ * <br>其他类型请参考 {@link utils.iteratee}
+ * @returns 去重后的新数组对象
+ * @since 1.0.0
+ */
+function uniqBy(array, itee) {
+    const cb = iteratee$1(itee || identity$1);
+    const keyMap = new Map();
+    const rs = [];
+    each(array, (v, k) => {
+        const key = cb(v, k);
+        if (keyMap.get(key))
+            return;
+        keyMap.set(key, 1);
+        rs.push(v);
+    });
+    return rs;
+}
+
+/**
+ * <code>zip</code>的反操作
+ * @example
+ * //[[1,2,undefined],['a','b','c']]
+ * console.log(_.unzip([[1, 'a'],[2, 'b'],[undefined, 'c']]))
+ * //[['a', 'b', 'c'], [1, 2, undefined],['1', undefined,undefined]]
+ * console.log(_.unzip([['a', 1, '1'], ['b', 2],['c']]))
+ *
+ * @param array 包含若干分组的数组
+ * @returns 重新分组后的新数组
+ * @since 0.23.0
+ */
+function unzip(array) {
+    const rs = [];
+    const len = size(array);
+    each(array, (group, colIndex) => {
+        each(group, (el, rowIndex) => {
+            let row = rs[rowIndex];
+            if (!row) {
+                row = rs[rowIndex] = new Array(len);
+            }
+            row[colIndex] = el;
+        });
+    });
+    return rs;
+}
+
+function filter(collection, predicate) {
+    const rs = [];
+    const callback = iteratee$1(predicate);
+    each(collection, (v, k, c) => {
+        const r = callback(v, k, c);
+        if (r) {
+            rs.push(v);
+        }
+    });
+    return rs;
+}
+
+/**
+ * 返回删除所有values后的新数组。使用<code>eq</code>函数进行等值判断
+ *
+ * @example
+ * //[1, 1]
+ * console.log(_.without([1,2,3,4,3,2,1],2,3,4))
+ *
+ * @param array 数组对象
+ * @param values 需要删除的值
+ * @returns 新数组
+ * @since 0.19.0
+ */
+function without(array, ...values) {
+    return filter(array, (item) => !includes(values, item));
+}
+
+/**
+ * 创建一个由指定数组arrays内元素重新分组后组成的二维数组，
+ * 第一个子数组由每个数组内的第一个元素组成，第二个子数组由每个数组内的第二个元素组成，以此类推。
+ * 子数组的数量由参数中数组内元素最多的数组决定。
+ * @example
+ * //[[1, 'a'],[2, 'b'],[undefined, 'c']]
+ * console.log(_.zip([1,2],['a','b','c']))
+ * //[['a', 1, '1'], ['b', 2, undefined],['c', undefined,undefined]]
+ * console.log(_.zip(['a','b','c'],[1,2],['1']))
+ *
+ * @param arrays 1-n个数组
+ * @returns 重新分组后的新数组
+ * @since 0.23.0
+ */
+function zip(...arrays) {
+    const rs = [];
+    const size = arrays.length;
+    arrays.forEach((ary, colIndex) => {
+        each(ary, (el, i) => {
+            let group = rs[i];
+            if (!group) {
+                group = rs[i] = new Array(size);
+            }
+            group[colIndex] = el;
+        });
+    });
+    return rs;
+}
+
+/**
+ * 创建一个对象，属性名称与属性值分别来自两个数组
+ * @example
+ * //{a: 1, b: 2}
+ * console.log(_.zipObject(['a','b'],[1,2,3]))
+ *
+ * @param keys 对象属性标识符数组
+ * @param values 对象值数组
+ * @returns 组合后的对象
+ * @since 0.23.0
+ */
+function zipObject(keys, values) {
+    const rs = {};
+    each(keys, (k, i) => {
+        rs[k] = get$1(values, i);
+    });
+    return rs;
+}
+
+/**
+ * 与<code>zip</code>相同，但支持自定义组合逻辑
+ * @example
+ * //[[1, 3, 5], [2, 4, 6]]
+ * console.log(_.zipWith([1,2],[3,4],[5,6]))
+ * //[9, 12]
+ * console.log(_.zipWith([1,2],[3,4],[5,6],_.sum))
+ * //[3, 4]
+ * console.log(_.zipWith([1,2],[3,4],[5,6],group=>_.avg(group)))
+ *
+ * @param params (...arrays[,iteratee(group)])
+ * arrays - 1-n个数组或arraylike对象，非arraylike参数会被忽略;
+ * iteratee - 回调函数，返回组合后的分组值。默认使用<code>identity</code>函数
+ *
+ * @returns 重新分组后的新数组
+ * @since 1.0.0
+ */
+function zipWith(...params) {
+    const sl = params.length;
+    let itee = params[sl - 1];
+    const arys = params;
+    if (!isFunction$1(itee)) {
+        itee = identity$1;
+    }
+    else {
+        pop(arys);
+    }
+    const rs = zip(...arys);
+    return map(rs, (group) => itee(group));
+}
+
+var array = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  append: append,
+  chunk: chunk,
+  compact: compact$1,
+  concat: concat,
+  except: except,
+  fill: fill,
+  findIndex: findIndex$1,
+  findLastIndex: findLastIndex,
+  flat: flat,
+  flatDeep: flatDeep,
+  insert: insert,
+  intersect: intersect,
+  join: join,
+  pop: pop,
+  pull: pull,
+  range: range,
+  remove: remove,
+  reverse: reverse,
+  slice: slice,
+  sortedIndex: sortedIndex,
+  sortedIndexBy: sortedIndexBy,
+  union: union,
+  uniq: uniq,
+  uniqBy: uniqBy,
+  unzip: unzip,
+  without: without,
+  zip: zip,
+  zipObject: zipObject,
+  zipWith: zipWith
+});
+
+function countBy(collection, itee) {
+    const stat = {};
+    const cb = iteratee$1(itee || identity$1);
+    each(collection, (el) => {
+        const key = cb(el);
+        if (stat[key] === undefined)
+            stat[key] = 0;
+        stat[key]++;
+    });
+    return stat;
+}
+
+function eachRight(collection, callback) {
+    let values;
+    let keys;
+    if (isString$1(collection) || isArrayLike$1(collection)) {
+        let size = collection.length;
+        while (size--) {
+            const r = callback(collection[size], size, collection);
+            if (r === false)
+                return;
+        }
+    }
+    else if (isSet$1(collection)) {
+        let size = collection.size;
+        values = Array.from(collection);
+        while (size--) {
+            const r = callback(values[size], size, collection);
+            if (r === false)
+                return;
+        }
+    }
+    else if (isMap$1(collection)) {
+        let size = collection.size;
+        keys = collection.keys();
+        values = collection.values();
+        keys = Array.from(keys);
+        values = Array.from(values);
+        while (size--) {
+            const r = callback(values[size], keys[size], collection);
+            if (r === false)
+                return;
+        }
+    }
+    else if (isObject$1(collection)) {
+        keys = Object.keys(collection);
+        let size = keys.length;
+        while (size--) {
+            const k = keys[size];
+            const r = callback(collection[k], k, collection);
+            if (r === false)
+                return;
+        }
+    }
+}
+
+function every(collection, predicate) {
+    let rs = true;
+    const callback = iteratee$1(predicate);
+    each(collection, (v, k, c) => {
+        const r = callback(v, k, c);
+        if (!r) {
+            rs = false;
+            return false;
+        }
+    });
+    return rs;
+}
+
+function find(collection, predicate) {
+    const callback = iteratee$1(predicate);
+    let rs;
+    each(collection, (v, k, c) => {
+        const r = callback(v, k, c);
+        if (r) {
+            rs = v;
+            return false;
+        }
+    });
+    return rs;
+}
+
+function findLast(collection, predicate) {
+    const callback = iteratee$1(predicate);
+    let rs;
+    eachRight(collection, (v, k, c) => {
+        const r = callback(v, k, c);
+        if (r) {
+            rs = v;
+            return false;
+        }
+    });
+    return rs;
+}
+
+function first(array) {
+    return toArray$1(array)[0];
+}
+
+function flatMap(collection, itee, depth) {
+    return flat(map(collection, itee), depth || 1);
+}
+
+function flatMapDeep(collection, itee) {
+    return flatMap(collection, itee, Infinity);
+}
+
+function groupBy(collection, itee) {
+    const stat = {};
+    const cb = iteratee$1(itee || identity$1);
+    each(collection, (el) => {
+        const key = cb(el);
+        if (stat[key] === undefined)
+            stat[key] = [];
+        stat[key].push(el);
+    });
+    return stat;
+}
+
+/**
+ * 返回除最后一个元素外的所有元素组成的新数组
+ *
+ * @example
+ * //[1, 2]
+ * console.log(_.initial([1, 2, 3]))
+ *
+ * @param array 数组
+ * @returns 新数组
+ * @since 0.19.0
+ */
+function initial(array) {
+    let ary = toArray$1(array);
+    return ary.slice(0, ary.length - 1);
+}
+
+function keyBy(collection, itee) {
+    const stat = {};
+    const cb = iteratee$1(itee || identity$1);
+    each(collection, (el) => {
+        const key = cb(el);
+        stat[key] = el;
+    });
+    return stat;
+}
+
+function last(array) {
+    const ary = toArray$1(array);
+    return ary[ary.length - 1];
+}
+
+function partition(collection, predicate) {
+    const matched = [];
+    const mismatched = [];
+    const callback = iteratee$1(predicate);
+    each(collection, (v, k, c) => {
+        const r = callback(v, k, c);
+        if (r) {
+            matched.push(v);
+        }
+        else {
+            mismatched.push(v);
+        }
+    });
+    return [matched, mismatched];
+}
+
+function reduce(collection, callback, initialValue) {
+    let accumulator = initialValue;
+    let hasInitVal = initialValue !== undefined;
+    each(collection, (v, k, c) => {
+        if (hasInitVal) {
+            accumulator = callback(accumulator, v, k, c);
+        }
+        else {
+            accumulator = v;
+            hasInitVal = true;
+        }
+    });
+    return accumulator;
+}
+
+function reject(collection, predicate) {
+    const rs = [];
+    const callback = iteratee$1(predicate);
+    each(collection, (v, k, c) => {
+        const r = callback(v, k, c);
+        if (!r) {
+            rs.push(v);
+        }
+    });
+    return rs;
+}
+
+function randi(min, max) {
+    let maxNum = max || min;
+    if (max === undefined) {
+        min = 0;
+    }
+    maxNum >>= 0;
+    min >>= 0;
+    return (Math.random() * (maxNum - min) + min) >> 0;
+}
+
+/**
+ * 返回对指定列表的唯一随机采样结果
+ * @example
+ * //随机值
+ * console.log(_.sample([1,2,3,4,5,6,7,8,9,0]))
+ * //随机值
+ * console.log(_.sample({a:1,b:2,c:3,d:4,e:5}))
+ *
+ * @param collection 任何可遍历的集合类型，比如array / arraylike / set / map / object / ...
+ * @returns 采样结果
+ * @since 0.16.0
+ */
+function sample(collection) {
+    const ary = toArray$1(collection);
+    return ary[randi(ary.length)];
+}
+
+/**
+ * 返回对指定列表的指定数量随机采样结果
+ * @example
+ * //[随机值]
+ * console.log(_.sampleSize([1,2,3,4,5,6,7,8,9,0]))
+ * //[随机值1,随机值2]
+ * console.log(_.sampleSize([{a:1},{b:2},{c:3},{d:4},{e:5}],2))
+ *
+ * @param collection 任何可遍历的集合类型，比如array / arraylike / set / map / object / ...
+ * @param [count=1] 采样数量
+ * @returns 采样结果
+ * @since 0.16.0
+ */
+function sampleSize(collection, count) {
+    count = count || 1;
+    const ary = toArray$1(collection);
+    const seeds = range(0, ary.length);
+    const ks = [];
+    while (seeds.length > 0) {
+        if (count-- < 1)
+            break;
+        const i = pop(seeds, randi(seeds.length));
+        if (i)
+            ks.push(i);
+    }
+    const rs = map(ks, (v) => ary[v]);
+    return rs;
+}
+
+/**
+ * 返回指定数组的一个随机乱序副本
+ * @example
+ * //[随机内容]
+ * console.log(_.shuffle([1,2,3,4,5,6,7,8,9,0]))
+ * //[随机内容]
+ * console.log(_.shuffle([{a:1},{a:2},{a:3},{a:4},{a:5}]))
+ * //[随机内容]
+ * console.log(_.shuffle({a:1,b:2,c:3,d:4,e:5}))
+ *
+ * @param collection 任何可遍历的集合类型，比如array / arraylike / set / map / object / ...
+ * @returns 乱序副本
+ * @since 0.16.0
+ */
+function shuffle(collection) {
+    return sampleSize(collection, size(collection));
+}
+
+function some(collection, predicate) {
+    let rs = false;
+    const callback = iteratee$1(predicate || (() => true));
+    each(collection, (v, k, c) => {
+        const r = callback(v, k, c);
+        if (r) {
+            rs = true;
+            return false;
+        }
+    });
+    return rs;
+}
+
+const TIME_MAP$1 = {
+    s: 1000,
+    m: 1000 * 60,
+    h: 1000 * 60 * 60,
+    d: 1000 * 60 * 60 * 24,
+};
+// const DATE_CONVERT_EXP = /(\d+)-(\d+)-(\d+)/;
+/**
+ * 比较两个日期，并返回由比较时间单位确定的相差时间。
+ * <p>
+ * 使用truncated对比算法 —— 小于指定时间单位的值会被视为相同，
+ * 比如对比月，则两个日期的 日/时/分/秒 会被认为相同，以此类推。
+ * </p>
+ * 相差时间为正数表示date1日期晚于(大于)date2，负数相反，0表示时间/日期相同。
+ * <p>
+ * 注意，如果对比单位是 h/m/s，务必要保持格式一致，比如
+ *
+ * ```ts
+ * //实际相差8小时
+ * new Date('2020-01-01')
+ * //vs
+ * new Date('2020/01/01')
+ * ```
+ *
+ * @example
+ * //0
+ * console.log(_.compareDate(new Date('2020/05/01'),'2020/5/1'))
+ * //格式不一致，相差8小时
+ * console.log(_.compareDate(new Date('2020-05-01'),'2020/5/1','h'))
+ * //-59
+ * console.log(_.compareDate(new Date('2019/01/01'),'2019/3/1'))
+ *
+ * @param date1 日期对象、时间戳或合法格式的日期时间字符串。
+ * 对于字符串格式，可以时<a href="https://www.iso.org/iso-8601-date-and-time-format.html">UTC格式</a>，或者
+ * <a href="https://tools.ietf.org/html/rfc2822#section-3.3">RFC2822</a>格式
+ * @param date2 同date1
+ * @param [type='d'] 比较时间单位
+ * <ul>
+ * <li><code>y</code> 年</li>
+ * <li><code>M</code> 月</li>
+ * <li><code>d</code> 日</li>
+ * <li><code>h</code> 时</li>
+ * <li><code>m</code> 分</li>
+ * <li><code>s</code> 秒</li>
+ * </ul>
+ * @returns 根据比较时间单位返回的比较值。正数为date1日期晚于(大于)date2，负数相反，0表示相同。
+ */
+function compareDate(date1, date2, type) {
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+    type = type || 'd';
+    if (type === 'y') {
+        return d1.getFullYear() - d2.getFullYear();
+    }
+    else if (type === 'M') {
+        return ((d1.getFullYear() - d2.getFullYear()) * 12 +
+            (d1.getMonth() - d2.getMonth()));
+    }
+    else {
+        switch (type) {
+            case 'd':
+                d1.setHours(0, 0, 0, 0);
+                d2.setHours(0, 0, 0, 0);
+                break;
+            case 'h':
+                d1.setHours(d1.getHours(), 0, 0, 0);
+                d2.setHours(d2.getHours(), 0, 0, 0);
+                break;
+            case 'm':
+                d1.setHours(d1.getHours(), d1.getMinutes(), 0, 0);
+                d2.setHours(d2.getHours(), d2.getMinutes(), 0, 0);
+                break;
+        }
+        const diff = d1.getTime() - d2.getTime();
+        return diff / TIME_MAP$1[type];
+    }
+}
+
+/**
+ * 判断值是不是一个Date实例
+ *
+ * @example
+ * //true
+ * console.log(_.isDate(new Date()))
+ * //false
+ * console.log(_.isDate('2020/1/1'))
+ *
+ * @param v
+ * @returns
+ */
+function isDate(v) {
+    return v instanceof Date || Object.prototype.toString.call(v) === '[object Date]';
 }
 
 /**
@@ -2733,231 +4739,257 @@ function toString$1(v) {
     return v.toString();
 }
 
-/**
- * 转换字符串第一个字符为大写并返回
- *
- * @example
- * //'First'
- * console.log(_.upperFirst('first'))//mixCase
- * //'GetMyURL'
- * console.log(_.upperFirst('getMyURL'))//camelCase
- *
- * @param str
- * @returns 返回新字符串
- */
-function upperFirst(str) {
-    str = toString$1(str);
-    if (str.length < 1)
-        return str;
-    return str[0].toUpperCase() + str.substring(1);
+function sortBy(collection, itee) {
+    if (size(collection) < 1)
+        return [];
+    const cb = iteratee$1(itee || identity$1);
+    let i = 0;
+    const list = map(collection, (v, k) => {
+        return {
+            src: v,
+            index: i++,
+            value: cb(v, k),
+        };
+    });
+    const comparator = getComparator(list[0].value);
+    return map(list.sort((a, b) => !eq$1(a.value, b.value) ? comparator(a.value, b.value) : a.index - b.index), (item) => item.src);
+}
+// comparators
+const compareNumAsc = (a, b) => {
+    if (isNil$2(a) || !isNumber(a))
+        return 1;
+    if (isNil$2(b) || !isNumber(b))
+        return -1;
+    return a - b;
+};
+const compareStrAsc = (a, b) => {
+    if (isNil$2(a))
+        return 1;
+    if (isNil$2(b))
+        return -1;
+    return toString$1(a).localeCompare(toString$1(b));
+};
+const compareDateAsc = (a, b) => {
+    if (isNil$2(a))
+        return 1;
+    if (isNil$2(b))
+        return -1;
+    return compareDate(a, b);
+};
+// eslint-disable-next-line require-jsdoc
+function getComparator(el) {
+    let comparator;
+    if (isNumber(el)) {
+        comparator = compareNumAsc;
+    }
+    else if (isDate(el)) {
+        comparator = compareDateAsc;
+    }
+    else {
+        comparator = compareStrAsc;
+    }
+    return comparator;
 }
 
 /**
- * 返回帕斯卡风格的字符串
+ * 对集合进行排序，并返回排序后的数组副本。
  *
  * @example
- * //'LoveLovesToLoveLove'
- * console.log(_.pascalCase('Love loves to love Love'))//spaces
- * //'ABC'
- * console.log(_.pascalCase('a B-c'))//mixCase
- * //'GetMyUrl'
- * console.log(_.pascalCase('getMyURL'))//camelCase
- * //'AbCdEf'
- * console.log(_.pascalCase('AB_CD_EF'))//snakeCase
- * //'ABcDEfGhXy'
- * console.log(_.pascalCase('aBc   D__EF_GH----XY_'))//mixCase
+ * //字符排序 ['lao1', 'lao2', 'lao3']
+ * console.log(_.sort(['lao1','lao3','lao2']))
+ * //数字排序[7, 9, 80]
+ * console.log(_.sort([9,80,7]))
+ * //日期排序["3/1/2019", "2020/1/1", Wed Apr 01 2020...]
+ * console.log(_.sort([new Date(2020,3,1),'2020/1/1','3/1/2019']))
+ * //第一个元素不是日期对象，需要转换
+ * console.log(_.sort(_.map(['2020/1/1',new Date(2020,3,1),'3/1/2019'],v=>new Date(v))))
+ * //对象排序
+ * const users = [
+ *  {name:'zhangsan',age:53},
+ *  {name:'lisi',age:44},
+ *  {name:'wangwu',age:25},
+ *  {name:'zhaoliu',age:36}
+ * ];
+ * //[25,36,44,53]
+ * console.log(_.sort(users,(a,b)=>a.age-b.age))
+ * // 倒排
+ * console.log(_.sort(users,(a,b)=>b.age-a.age))
  *
- * @param str
- * @returns 返回新字符串
+ * @param collection 任何可遍历的集合类型，比如array / arraylike / set / map / object / ...
+ * @param [comparator] (a,b) 排序函数，如果为空使用sortBy逻辑
+ * @returns 排序后的数组
  */
-function pascalCase(str) {
-    return _getGrouped(toString$1(str)).reduce((acc, v) => acc + upperFirst(v.toLowerCase()), '');
+function sort(collection, comparator) {
+    const ary = toArray$1(collection);
+    if (ary.length < 1)
+        return ary;
+    if (isFunction$1(comparator)) {
+        return ary.sort(comparator);
+    }
+    else {
+        return sortBy(collection);
+    }
 }
 
 /**
- * 转换字符串第一个字符为小写并返回
+ * 返回除第一个元素外的所有元素组成的新数组
  *
  * @example
- * //'fIRST'
- * console.log(_.lowerFirst('FIRST'))//mixCase
- * //'love loves to love Love'
- * console.log(_.lowerFirst('Love loves to love Love'))//spaces
+ * //[2, 3]
+ * console.log(_.tail([1, 2, 3]))
  *
- * @param str
- * @returns 返回新字符串
+ * @param array 数组
+ * @returns 新数组
  */
-function lowerFirst(str) {
-    str = toString$1(str);
-    if (str.length < 1)
-        return str;
-    return str[0].toLowerCase() + str.substring(1);
+function tail(array) {
+    const rs = toArray$1(array);
+    return rs.slice(1);
 }
 
 /**
- * 返回驼峰风格的字符串
+ * 从起始位置获取指定数量的元素并放入新数组后返回
  *
  * @example
- * //'aBC'
- * console.log(_.camelCase('a-b c'))//mixCase
- * //'loveLovesToLoveLove'
- * console.log(_.camelCase('Love loves to love Love'))//spaces
- * //'aBC'
- * console.log(_.camelCase('a B-c'))//camelCase
- * //'getMyUrl'
- * console.log(_.camelCase('getMyURL'))//camelCase
+ * //[1, 2, 3]
+ * console.log(_.take([1, 2, 3, 4, 5],3))
+ * //[1, 2, 3, 4, 5]
+ * console.log(_.take([1, 2, 3, 4, 5]))
  *
- * @param str
- * @returns 返回新字符串
+ * @param array 数组
+ * @param [length] 获取元素数量，默认数组长度
+ * @returns 新数组
  */
-function camelCase(str) {
-    return lowerFirst(pascalCase(toString$1(str)));
+function take(array, length) {
+    const rs = toArray$1(array);
+    return rs.slice(0, length);
 }
 
 /**
- * 把字符串的首字母大写，如果首字母不是ascii中的a-z则返回原值
+ * 从数组末尾位置获取指定数量的元素放入新数组并返回
  *
  * @example
- * //Abc
- * console.log(_.capitalize('abc'))
- * //''
- * console.log(_.capitalize(null))
- * //1
- * console.log(_.capitalize(1))
+ * //[3, 4, 5]
+ * console.log(_.takeRight([1, 2, 3, 4, 5],3))
+ * //[1, 2, 3, 4, 5]
+ * console.log(_.takeRight([1, 2, 3, 4, 5]))
  *
- *
- * @param str 字符串
- * @returns 对于null/undefined会返回空字符串
- */
-function capitalize(str) {
-    str = toString$1(str);
-    if (str.length < 1)
-        return str;
-    return str[0].toUpperCase() + toString$1(str.substring(1)).toLowerCase();
-}
-
-/**
- * 验证字符串是否以查询子字符串结尾
- *
- * @example
- * //true
- * console.log(_.endsWith('func.js','js'))
- * //true
- * console.log(_.endsWith('func.js','c',4))
- *
- * @param str
- * @param searchStr 查询字符串
- * @param position 索引
- * @returns 如果以查询子字符串开头返回true，否则返回false
- */
-function endsWith(str, searchStr, position) {
-    return toString$1(str).endsWith(searchStr, position);
-}
-
-const REG_EXP_KEYWORDS = [
-    '\\',
-    '$',
-    '(',
-    ')',
-    '*',
-    '+',
-    '.',
-    '[',
-    ']',
-    '?',
-    '^',
-    '{',
-    '}',
-    '|',
-];
-/**
- * 转义正则字符串中的特殊字符，包括 '\', '$', '(', ')', '*', '+', '.', '[', ']', '?', '^', '\{', '\}', '|'
- *
- * @example
- * //\^\[func\.js\] \+ \{crud-vue\} = \.\*\?\$
- * console.log(_.escapeRegExp('^[func.js] + {crud-vue} = .*?$'))
- *
- * @param str 需要转义的字符串
- * @returns 转义后的新字符串
+ * @param array 数组
+ * @param length
+ * @returns 新数组
  * @since 1.0.0
  */
-function escapeRegExp(str) {
-    return toString$1(str)
-        .split('')
-        .reduce((a, b) => a + (REG_EXP_KEYWORDS.includes(b) ? '\\' + b : b), '');
+function takeRight(array, length) {
+    const rs = toArray$1(array);
+    const maxLength = rs.length;
+    return rs.slice(maxLength - (length || maxLength), maxLength);
+}
+
+var collection = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  countBy: countBy,
+  each: each,
+  eachRight: eachRight,
+  every: every,
+  filter: filter,
+  find: find,
+  findLast: findLast,
+  first: first,
+  flatMap: flatMap,
+  flatMapDeep: flatMapDeep,
+  groupBy: groupBy,
+  includes: includes,
+  initial: initial,
+  keyBy: keyBy,
+  last: last,
+  map: map,
+  partition: partition,
+  reduce: reduce,
+  reject: reject,
+  sample: sample,
+  sampleSize: sampleSize,
+  shuffle: shuffle,
+  size: size,
+  some: some,
+  sort: sort,
+  sortBy: sortBy,
+  tail: tail,
+  take: take,
+  takeRight: takeRight,
+  toArray: toArray$1
+});
+
+const TIME_MAP = {
+    s: 1000,
+    m: 1000 * 60,
+    h: 1000 * 60 * 60,
+    d: 1000 * 60 * 60 * 24,
+};
+/**
+ * 对日期时间进行量变处理
+ *
+ * @example
+ * //2020/5/1 08:00:20
+ * console.log(_.formatDate(_.addTime(new Date('2020-05-01'),20),'yyyy/MM/dd hh:mm:ss'))
+ * //2020-04-11 08:00
+ * console.log(_.formatDate(_.addTime(new Date('2020-05-01'),-20,'d')))
+ * //2022-01-01 00:00
+ * console.log(_.formatDate(_.addTime(new Date('2020-05-01 0:0'),20,'M')))
+ *
+ * @param date 原日期时间
+ * @param amount 变化量，可以为负数
+ * @param [type='s'] 量变时间类型
+ * <ul>
+ * <li><code>y</code> 年</li>
+ * <li><code>M</code> 月</li>
+ * <li><code>d</code> 日</li>
+ * <li><code>h</code> 时</li>
+ * <li><code>m</code> 分</li>
+ * <li><code>s</code> 秒</li>
+ * </ul>
+ * @returns 日期对象
+ */
+function addTime(date, amount, type) {
+    type = type || 's';
+    const d = new Date(date);
+    switch (type) {
+        case 'y':
+            d.setFullYear(d.getFullYear() + amount);
+            break;
+        case 'M':
+            d.setMonth(d.getMonth() + amount);
+            break;
+        default:
+            let times = 0;
+            times = amount * TIME_MAP[type];
+            d.setTime(d.getTime() + times);
+    }
+    return d;
 }
 
 /**
- * 查找指定值在字符串中首次出现的位置索引
+ * 判断值是不是一个整数
  *
  * @example
- * //10
- * console.log(_.indexOf('cyberfunc.js','js'))
- * //10
- * console.log(_.indexOf('cyberfunc.js','js',5))
+ * //true
+ * console.log(_.isInteger(-0))
+ * //true
+ * console.log(_.isInteger(5.0))
+ * //false
+ * console.log(_.isSafeInteger(5.000000000000001))
+ * //true
+ * console.log(_.isSafeInteger(5.0000000000000001))
+ * //false
+ * console.log(_.isInteger('5'))
+ * //true
+ * console.log(_.isInteger(Number.MAX_SAFE_INTEGER))
+ * //true
+ * console.log(_.isInteger(Number.MAX_VALUE))
  *
- * @param str
- * @param search 指定字符串
- * @param [fromIndex=0] 起始索引
- * @returns 第一个匹配搜索字符串的位置索引或-1
+ * @param v
+ * @returns
  */
-function indexOf(str, search, fromIndex) {
-    str = toString$1(str);
-    return str.indexOf(search, fromIndex || 0);
-}
-
-/**
- * 返回所有字母是小写格式的字符串
- *
- * @example
- * //''
- * console.log(_.lowerCase())
- * //'func.js'
- * console.log(_.lowerCase('FUNC.JS'))
- *
- * @param str
- * @returns 返回新字符串
- */
-function lowerCase(str) {
-    return toString$1(str).toLowerCase();
-}
-
-/**
- * 返回短横线风格的字符串
- *
- * @example
- * //'a-b-c'
- * console.log(_.kebabCase('a_b_c'))//snakeCase
- * //'webkit-perspective-origin-x'
- * console.log(_.kebabCase('webkitPerspectiveOriginX'))//camelCase
- * //'a-b-c'
- * console.log(_.kebabCase('a B-c'))//mixCase
- * //'get-my-url'
- * console.log(_.kebabCase('getMyURL'))//camelCase
- *
- * @param str
- * @returns 返回新字符串
- */
-function kebabCase(str) {
-    return lowerCase(_getGrouped(toString$1(str)).join('-'));
-}
-
-/**
- * 查找指定值在字符串中最后出现的位置索引
- *
- * @example
- * //10
- * console.log(_.lastIndexOf('cyberfunc.js','js'))
- * //-1
- * console.log(_.lastIndexOf('cyberfunc.js','js',5))
- *
- * @param str
- * @param search 指定字符串
- * @param [fromIndex=Infinity] 起始索引，从起始索引位置向左查找指定字符串
- * @returns 最后一个匹配搜索字符串的位置索引或-1
- */
-function lastIndexOf(str, search, fromIndex) {
-    str = toString$1(str);
-    return str.lastIndexOf(search, fromIndex || Infinity);
+function isInteger(v) {
+    return Number.isInteger(v);
 }
 
 /**
@@ -2993,94 +5025,985 @@ function padEnd(str, len, padString) {
 }
 
 /**
- * 使用填充字符串填充原字符串达到指定长度。从原字符串起始开始填充。
+ * 通过指定参数得到日期对象。支持多种签名
+ *
+ * ```js
+ * _.toDate(1320940800); //timestamp unix style
+ * _.toDate(1320940800123); //timestamp javascript style
+ * _.toDate([year,month,day]); //注意，month的索引从1开始
+ * _.toDate([year,month,day,hour,min,sec]); //注意，month的索引从1开始
+ * _.toDate(datetimeStr);
+ * ```
  *
  * @example
- * //001
- * console.log(_.padStart('1',3,'0'))
+ * //'2011/11/11 00:00:00'
+ * console.log(_.toDate(1320940800).toLocaleString())
+ * //'2011/11/11 00:01:39'
+ * console.log(_.toDate(1320940899999).toLocaleString())
+ * //'2022/12/12 00:00:00'
+ * console.log(_.toDate([2022,11,12]).toLocaleString())
+ * //'2022/12/12 12:12:12'
+ * console.log(_.toDate([2022,11,12,12,12,12]).toLocaleString())
+ * //'2022/2/2 00:00:00'
+ * console.log(_.toDate('2022/2/2').toLocaleString())
+ * //'2022/2/2 08:00:00'
+ * console.log(_.toDate('2022-02-02').toLocaleString())
  *
- * @param str 原字符串。如果非字符串则会自动转换成字符串
- * @param len 填充后的字符串长度，如果长度小于原字符串长度，返回原字符串
- * @param [padString=' '] 填充字符串，如果填充后超出指定长度，会自动截取并保留右侧字符串
- * @returns 在原字符串起始填充至指定长度后的字符串
+ * @param value 转换参数
+ *
+ * @returns 转换后的日期。无效日期统一返回1970/1/1
  */
-function padStart(str, len, padString) {
-    str = toString$1(str);
-    if (str.padStart)
-        return str.padStart(len, padString);
-    padString = padString || ' ';
-    const diff = len - str.length;
-    if (diff < 1)
-        return str;
-    let fill = '';
-    let i = Math.ceil(diff / padString.length);
-    while (i--) {
-        fill += padString;
+function toDate(value) {
+    let rs;
+    if (isInteger(value)) {
+        if (value < TIMESTAMP_MIN) {
+            value = toNumber(padEnd(value + '', 13, '0'));
+        }
+        else if (value > TIMESTAMP_MAX) {
+            value = 0;
+        }
+        rs = new Date(value);
     }
-    return fill.substring(fill.length - diff, fill.length) + str;
+    else if (isArray$1(value)) {
+        rs = new Date(value[0], value[1] - 1, value[2] || 1, value[3] || 0, value[4] || 0, value[5] || 0, value[6] || 0);
+    }
+    else {
+        rs = new Date(value);
+    }
+    if (rs.toDateString() === 'Invalid Date') {
+        rs = new Date(0);
+    }
+    return rs;
+}
+const TIMESTAMP_MIN = 1000000000000;
+const TIMESTAMP_MAX = 9999999999999;
+
+/**
+ * 指定日期是否是闰年
+ * @param date 日期对象
+ * @returns 闰年返回true
+ */
+function isLeapYear(date) {
+    date = toDate(date);
+    const year = date.getFullYear();
+    return year % 400 === 0 || year % 4 === 0;
+}
+
+const DaysOfMonth = [31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+/**
+ * 获取指定日期在当前年中的天数并返回
+ * @param date 日期对象
+ * @returns {number} 当前年中的第几天
+ */
+function getDayOfYear(date) {
+    date = toDate(date);
+    const leapYear = isLeapYear(date);
+    const month = date.getMonth();
+    let dates = date.getDate();
+    for (let i = 0; i < month; i++) {
+        const ds = DaysOfMonth[i] || (leapYear ? 29 : 28);
+        dates += ds;
+    }
+    return dates;
 }
 
 /**
- * 使用字符0填充原字符串达到指定长度。从原字符串起始位置开始填充。
- *
- * @example
- * //001
- * console.log(_.padZ('1',3))
- *
- * @param str 原字符串
- * @param len 填充后的字符串长度
- * @returns 填充后的字符串
+ * 获取指定日期在当前月中的周数并返回
+ * @param date 日期对象
+ * @returns {number} 当前月中的第几周
  */
-function padZ(str, len) {
-    return padStart(str, len, '0');
+function getWeekOfMonth(date) {
+    date = toDate(date);
+    const year = date.getFullYear();
+    let firstDayOfMonth = new Date(year, date.getMonth(), 1);
+    let extraWeek = 0;
+    //超过周5多1周
+    let d = firstDayOfMonth.getDay();
+    if (d === 0 || d > 5) {
+        extraWeek = 1;
+    }
+    return Math.ceil(date.getDate() / 7) + extraWeek;
 }
 
 /**
- * 创建一个以原字符串为模板，重复指定次数的新字符串
+ * 获取指定日期在当前年中的周数并返回
+ * @param date 日期对象
+ * @returns {number} 当前年中的第几周
+ */
+function getWeekOfYear(date) {
+    date = toDate(date);
+    const year = date.getFullYear();
+    let firstDayOfYear = new Date(year, 0, 1);
+    let extraWeek = 0;
+    //超过周5多1周
+    let d = firstDayOfYear.getDay();
+    if (d === 0 || d > 5) {
+        extraWeek = 1;
+    }
+    return Math.ceil(getDayOfYear(date) / 7) + extraWeek;
+}
+
+const INVALID_DATE = '';
+const SearchExp = /y{2,4}|M{1,3}|d{1,4}|h{1,2}|m{1,2}|s{1,2}|Q{1,2}|E{1,2}|W{1,2}|w{1,2}|H{1,2}|S|a/gm;
+const pad0 = (str) => str.length > 1 ? str : '0' + str;
+const pad00 = (str) => str.length > 2 ? str : (str.length > 1 ? '0' + str : '00' + str);
+/**
+ * 通过表达式格式化日期时间
+ *
+ * ```
+ * yyyy-MM-dd hh:mm:ss => 2020-12-11 10:09:08
+ * ```
+ *
+ * pattern解释：
+ *
+ * - `yy` 2位年 - 22
+ * - `yyyy` 4位年 - 2022
+ * - `M` 1位月(1-12)
+ * - `MM` 2位月(01-12)
+ * - `MMM` 月描述(一月 - 十二月)
+ * - `d` 1位日(1-30/31/29/28)
+  - `dd` 2位日(01-30/31/29/28)
+  - `ddd` 一年中的日(1-365)
+  - `dddd` 一年中的日(001-365)
+  - `h` 1位小时(1-12)
+  - `hh` 2位小时(01-12)
+  - `H` 1位小时(0-23)
+  - `HH` 2位小时(00-23)
+  - `m` 1位分钟(0-59)
+  - `mm` 2位分钟(00-59)
+  - `s` 1位秒(0-59)
+  - `ss` 2位秒(00-59)
+  - `Q` 季度(1-4)
+  - `QQ` 季度描述(春-冬)
+  - `W` 一年中的周(1-53)
+  - `WW` 一年中的周(01-53)
+  - `w` 一月中的周(1-6)
+  - `ww` 一月中的周描述(第一周 - 第六周)
+  - `E` 星期(1-7)
+  - `EE` 星期描述(星期一 - 星期日)
+  - `S` 毫秒
+  - `a` AM/PM
  *
  * @example
- * //funcfuncfunc
- * console.log(_.repeat('func',3))
+ * //now time
+ * console.log(_.formatDate(_.now(),'yyyy-MM-dd hh:mm'))
+ * //2/1/2021
+ * console.log(_.formatDate('2021-2-1','M/d/yyyy'))
+ * //2/1/21
+ * console.log(_.formatDate('2021-2-1','M/d/yy'))
+ * //02/01/21
+ * console.log(_.formatDate('2021-2-1','MM/dd/yy'))
+ * //02/01/2021
+ * console.log(_.formatDate('2021-2-1','MM/dd/yyyy'))
+ * //21/02/01
+ * console.log(_.formatDate('2021-2-1','yy/MM/dd'))
+ * //2021-02-01
+ * console.log(_.formatDate('2021-2-1','yyyy-MM-dd'))
+ * //21-12-11 10:09:08
+ * console.log(_.formatDate('2021-12-11T10:09:08','yy-MM-dd HH:mm:ss'))
+ * //12/11/2020 1009
+ * console.log(_.formatDate('2020-12-11 10:09:08','MM/dd/yyyy hhmm'))
+ * //2020-12-11 08:00
+ * console.log(_.formatDate(1607644800000))
+ * //''
+ * console.log(_.formatDate('13:02'))
+ * //''
+ * console.log(_.formatDate(null))
+ * //现在时间:(20-12-11 10:09:08)
+ * console.log(_.formatDate('2020-12-11 10:09:08','现在时间:(yy-MM-dd hh:mm:ss)'))
  *
- * @param str 原字符串
- * @param count 重复次数
- * @returns 对于null/undefined会返回空字符串
+ * @param val 需要格式化的值，可以是日期对象或时间字符串或日期毫秒数
+ * @param [pattern='yyyy-MM-dd HH:mm:ss'] 格式化模式
+ * @returns 格式化后的日期字符串，无效日期返回空字符串
  */
-function repeat(str, count) {
-    str = toString$1(str);
-    count = Number.isFinite(count) ? count : 0;
-    if (count < 1)
-        return '';
-    if (str.repeat)
-        return str.repeat(count);
-    let i = count;
-    let rs = '';
-    while (i--) {
-        rs += str;
+function formatDate(val, pattern) {
+    pattern = pattern || 'yyyy-MM-dd HH:mm:ss';
+    let formatter = cache$1[pattern];
+    if (!formatter) {
+        formatter = (date) => {
+            if (!date)
+                return INVALID_DATE;
+            let ptn = pattern + '';
+            if (typeof date === 'string' || typeof date === 'number') {
+                date = toDate(date);
+            }
+            if (date.toString().indexOf('Invalid') > -1)
+                return INVALID_DATE;
+            let valDate = date;
+            return ptn.replace(SearchExp, (tag) => {
+                const cap = tag[0];
+                const month = valDate.getMonth();
+                const locale = Locale[Lang];
+                if (cap === 'y') {
+                    const year = valDate.getFullYear();
+                    return tag === 'yy' ? (year % 100) + '' : year + '';
+                }
+                else if (cap === 'M') {
+                    switch (tag) {
+                        case 'M':
+                            return month + 1 + '';
+                        case 'MM':
+                            return pad0(month + 1 + '');
+                        case 'MMM':
+                            return locale?.months[month] || tag;
+                    }
+                }
+                else if (cap === 'd') {
+                    let dayOfMonth = valDate.getDate();
+                    switch (tag) {
+                        case 'd':
+                            return dayOfMonth + '';
+                        case 'dd':
+                            return pad0(dayOfMonth + '');
+                        case 'ddd':
+                            return getDayOfYear(valDate) + '';
+                        case 'dddd':
+                            return pad00(getDayOfYear(valDate) + '');
+                    }
+                }
+                else if (cap === 'a') {
+                    let val = valDate.getHours();
+                    return val < 12 ? locale?.meridiems[0] : locale?.meridiems[1];
+                }
+                else if (cap === 'h') { //12
+                    let val = valDate.getHours();
+                    val = val % 12;
+                    if (val === 0)
+                        val = 12;
+                    return tag.length > 1 ? pad0(val + '') : val + '';
+                }
+                else if (cap === 'H') { //24
+                    const val = valDate.getHours() + '';
+                    return tag.length > 1 ? pad0(val) : val;
+                }
+                else if (cap === 'm') {
+                    const val = valDate.getMinutes() + '';
+                    return tag.length > 1 ? pad0(val) : val;
+                }
+                else if (cap === 's') {
+                    const val = valDate.getSeconds() + '';
+                    return tag.length > 1 ? pad0(val) : val;
+                }
+                else if (cap === 'Q') {
+                    const quarter = Math.ceil(month / 3);
+                    if (tag === 'Q')
+                        return quarter + '';
+                    return locale?.quarters[quarter - 1] || tag;
+                }
+                else if (cap === 'W') {
+                    const val = getWeekOfYear(valDate) + '';
+                    return tag.length > 1 ? pad0(val) : val;
+                }
+                else if (cap === 'w') {
+                    const val = getWeekOfMonth(valDate);
+                    if (tag === 'w')
+                        return val + '';
+                    return locale?.weeks[val - 1] || tag;
+                }
+                else if (cap === 'E') {
+                    let dayOfWeek = valDate.getDay();
+                    dayOfWeek = dayOfWeek < 1 ? 7 : dayOfWeek;
+                    return tag === 'E'
+                        ? dayOfWeek + ''
+                        : locale?.days[dayOfWeek - 1] || tag;
+                }
+                else if (cap === 'S') {
+                    return valDate.getMilliseconds() + '';
+                }
+                return tag;
+            });
+        };
+    }
+    return formatter(val);
+}
+const cache$1 = {};
+const Locale = {
+    'zh-CN': {
+        quarters: ['一季度', '二季度', '三季度', '四季度'],
+        months: [
+            '一',
+            '二',
+            '三',
+            '四',
+            '五',
+            '六',
+            '七',
+            '八',
+            '九',
+            '十',
+            '十一',
+            '十二',
+        ].map((v) => v + '月'),
+        weeks: ['一', '二', '三', '四', '五', '六'].map((v) => '第' + v + '周'),
+        days: ['一', '二', '三', '四', '五', '六', '日'].map((v) => '星期' + v),
+        meridiems: ['AM', 'PM']
+    },
+};
+let Lang = globalThis.navigator?.language || 'zh-CN';
+/**
+ * 设置不同locale的配置
+ * @param lang 语言标记，默认跟随系统
+ * @param {object} options 格式化选项
+ * @param options.quarters 季度描述，默认"一 - 四季度"
+ * @param options.months 月度描述，默认"一 - 十二月"
+ * @param options.weeks 一月中的周描述，默认"第一 - 六周"
+ * @param options.days 星期描述，默认"星期一 - 日"
+ * @param options.meridiems 上午/下午描述，默认"AM/PM"
+ */
+formatDate.locale = function (lang, options) {
+    let locale = Locale[lang];
+    if (!locale) {
+        locale = Locale[lang] = { quarters: [], months: [], weeks: [], days: [], meridiems: [] };
+    }
+    if (options?.quarters) {
+        locale.quarters = options?.quarters;
+    }
+    if (options?.months) {
+        locale.months = options?.months;
+    }
+    if (options?.weeks) {
+        locale.weeks = options?.weeks;
+    }
+    if (options?.days) {
+        locale.days = options?.days;
+    }
+    if (options?.meridiems) {
+        locale.meridiems = options?.meridiems;
+    }
+};
+/**
+ * 可以设置当前格式化使用的语言
+ * @param lang 语言标记，默认跟随系统
+ */
+formatDate.lang = function (lang) {
+    Lang = lang;
+};
+
+/**
+ * 比较两个日期是否为同一天
+ * @example
+ * //true
+ * console.log(_.isSameDay(new Date('2020-05-01'),'2020/5/1'))
+ * //false
+ * console.log(_.isSameDay(new Date('2020-05-01 23:59:59.999'),'2020/5/2 0:0:0.000'))
+ *
+ * @param date1 日期对象或合法格式的日期时间字符串
+ * @param date2 同date1
+ * @returns
+ */
+function isSameDay(date1, date2) {
+    return (new Date(date1).setHours(0, 0, 0, 0) ===
+        new Date(date2).setHours(0, 0, 0, 0));
+}
+
+/**
+ * 返回13位日期毫秒数，表示从1970 年 1 月 1 日 00:00:00 (UTC)起到当前时间
+ *
+ * @example
+ * //now time
+ * console.log(_.now())
+ *
+ * @returns 带毫秒数的时间戳
+ */
+function now() {
+    return Date.now();
+}
+
+var datetime = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  addTime: addTime,
+  compareDate: compareDate,
+  formatDate: formatDate,
+  getDayOfYear: getDayOfYear,
+  getWeekOfMonth: getWeekOfMonth,
+  getWeekOfYear: getWeekOfYear,
+  isLeapYear: isLeapYear,
+  isSameDay: isSameDay,
+  now: now,
+  toDate: toDate
+});
+
+/**
+ * 创建一个包含指定函数逻辑且内置计数的包装函数并返回。
+ * 该函数每调用一次计数会减一，直到计数为0后生效。可用于异步结果汇总时只调用一次的场景
+ *
+ * @example
+ * //undefined, undefined, 'data saved'
+ * let saveTip = _.after(()=>'data saved',2);
+ * console.log(saveTip(),saveTip(),saveTip())
+ *
+ * @param fn 需要调用的函数
+ * @param [count=0] 计数
+ * @returns 包装后的函数
+ */
+function after(fn, count) {
+    const proxy = fn;
+    let i = count || 0;
+    let rtn;
+    return ((...args) => {
+        if (i === 0) {
+            rtn = proxy(...args);
+        }
+        if (i > 0)
+            i--;
+        return rtn;
+    });
+}
+
+/**
+ * 传递v为参数执行interceptor1函数，如果该函数返回值未定义(undefined)则执行interceptor2函数，并返回函数返回值。
+ * 用于函数链中的分支操作
+ * @example
+ * //false
+ * console.log(_.alt(9,v=>false,v=>20))
+ *
+ * @param v
+ * @param interceptor1 (v)
+ * @param interceptor2 (v)
+ * @returns 函数返回值
+ */
+function alt(v, interceptor1, interceptor2) {
+    let rs = interceptor1(v);
+    if (rs === undefined) {
+        rs = interceptor2(v);
     }
     return rs;
 }
 
+const PLACEHOLDER = void 0;
 /**
- * 使用<code>replaceValue</code>替换<code>str</code>中的首个<code>searchValue</code>部分
+ * 创建一个新的函数，该函数会调用fn，并传入指定的部分参数。
+ *
+ * `partial()`常用来创建函数模板或扩展核心函数，比如
+ *
+ * ```js
+ * let delay2 = _.partial(setTimeout,undefined,2000);
+ * delay2(()=>\{console.log('2秒后调用')\})
+ * ```
  *
  * @example
- * //'func-js'
- * console.log(_.replace('func.js','.','-'))
- * //''
- * console.log(_.replace(null,'.','-'))
- * //'kelikeli'
- * console.log(_.replace('geligeli',/ge/g,'ke'))
- * //'geligeli'
- * console.log(_.replace('kelikeli',/ke/g,()=>'ge'))
+ * //2748
+ * let hax2num = _.partial(parseInt,undefined,16);
+ * console.log(hax2num('abc'))
+ * //9
+ * let square = _.partial(Math.pow,undefined,2);
+ * console.log(square(3))
+ * //￥12,345.00元
+ * let formatYuan = _.partial(_.formatNumber,undefined,'￥,000.00元');
+ * console.log(formatYuan(12345))
+ * //[func.js] hi...
+ * let log = _.partial((...args)=>args.join(' '),'[func.js][',undefined,']',undefined);
+ * console.log(log('info','hi...'))
  *
- * @param str 字符串。非字符串值会自动转换成字符串
- * @param searchValue 查找内容，正则或者字符串
- * @param replaceValue 替换内容，字符串或处理函数。函数的返回值将用于替换
- * @returns 替换后的新字符串
+ * @param fn 需要调用的函数
+ * @param args 参数可以使用undefined作为占位符，以此来确定不同的实参位置
+ * @returns 部分应用后的新函数
  */
-function replace(str, searchValue, replaceValue) {
-    return toString$1(str).replace(searchValue, replaceValue);
+function partial(fn, ...args) {
+    return ((...params) => {
+        let p = 0;
+        const applyArgs = args.map((v) => (v === PLACEHOLDER ? params[p++] : v));
+        if (params.length > p) {
+            for (let i = p; i < params.length; i++) {
+                applyArgs.push(params[i]);
+            }
+        }
+        return fn(...applyArgs);
+    });
+}
+
+/**
+ * 创建一个新的函数，并且绑定函数的this上下文。默认参数部分同<code>partial()</code>
+ *
+ * @example
+ * const obj = {
+ *  text:'Func.js',
+ *  click:function(a,b,c){console.log('welcome to '+this.text,a,b,c)},
+ *  blur:function(){console.log('bye '+this.text)}
+ * }
+ * //自动填充参数
+ * let click = _.bind(obj.click,obj,'a',undefined,'c');
+ * click('hi')
+ * //1秒后执行，无参数
+ * setTimeout(click,1000)
+ *
+ * @param fn 需要调用的函数
+ * @param thisArg fn函数内this所指向的值
+ * @param args 参数可以使用undefined作为占位符，以此来确定不同的实参位置
+ * @returns 绑定thisArg的新函数
+ * @since 0.17.0
+ */
+function bind(fn, thisArg, ...args) {
+    return partial((fn || (() => { })).bind(thisArg), ...args);
+}
+
+/**
+ * 通过path设置对象属性值。如果路径不存在则创建，索引会创建数组，属性会创建对象
+ * <div class="alert alert-secondary">
+      该函数会修改源对象
+    </div>
+
+    @example
+ * //{"a":1,"b":{"c":[undefined,{"x":10}]}}
+ * console.log(_.set({a:1},'b.c.1.x',10))
+ *
+ * @param obj 需要设置属性值的对象，如果obj不是对象(isObject返回false)，直接返回obj
+ * @param path 属性路径，可以是索引数字，字符串key，或者多级属性数组
+ * @param value 任何值
+ * @returns obj 修改后的源对象
+ * @since 0.16.0
+ */
+function set(obj, path, value) {
+    if (!isObject$1(obj))
+        return obj;
+    const chain = toPath$1$1(path);
+    let target = obj;
+    for (let i = 0; i < chain.length; i++) {
+        const seg = chain[i];
+        const nextSeg = chain[i + 1];
+        let tmp = target[seg];
+        if (nextSeg) {
+            let next = !tmp ? (isNaN(parseInt(nextSeg)) ? {} : []) : tmp;
+            if (!tmp) {
+                tmp = target[seg] = next;
+            }
+        }
+        else {
+            target[seg] = value;
+            break;
+        }
+        target = tmp;
+    }
+    return obj;
+}
+
+/**
+ * 批量绑定对象内的函数属性，将这些函数的this上下文指向绑定对象。经常用于模型中的函数用于外部场景，比如setTimeout/事件绑定等
+ *
+ * @example
+ * const obj = {
+ *  text:'Func.js',
+ *  click:function(a,b,c){console.log('welcome to '+this.text,a,b,c)},
+ *  click2:function(){console.log('hi '+this.text)}
+ * }
+ * //自动填充参数
+ * _.bindAll(obj,'click',['click2']);
+ * //1秒后执行，无参数
+ * setTimeout(obj.click,1000)
+ * //事件
+ * top.onclick = obj.click2
+ *
+ * @param object 绑定对象
+ * @param  {...(string | Array<string>)} methodNames 属性名或path
+ * @returns 绑定对象
+ * @since 0.17.0
+ */
+function bindAll(object, ...methodNames) {
+    const pathList = flatDeep(methodNames);
+    each(pathList, (path) => {
+        const fn = get$1(object, path);
+        set(object, path, fn.bind(object));
+    });
+    return object;
+}
+
+/**
+ * 通过给定参数调用fn并返回执行结果
+ *
+ * @example
+ * //自动填充参数
+ * _.call(fn,1,2);
+ * //事件
+ * _.call(fn,1,2);
+ *
+ * @param fn 需要执行的函数
+ * @param args 可变参数
+ * @returns 执行结果。如果函数无效或无返回值返回undefined
+ * @since 1.0.0
+ */
+function call(fn, ...args) {
+    if (!isFunction$1(fn))
+        return undefined;
+    return fn(...args);
+}
+
+/**
+ * 创建一个新的函数，该函数的参数会传递给第一个<code>fns</code>函数来计算结果，而结果又是第二个fns函数的参数，以此类推，
+ * 直到所有函数执行完成。常用于封装不同的可重用函数模块组成新的函数或实现惰性计算，比如
+ *
+ * <pre><code class="language-javascript">
+ * let checkName = _.compose(_.trim,v=>v.length>6);
+ * checkName(' holyhigh') //=> true
+ * checkName(' ') //=> false
+ * </code></pre>
+ *
+ * @example
+ * // Holyhigh
+ * let formatName = _.compose(_.lowerCase,_.capitalize);
+ * console.log(formatName('HOLYHIGH'))
+ *
+ * @param  {...function} fns
+ * @returns 组合后的入口函数
+ */
+function compose(...fns) {
+    return (function (...args) {
+        let rs = fns[0](...args);
+        for (let i = 1; i < fns.length; i++) {
+            if (isFunction$1(fns[i])) {
+                rs = fns[i](rs);
+            }
+        }
+        return rs;
+    });
+}
+
+/**
+ * 创建一个包含指定函数逻辑的防抖函数并返回。在防抖函数执行后的下一次调用会在 `wait` 间隔结束后执行，如果等待期间调用函数则会重置wait时间。
+ * 对于一些需要等待过程停止后执行的场景非常有用，如输入结束时的查询、窗口resize后的计算等等
+ *
+ * @example
+ * //2
+ * let log = _.debounce(console.log);
+ * console.log(log(1),log(2))
+ *
+ * @param fn 需要调用的函数
+ * @param wait 抖动间隔，ms
+ * @param immediate 立即执行一次，默认false
+ * @returns 包装后的函数
+ * @since 1.4.0
+ */
+function debounce(fn, wait, immediate = false) {
+    let proxy = fn;
+    let timer = null;
+    let counting = false;
+    if (immediate) {
+        return (function (...args) {
+            if (!counting)
+                proxy.apply(this, args);
+            counting = true;
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                counting = false;
+                proxy.apply(this, args);
+            }, wait);
+        });
+    }
+    else {
+        return (function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                proxy.apply(this, args);
+            }, wait);
+        });
+    }
+}
+
+/**
+ * 启动计时器，并在倒计时为0后调用函数。
+ * 内部使用setTimeout进行倒计时，如需中断延迟可以使用clearTimeout函数。*注意，该函数并不提供防抖逻辑*
+ *
+ * @example
+ * //1000ms 后显示some text !
+ * _.delay(console.log,1000,'some text','!');
+ *
+ * @param fn 需要调用的函数
+ * @param [wait=0] 倒计时。单位ms
+ * @param [args] 传入定时函数的参数
+ * @returns 计时器id
+ */
+function delay(fn, wait, ...args) {
+    return setTimeout(() => {
+        fn(...args);
+    }, wait || 0);
+}
+
+/**
+ * 类似eval，对表达式进行求值并返回结果。不同于eval，fval()执行在严格模式下
+ *
+ * > 注意，如果页面设置了<a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP">CSP</a>可能会导致该函数失效
+ *
+ * @example
+ * //5
+ * console.log(_.fval('3+2'));
+ * //{name:"func.js"}
+ * console.log(_.fval("{name:'func.js'}"));
+ * //0
+ * console.log(_.fval('1+x-b',{x:2,b:3}))
+ *
+ * @param expression 计算表达式
+ * @param args 可选参数对象
+ * @param context 可选上下文
+ * @returns 表达式计算结果
+ */
+function fval(expression, args, context) {
+    const ks = args ? keys$1(args) : [];
+    const val = args ? values$1(args) : [];
+    return Function(...ks, '"use strict";return ' + expression).call(context, ...val);
+}
+
+/**
+ * 创建一个包含指定函数逻辑的包装函数并返回。该函数仅执行一次
+ *
+ * @example
+ * //2748, undefined
+ * let parseInt2 = _.once(parseInt);
+ * console.log(parseInt2('abc',16),parseInt2('abc',16))
+ *
+ * @param fn 需要调用的函数
+ * @returns 包装后的函数
+ */
+function once(fn) {
+    let proxy = fn;
+    return ((...args) => {
+        let rtn;
+        if (proxy) {
+            let m = proxy;
+            proxy = null;
+            rtn = m(...args);
+        }
+        return rtn;
+    });
+}
+
+/**
+ * 传递v为参数执行interceptor函数，然后返回v。常用于函数链的过程调试，比如在filter后执行日志操作
+ * <p>
+ * 注意，一旦函数链执行了shortcut fusion，tap函数的执行会延迟到一个数组推导完成后执行
+ * </p>
+ *
+ * @example
+ * //shortut fusion中的tap只保留最后一个
+ * _([1,2,3,4])
+ * .map(v=>v*3).tap(v=>console.log(v))//被覆盖
+ * .filter(v=>v%2===0).tap(v=>console.log(v))//会延迟，并输出结果[6,12]
+ * .join('-')
+ * .value()
+ *
+ * @param v
+ * @param interceptor (v);如果v是引用值，改变v将影响后续函数流
+ * @returns v
+ */
+function tap(v, interceptor) {
+    interceptor(v);
+    return v;
+}
+
+/**
+ * 创建一个包含指定函数逻辑的节流函数并返回。每当节流函数执行后都会等待`wait`间隔归零才可再次调用，等待期间调用函数无效。
+ * 对于一些需要降低执行频率的场景非常有用，如onmousemove、onscroll等事件中
+ *
+ * @example
+ * //每隔1秒输出当前时间
+ * let log = _.throttle(console.log,1000);
+ * setInterval(()=>log(new Date().toTimeString()),100)
+ *
+ * @param fn 需要调用的函数
+ * @param wait 抖动间隔，ms
+ * @param options 执行选项
+ * @param options.leading 首次是否执行，默认true
+ * @param options.trailing 最后一次是否执行，默认true
+ * @returns 包装后的函数
+ * @since 1.4.0
+ */
+const EventTargetMap = new WeakMap;
+function throttle(fn, wait, options) {
+    let proxy = fn;
+    let lastExec = 0;
+    let timer = null;
+    let timeoutArgs;
+    let timeoutContext;
+    options = options || { leading: true, trailing: true };
+    options.leading = options.leading === undefined ? true : options.leading;
+    options.trailing = options.trailing === undefined ? true : options.trailing;
+    function timeout() {
+        if (options?.trailing) {
+            for (const arg of timeoutArgs) {
+                if (EventTargetMap.has(arg)) {
+                    let targets = EventTargetMap.get(arg);
+                    let ks = Object.keys(targets);
+                    for (const k of ks) {
+                        Object.defineProperty(arg, k, {
+                            value: targets[k],
+                            writable: false,
+                            enumerable: true,
+                            configurable: false
+                        });
+                    }
+                    EventTargetMap.delete(arg);
+                }
+            }
+            proxy.apply(timeoutContext, timeoutArgs);
+        }
+        lastExec = Date.now();
+        timeoutArgs = timer = null;
+    }
+    return (function (...args) {
+        timeoutArgs = args.map(arg => {
+            if (arg instanceof globalThis.Event) {
+                EventTargetMap.set(arg, {
+                    currentTarget: arg.currentTarget,
+                    fromElement: Reflect.get(arg, 'fromElement'),
+                    relatedTarget: Reflect.get(arg, 'relatedTarget'),
+                    target: arg.target,
+                    toElement: Reflect.get(arg, 'toElement'),
+                });
+            }
+            return arg;
+        });
+        timeoutContext = this;
+        let now = Date.now();
+        let remaining = wait - (now - lastExec);
+        if (remaining <= 0) {
+            if (timer) {
+                clearTimeout(timer);
+                timeoutArgs = timer = null;
+            }
+            if (options?.leading) {
+                proxy.apply(this, args);
+            }
+            lastExec = now;
+        }
+        else if (!timer) {
+            timer = setTimeout(timeout, remaining);
+        }
+    });
+}
+
+var functions$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  after: after,
+  alt: alt,
+  bind: bind,
+  bindAll: bindAll,
+  call: call,
+  compose: compose,
+  debounce: debounce,
+  delay: delay,
+  fval: fval,
+  once: once,
+  partial: partial,
+  tap: tap,
+  throttle: throttle
+});
+
+/**
+ * 对字符串进行trim后进行验证。如果非字符串，转为字符串后进行验证
+ * @example
+ * //true
+ * console.log(_.isBlank('  '))
+ * //true
+ * console.log(_.isBlank(null))
+ * //false
+ * console.log(_.isBlank({}))
+ * //false
+ * console.log(_.isBlank('     1'))
+ *
+ * @param v 字符串
+ * @returns 如果字符串是null/undefined/\t \n \f \r或trim后长度为0，返回true
+ * @since 0.16.0
+ */
+function isBlank(v) {
+    return v === null || v === undefined || (v + '').trim().replace(/\t|\n|\f|\r/mg, '').length === 0;
+}
+
+/**
+ * 判断值是不是一个布尔值
+ *
+ * @example
+ * //true
+ * console.log(_.isBoolean(false))
+ * //false
+ * console.log(_.isBoolean('true'))
+ * //false
+ * console.log(_.isBoolean(1))
+ *
+ * @param v
+ * @returns
+ */
+function isBoolean(v) {
+    return v instanceof Boolean || Object.prototype.toString.call(v) === '[object Boolean]';
+}
+
+/**
+ * 判断值是不是自定义Element
+ *
+ * @example
+ * //false
+ * console.log(_.isCustomElement(document.body))
+ * //true
+ * console.log(_.isCustomElement(document.body.querySelector('l-ele')))
+ *
+ * @param v
+ * @returns
+ * @since 1.14.0
+ */
+function isCustomElement(v) {
+    return typeof v === 'object' && v instanceof (HTMLElement || Object) &&
+        ((v.shadowRoot instanceof ShadowRoot) || !!customElements.get(v.tagName.toLowerCase()) || (v.tagName.split('-').length > 1));
+}
+
+/**
+ * isUndefined()的反向验证函数，在需要验证是否变量存在的场景下非常有用
+ * @example
+ * //true
+ * console.log(_.isDefined(null))
+ * //false
+ * console.log(_.isDefined(undefined))
+ *
+ * @param v
+ * @returns
+ */
+function isDefined(v) {
+    return v !== undefined;
+}
+
+/**
+ * 判断值是不是Element的实例
+ *
+ * @example
+ * //true
+ * console.log(_.isElement(document.body))
+ * //false
+ * console.log(_.isElement(document))
+ *
+ * @param v
+ * @returns
+ * @since 1.0.0
+ */
+function isElement(v) {
+    return typeof v === 'object' && v instanceof (globalThis.Element || Object);
+}
+
+/**
+ * 判断参数是否为空，包括`null/undefined/空字符串/0/[]/{}`都表示空
+ *
+ * 注意：相比isBlank，isEmpty只判断字符串长度是否为0
+ *
+ * @example
+ * //true
+ * console.log(_.isEmpty(null))
+ * //true
+ * console.log(_.isEmpty([]))
+ * //false
+ * console.log(_.isEmpty({x:1}))
+ *
+ * @param v
+ * @returns
+ */
+function isEmpty(v) {
+    if (null === v)
+        return true;
+    if (undefined === v)
+        return true;
+    if ('' === v)
+        return true;
+    if (0 === v)
+        return true;
+    if (isArrayLike$1(v) && v.length < 1)
+        return true;
+    if (v instanceof Object && Object.keys(v).length < 1)
+        return true;
+    return false;
 }
 
 /**
@@ -3097,400 +6020,680 @@ function replace(str, searchValue, replaceValue) {
  * @since 0.19.0
  */
 function isRegExp$1(v) {
-    return typeof v === 'object' && v instanceof RegExp;
+    return v instanceof RegExp || Object.prototype.toString.call(v) === '[object RegExp]';
 }
 
 /**
- * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
+ * 同<code>isEqual</code>，但支持自定义比较器。如果未指定比较器则使用内置逻辑处理
+ * 内置逻辑:
+ *  - 如果是日期使用getTime对比
+ *  - 如果是正则使用toString对比
+ *  - 如果是元素节点使用tagName+id+class对比
+ *  - 如果是函数使用name对比
+ * @example
+ * //true
+ * console.log(_.isEqualWith([new Date('2010-2-1'),'abcd'],['2010/2/1','Abcd'],(av,bv)=>_.isDate(av)?av.toLocaleDateString() == bv:_.test(av,bv,'i')))
+ *
+ * @param a
+ * @param b
+ * @param [comparator] 比较器，参数(v1,v2)，返回true表示匹配。如果返回undefined使用对应内置比较器处理
+ * @returns
+ * @since 1.0.0
+ */
+function isEqualWith(a, b, comparator) {
+    let cptor = comparator;
+    if (!isObject$1(a) || !isObject$1(b)) {
+        return (cptor || eq$1)(a, b);
+    }
+    let keys = [];
+    if ((keys = Object.keys(a)).length !== Object.keys(b).length)
+        return false;
+    if (isDate(a) && isDate(b))
+        return cptor ? cptor(a, b) : a.getTime() === b.getTime();
+    if (isRegExp$1(a) && isRegExp$1(b))
+        return cptor ? cptor(a, b) : a.toString() === b.toString();
+    if (isElement(a) && isElement(b)) {
+        let ea = `${a.tagName.toLowerCase()}${a.id ? '#' + a.id : ''}` + Array.from(a.classList.values()).reduce((acc, v) => acc + '.' + v, '');
+        let eb = `${b.tagName.toLowerCase()}${b.id ? '#' + b.id : ''}` + Array.from(b.classList.values()).reduce((acc, v) => acc + '.' + v, '');
+        return cptor ? cptor(a, b) : ea === eb;
+    }
+    if (isFunction$1(a) && isFunction$1(b))
+        return cptor ? cptor(a, b) : a.name === b.name;
+    for (let i = keys.length; i--;) {
+        const k = keys[i];
+        const v1 = a[k], v2 = b[k];
+        if (!isEqualWith(v1, v2, cptor)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * 判断两个值是否相等，对于非基本类型会进行深度比较，可以比较日期/正则/数组/对象等
+ *
+ * @example
+ * //false
+ * console.log(_.isEqual(1,'1'))
+ * //true,false
+ * let o = {a:1,b:[2,{c:['3','x']}]}
+ * let oo = {a:1,b:[2,{c:['3','x']}]}
+ * console.log(_.isEqual(o,oo),o == oo)
+ * //true
+ * console.log(_.isEqual([new Date('2010-2-1'),/12/],[new Date(1264953600000),new RegExp('12')]))
+ * //false
+ * console.log(_.isEqual([new Date('2010-2-1'),'abcd'],['2010/2/1','Abcd']))
+ *
+ * @param a
+ * @param b
+ * @returns
+ * @since 1.0.0
+ */
+function isEqual(a, b) {
+    return isEqualWith(a, b);
+}
+
+/**
+ * 判断值是不是异常对象
  *
  * @example
  * //true
- * console.log(_.isString(new String('')))
+ * console.log(_.isError(new TypeError))
+ * //false
+ * console.log(_.isError(Error))
  * //true
- * console.log(_.isString(''))
+ * try{a=b}catch(e){console.log(_.isError(e))}
+ *
+ * @param v
+ * @returns
+ * @since 1.0.0
+ */
+function isError(v) {
+    return v instanceof Error || Object.prototype.toString.call(v) === '[object Error]';
+}
+
+/**
+ * 判断值是不是有限数字
+ *
+ * @example
+ * //false
+ * console.log(_.isFinite('0'))
+ * //true
+ * console.log(_.isFinite(0))
+ * //true
+ * console.log(_.isFinite(Number.MAX_VALUE))
+ * //true
+ * console.log(_.isFinite(99999999999999999999999999999999999999999999999999999999999999999999999))
+ * //false
+ * console.log(_.isFinite(Infinity))
+ *
+ * @param v
+ * @returns
+ * @since 1.0.0
+ */
+function isFinite(v) {
+    return Number.isFinite(v);
+}
+
+/**
+ * 判断参数是否为小写字母
+ * @example
+ * //false
+ * console.log(_.isLowerCaseChar('A'))
+ * //true
+ * console.log(_.isLowerCaseChar('a'))
+ * //false
+ * console.log(_.isLowerCaseChar(null))
  *
  * @param v
  * @returns
  */
-function isString$1(v) {
-    return typeof v === 'string' || v instanceof String;
-}
-
-const PRIMITIVE_TYPES$1 = [
-    'string',
-    'number',
-    'bigint',
-    'boolean',
-    'undefined',
-    'symbol',
-];
-/**
- * 判断值是不是一个非基本类型外的值，如果true则认为值是一个对象
- * 同样，该方法还可以用来判断一个值是不是基本类型
- *
- * @example
- * //false
- * console.log(_.isObject(1))
- * //true
- * console.log(_.isObject(new String()))
- * //false
- * console.log(_.isObject(true))
- * //false
- * console.log(_.isObject(null))
- *
- * @param v value
- * @returns 是否对象。如果值是null返回false，即使typeof null === 'object'
- */
-function isObject$1(v) {
-    return null !== v && PRIMITIVE_TYPES$1.indexOf(typeof v) < 0;
-}
-
-function replaceAll(str, searchValue, replaceValue) {
-    let searchExp;
-    let strRs = toString$1(str);
-    if (isRegExp$1(searchValue)) {
-        searchExp = searchValue;
-        if (!searchValue.global) {
-            searchExp = new RegExp(searchValue, searchValue.flags + 'g');
-        }
-        return strRs.replace(searchExp, replaceValue);
-    }
-    else if (isString$1(searchValue)) {
-        searchExp = new RegExp(escapeRegExp(searchValue), 'g');
-        return strRs.replace(searchExp, replaceValue);
-    }
-    else if (isObject$1(searchValue)) {
-        const ks = Object.keys(searchValue);
-        for (let i = ks.length; i--;) {
-            const k = ks[i];
-            const v = searchValue[k];
-            searchExp = new RegExp(escapeRegExp(k), 'g');
-            strRs = strRs.replace(searchExp, v);
-        }
-        return strRs;
-    }
-    return str;
+function isLowerCaseChar(v) {
+    if (v === null || v === undefined || Number.isNaN(v))
+        return false;
+    const code = (v + '').charCodeAt(0);
+    return code >= 97 && code <= 122;
 }
 
 /**
- * 返回下划线风格的字符串
- *
- * @example
- * //'a_b_c'
- * console.log(_.snakeCase('a-b c'))//mixCase
- * //'love_loves_to_love_love'
- * console.log(_.snakeCase('Love loves to love Love'))//spaces
- * //'a_b_c'
- * console.log(_.snakeCase('a B-c'))//camelCase
- * //'get_my_url'
- * console.log(_.snakeCase('getMyURL'))//camelCase
- *
- * @param str
- * @returns 返回新字符串
- */
-function snakeCase(str) {
-    return lowerCase(_getGrouped(toString$1(str)).join('_'));
-}
-
-/**
- * 使用分隔符将字符串分割为多段数组
- *
- * @example
- * //["func", "js"]
- * console.log(_.split('func.js','.'))
- * //["func"]
- * console.log(_.split('func.js','.',1))
- *
- * @param str 原字符串。如果非字符串则会自动转换成字符串
- * @param separator 分隔符
- * @param [limit] 限制返回的结果数量，为空返回所有结果
- * @returns 分割后的数组
- */
-function split$1(str, separator, limit) {
-    return toString$1(str).split(separator, limit);
-}
-
-/**
- * 验证字符串是否以查询子字符串开头
+ * 判断值是否NaN本身。与全局isNaN函数相比，只有NaN值本身才会返回true
+ * <p>
+ * isNaN(undefined) => true <br>
+ * _.isNaN(undefined) => false
+ * </p>
  *
  * @example
  * //true
- * console.log(_.startsWith('func.js','func'))
+ * console.log(_.isNaN(NaN))
  * //false
- * console.log(_.startsWith('func.js','func',3))
- * //true
- * console.log(_.startsWith('func.js','c',3))
+ * console.log(_.isNaN(null))
+ * //false
+ * console.log(_.isNaN(undefined))
  *
- * @param str
- * @param searchStr 查询字符串
- * @param [position=0] 索引
- * @returns 如果以查询子字符串开头返回true，否则返回false
- */
-function startsWith(str, searchStr, position) {
-    return toString$1(str).startsWith(searchStr, position);
-}
-
-/**
- * 对字符串进行截取，返回从起始索引到结束索引间的新字符串。
- *
- * @example
- * //"34567"
- * console.log(_.substring('12345678',2,7))
- * //"345678"
- * console.log(_.substring('12345678',2))
- * //""
- * console.log(_.substring())
- *
- * @param str 需要截取的字符串，如果非字符串对象会进行字符化处理。基本类型会直接转为字符值，对象类型会调用toString()方法
- * @param [indexStart=0] 起始索引，包含
- * @param [indexEnd=str.length] 结束索引，不包含
+ * @param v
  * @returns
  */
-function substring(str, indexStart, indexEnd) {
-    str = toString$1(str);
-    indexStart = indexStart || 0;
-    return str.substring(indexStart, indexEnd);
+function isNaN$1(v) {
+    return Number.isNaN(v);
 }
 
 /**
- * 检测字符串是否与指定的正则匹配
+ * 判断参数是否为本地函数
  *
  * @example
- * //true 忽略大小写包含判断
- * console.log(_.test('func.js','Func','i'))
- * //true 忽略大小写相等判断
- * console.log(_.test('func.js',/^FUNC\.js$/i))
+ * //true
+ * console.log(_.isNative(Array))
  * //false
- * console.log(_.test('func.js',/FUNC/))
+ * console.log(_.isNative(()=>{}))
  *
- * @param str
- * @param pattern 指定正则。如果非正则类型会自动转换为正则再进行匹配
- * @param [flags] 如果pattern参数不是正则类型，会使用该标记作为正则构造的第二个参数
- * @returns 匹配返回true
+ * @param v
+ * @returns
+ */
+function isNative(v) {
+    return typeof v === 'function' && /native code/.test(v.toString());
+}
+
+/**
+ * 判断参数是否为null
+ *
+ * @example
+ * //true
+ * console.log(_.isNull(null))
+ * //false
+ * console.log(_.isNull(undefined))
+ *
+ * @param v
+ * @returns
+ */
+function isNull(v) {
+    return null === v;
+}
+
+/**
+ * 判断参数是否为数字或数字字符串。不能判断BigInt
+ *
+ * @example
+ * //true
+ * console.log(_.isNumeric(1))
+ * //true
+ * console.log(_.isNumeric('-1.1'))
+ * //false
+ * console.log(_.isNumber('-1.1a'))
+ *
+ * @param v
+ * @returns
+ */
+function isNumeric(v) {
+    if ((v + '').length < 1)
+        return false;
+    if (isNil$2(v))
+        return false;
+    if (Number.isNaN(v))
+        return false;
+    if (isNumber(v))
+        return true;
+    return /^-?[0-9]*\.?[0-9]+$/.test(v + '');
+}
+
+/**
+ * 判断值是不是一个朴素对象，即通过Object创建的对象
+ *
+ * @example
+ * //false
+ * console.log(_.isPlainObject(1))
+ * //false
+ * console.log(_.isPlainObject(new String()))
+ * //true
+ * console.log(_.isPlainObject({}))
+ * //false
+ * console.log(_.isPlainObject(null))
+ * //true
+ * console.log(_.isPlainObject(new Object))
+ * function Obj(){}
+ * //false
+ * console.log(_.isPlainObject(new Obj))
+ *
+ * @param v value
+ * @returns 是否朴素对象
  * @since 0.19.0
  */
-function test$1(str, pattern, flags) {
-    let regExp = pattern;
-    if (!isRegExp$1(regExp)) {
-        regExp = new RegExp(pattern, flags);
-    }
-    return regExp.test(str);
+function isPlainObject(v) {
+    return isObject$1(v) && v.constructor === Object.prototype.constructor;
 }
 
 /**
- * 截取数字小数位。用来修复原生toFixed函数的bug
+ * 判断参数是否为原始类型
  *
  * @example
- * //14.05
- * console.log(_.toFixed(14.049,2))
- * //-15
- * console.log(_.toFixed(-14.6))
- * //14.0001
- * console.log(_.toFixed(14.00005,4))
- * //0.101
- * console.log(_.toFixed(0.1009,3))
- * //2.47
- * console.log(_.toFixed(2.465,2))
- * //2.46 原生
- * console.log((2.465).toFixed(2))
+ * //true
+ * console.log(_.isPrimitive(1))
+ * //true
+ * console.log(_.isPrimitive(null)
+ * //false
+ * console.log(_.isPrimitive(new String()))
+ * //true
+ * console.log(_.isPrimitive(123n)
  *
- * @param v 数字或数字字符串
- * @param [scale=0] 小数位长度
- * @returns 填充后的字符串
+ * @param v
+ * @returns
  */
-function toFixed(v, scale) {
-    scale = scale || 0;
-    const num = parseFloat(v + '');
-    if (isNaN(num))
-        return v;
-    const isNeg = num < 0 ? -1 : 1;
-    const tmp = (num + '').split('.');
-    const frac = tmp[1] || '';
-    const diff = scale - frac.length;
-    let rs = '';
-    if (diff > 0) {
-        let z = padEnd(frac, scale, '0');
-        z = z ? '.' + z : z;
-        rs = tmp[0] + z;
-    }
-    else if (diff === 0) {
-        rs = num + '';
+function isPrimitive(v) {
+    return null === v || PRIMITIVE_TYPES$1.indexOf(typeof v) > -1;
+}
+
+/**
+ * 判断值是不是一个安全整数
+ *
+ * @example
+ * //true
+ * console.log(_.isSafeInteger(-0))
+ * //true
+ * console.log(_.isSafeInteger(5.0))
+ * //false
+ * console.log(_.isSafeInteger(5.000000000000001))
+ * //true
+ * console.log(_.isSafeInteger(5.0000000000000001))
+ * //false
+ * console.log(_.isSafeInteger('5'))
+ * //true
+ * console.log(_.isSafeInteger(Number.MAX_SAFE_INTEGER))
+ * //false
+ * console.log(_.isSafeInteger(Number.MAX_VALUE))
+ *
+ * @param v
+ * @returns
+ */
+function isSafeInteger(v) {
+    return Number.isSafeInteger(v);
+}
+
+/**
+ * 判断值是不是Symbol
+ *
+ * @example
+ * //true
+ * console.log(_.isSymbol(Symbol()))
+ *
+ * @param v
+ * @returns
+ * @since 1.0.0
+ */
+function isSymbol(v) {
+    return typeof v === 'symbol';
+}
+
+/**
+ * 判断参数是否为大写字母
+ * @example
+ * //true
+ * console.log(_.isUpperCaseChar('A'))
+ * //false
+ * console.log(_.isUpperCaseChar(null))
+ *
+ * @param v
+ * @returns
+ */
+function isUpperCaseChar(v) {
+    if (v === null || v === undefined || Number.isNaN(v))
+        return false;
+    const code = (v + '').charCodeAt(0);
+    return code >= 65 && code <= 90;
+}
+
+/**
+ * 判断值是不是一个WeakMap对象
+ *
+ * @example
+ * //true
+ * console.log(_.isWeakMap(new WeakMap))
+ * //false
+ * console.log(_.isWeakMap(new Map))
+ *
+ * @param v
+ * @returns
+ */
+function isWeakMap(v) {
+    return v instanceof WeakMap || Object.prototype.toString.call(v) === '[object WeakMap]';
+}
+
+/**
+ * 判断值是不是一个WeakSet对象
+ *
+ * @example
+ * //true
+ * console.log(_.isWeakSet(new WeakSet))
+ * //false
+ * console.log(_.isWeakSet(new Set))
+ *
+ * @param v
+ * @returns
+ */
+function isWeakSet(v) {
+    return v instanceof WeakSet || Object.prototype.toString.call(v) === '[object WeakSet]';
+}
+
+var is = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  isArray: isArray$1,
+  isArrayLike: isArrayLike$1,
+  isBlank: isBlank,
+  isBoolean: isBoolean,
+  isCustomElement: isCustomElement,
+  isDate: isDate,
+  isDefined: isDefined,
+  isElement: isElement,
+  isEmpty: isEmpty,
+  isEqual: isEqual,
+  isEqualWith: isEqualWith,
+  isError: isError,
+  isFinite: isFinite,
+  isFunction: isFunction$1,
+  isInteger: isInteger,
+  isIterator: isIterator$1,
+  isLowerCaseChar: isLowerCaseChar,
+  isMap: isMap$1,
+  isMatch: isMatch$1,
+  isMatchWith: isMatchWith$1,
+  isNaN: isNaN$1,
+  isNative: isNative,
+  isNil: isNil$2,
+  isNode: isNode$1,
+  isNull: isNull,
+  isNumber: isNumber,
+  isNumeric: isNumeric,
+  isObject: isObject$1,
+  isPlainObject: isPlainObject,
+  isPrimitive: isPrimitive,
+  isRegExp: isRegExp$1,
+  isSafeInteger: isSafeInteger,
+  isSet: isSet$1,
+  isString: isString$1,
+  isSymbol: isSymbol,
+  isUndefined: isUndefined$1,
+  isUpperCaseChar: isUpperCaseChar,
+  isWeakMap: isWeakMap,
+  isWeakSet: isWeakSet
+});
+
+/**
+ * a + b
+ * @example
+ * //3
+ * console.log(_.add(1,2))
+ * //1
+ * console.log(_.add(1,null))
+ * //NaN
+ * console.log(_.add(1,NaN))
+ *
+ * @param a
+ * @param b
+ * @returns a+b
+ * @since 1.0.0
+ */
+function add(a, b) {
+    a = isNil$2(a) ? 0 : a;
+    b = isNil$2(b) ? 0 : b;
+    return a + b;
+}
+
+/**
+ * a / b
+ * @example
+ * //0.5
+ * console.log(_.divide(1,2))
+ * //Infinity
+ * console.log(_.divide(1,null))
+ * //NaN
+ * console.log(_.divide(1,NaN))
+ *
+ * @param a
+ * @param b
+ * @returns a/b
+ * @since 1.0.0
+ */
+function divide(a, b) {
+    a = isNil$2(a) ? 0 : a;
+    b = isNil$2(b) ? 0 : b;
+    return a / b;
+}
+
+/**
+ * 返回给定数字序列中最大的一个。忽略NaN，null，undefined
+ * @example
+ * //7
+ * console.log(_.max([2,3,1,NaN,7,4,null]))
+ * //6
+ * console.log(_.max([4,5,6,'x','y']))
+ * //Infinity
+ * console.log(_.max([4,5,6,Infinity]))
+ *
+ * @param values 数字/字符数组/Set
+ * @returns
+ * @since 1.0.0
+ */
+function max(values) {
+    if (!isArray$1(values) && !isSet$1(values))
+        return NaN;
+    let rs = isArray$1(values) ? values[0] : values.values().next().value;
+    values.forEach(v => {
+        if (isNumeric(v) && v > rs) {
+            rs = v;
+        }
+    });
+    return Number(rs);
+}
+
+/**
+ * 对多个数字或数字列表计算平均值并返回结果
+ * @example
+ * //2.5
+ * console.log(_.mean([1,2,'3',4]))
+ * //NaN
+ * console.log(_.mean([1,'2',3,'a',4]))
+ * //2
+ * console.log(_.mean([1,'2',3,null,4]))
+ *
+ * @param values 数字/字符数组/Set
+ * @returns mean value
+ * @since 1.0.0
+ */
+function mean(values) {
+    if (!isArray$1(values) && !isSet$1(values))
+        return NaN;
+    let total = 0;
+    let len = 0;
+    values.forEach(v => {
+        if (isNumeric(v)) {
+            total += Number(v);
+            len++;
+        }
+    });
+    return total / len;
+}
+
+/**
+ * 对多个数字或数字列表计算中间值并返回结果
+ * @example
+ * //2.5
+ * console.log(_.median([1,2,'3',4]))
+ * //2
+ * console.log(_.median([1,'2',3]))
+ * //1
+ * console.log(_.median([1,'2',-3]))
+ *
+ * @param values 数字/字符数组/Set
+ * @returns mean value
+ * @since 1.12.0
+ */
+function median(values) {
+    if (!isArray$1(values) && !isSet$1(values))
+        return NaN;
+    let sortNumbers = [];
+    values.forEach(v => {
+        if (isNumeric(v)) {
+            sortNumbers.push(Number(v));
+        }
+    });
+    sortNumbers.sort();
+    let rs;
+    if (sortNumbers.length % 2 === 0) {
+        let i = sortNumbers.length / 2 - 1;
+        rs = (sortNumbers[i] + sortNumbers[i + 1]) / 2;
     }
     else {
-        let integ = parseInt(tmp[0]);
-        const i = frac.length + diff;
-        const round = frac.substring(i);
-        let keep = frac.substring(0, i);
-        let startZ = false;
-        if (keep[0] === '0' && keep.length > 1) {
-            keep = 1 + keep.substring(1);
-            startZ = true;
-        }
-        let n = Math.round(parseFloat(keep + '.' + round));
-        const strN = n + '';
-        if (n > 0 && strN.length > keep.length) {
-            integ += 1 * isNeg;
-            n = strN.substring(1);
-        }
-        if (startZ) {
-            n = parseInt(strN[0]) - 1 + strN.substring(1);
-        }
-        n = n !== '' && keep.length > 0 ? '.' + n : n;
-        rs = integ + n + '';
-        if (isNeg < 0 && rs[0] !== '-')
-            rs = '-' + rs;
+        rs = sortNumbers[Math.ceil(sortNumbers.length / 2) - 1];
     }
     return rs;
 }
 
 /**
- * 从字符串的两端删除空白字符。
- *
+ * 返回给定数字序列中最小的一个。忽略NaN，null，undefined
  * @example
- * //holyhigh
- * console.log(_.trim('  holyhigh '))
- *
- * @param str
- * @returns 对于null/undefined会返回空字符串
- */
-function trim(str) {
-    str = toString$1(str);
-    return str.trim();
-}
-
-/**
- * 从字符串末尾删除空白字符。
- *
- * @example
- * //'  holyhigh'
- * console.log(_.trimEnd('  holyhigh '))
- *
- * @param str
- * @returns 对于null/undefined会返回空字符串
- */
-function trimEnd(str) {
-    str = toString$1(str);
-    if (str.trimEnd)
-        return str.trimEnd();
-    return str.replace(/\s*$/, '');
-}
-
-/**
- * 从字符串起始位置删除空白字符。
- *
- * @example
- * //'holyhigh '
- * console.log(_.trimStart('  holyhigh '))
- *
- * @param str
- * @returns 对于null/undefined会返回空字符串
- */
-function trimStart(str) {
-    str = toString$1(str);
-    if (str.trimStart)
-        return str.trimStart();
-    return str.replace(/^\s*/, '');
-}
-
-/**
- * 对超过指定长度的字符串进行截取并在末尾追加代替字符
- *
- * @example
- * //func...
- * console.log(_.truncate('func.js',4))
- * //func...
- * console.log(_.truncate('func.js',6,{separator:/\.\w+/g}))
- * //func.js.com...
- * console.log(_.truncate('func.js.com.cn',13,{separator:'.'}))
- * //func.js
- * console.log(_.truncate('func.js',10))
- * //fun!!!
- * console.log(_.truncate('func.js',3,{omission:'!!!'}))
- *
- * @param str
- * @param len 最大长度。如果长度大于<code>str</code>长度，直接返回str
- * @param options 可选项
- * @param options.omission 替代字符，默认 '...'
- * @param options.separator 截断符。如果截取后的字符串中包含截断符，则最终只会返回截断符之前的内容
- * @returns 返回新字符串
+ * //-1
+ * console.log(_.min([2,3,1,7,'-1']))
+ * //0
+ * console.log(_.min([4,3,6,0,'x','y']))
+ * //-Infinity
+ * console.log(_.min([-Infinity,-9999,0,null]))
+ * @param values 数字/字符数组/Set
+ * @returns 如果参数不是数组/Set，返回NaN
  * @since 1.0.0
  */
-function truncate(str, len, options) {
-    str = toString$1(str);
-    if (str.length <= len)
-        return str;
-    if (!isObject$1(options)) {
-        options = { omission: '...' };
-    }
-    options.omission = options.omission || '...';
-    str = str.substring(0, len);
-    if (options.separator) {
-        let separator = options.separator;
-        if (!isObject$1(separator)) {
-            separator = new RegExp(escapeRegExp(separator), 'g');
+function min(values) {
+    if (!isArray$1(values) && !isSet$1(values))
+        return NaN;
+    let rs = isArray$1(values) ? values[0] : values.values().next().value;
+    values.forEach(v => {
+        if (isNumeric(v) && v < rs) {
+            rs = v;
         }
-        else if (!separator.global) {
-            separator = new RegExp(separator, separator.flags + 'g');
-        }
-        let rs;
-        let tmp;
-        while ((tmp = separator.exec(str)) !== null) {
-            rs = tmp;
-        }
-        if (rs) {
-            str = str.substring(0, rs.index);
-        }
-    }
-    return str + options.omission;
+    });
+    return Number(rs);
 }
 
 /**
- * 返回所有字母是大写格式的字符串
- *
+ * 返回min/max如果value超出范围
  * @example
- * //''
- * console.log(_.upperCase())
- * //'FUNC.JS'
- * console.log(_.upperCase('func.js'))
+ * //1
+ * console.log(_.minmax([1,10,0]))
+ * //6
+ * console.log(_.minmax([4,8,6]))
  *
- * @param str
- * @returns 返回新字符串
+ * @param min
+ * @param max
+ * @param value
+ * @returns
  */
-function upperCase(str) {
-    return toString$1(str).toUpperCase();
+function minmax(min, max, value) {
+    if (value < min)
+        return min;
+    if (value > max)
+        return max;
+    return value;
 }
 
-var str = /*#__PURE__*/Object.freeze({
+/**
+ * a * b
+ * @example
+ * //2
+ * console.log(_.multiply(1,2))
+ * //0
+ * console.log(_.multiply(1,null))
+ * //NaN
+ * console.log(_.multiply(1,NaN))
+ *
+ * @param a
+ * @param b
+ * @returns a*b
+ * @since 1.0.0
+ */
+function multiply(a, b) {
+    a = isNil$2(a) ? 0 : a;
+    b = isNil$2(b) ? 0 : b;
+    return a * b;
+}
+
+function randf(min, max) {
+    if (max === undefined) {
+        if (!min)
+            return Math.random();
+        max = min;
+        min = 0;
+    }
+    max = parseFloat(max + '') || 0;
+    min = parseFloat(min + '') || 0;
+    return Math.random() * (max - min) + min;
+}
+
+/**
+ * a - b
+ * @example
+ * //-1
+ * console.log(_.subtract(1,2))
+ * //1
+ * console.log(_.subtract(1,null))
+ * //NaN
+ * console.log(_.subtract(1,NaN))
+ *
+ * @param a
+ * @param b
+ * @returns a - b
+ * @since 1.0.0
+ */
+function subtract(a, b) {
+    a = isNil$2(a) ? 0 : a;
+    b = isNil$2(b) ? 0 : b;
+    return a - b;
+}
+
+/**
+ * 对字符/数字数组/Set进行求和并返回结果
+ * - 对nil值，自动转为0
+ * - 对NaN值，返回NaN
+ * - 对Infinity值，返回Infinity
+ *
+ * @example
+ * //10
+ * console.log(_.sum([1,'2',3,4]))
+ * //10
+ * console.log(_.sum([1,'2',3,4,null,undefined]))
+ * //9
+ * console.log(_.sum([NaN,'2',3,4]))
+ * //Infinity
+ * console.log(_.sum([Infinity,'2',3,4]))
+ * //6
+ * console.log(_.sum(new Set([1,2,3])))
+ *
+ * @param values 数字/字符数组/Set
+ * @since 1.0.0
+ * @returns
+ */
+function sum(values) {
+    if (!isArray$1(values) && !isSet$1(values))
+        return NaN;
+    let total = 0;
+    values.forEach(v => {
+        if (isNumeric(v)) {
+            total += Number(v);
+        }
+    });
+    return total;
+}
+
+var math = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  camelCase: camelCase,
-  capitalize: capitalize,
-  endsWith: endsWith,
-  escapeRegExp: escapeRegExp,
-  indexOf: indexOf,
-  kebabCase: kebabCase,
-  lastIndexOf: lastIndexOf,
-  lowerCase: lowerCase,
-  lowerFirst: lowerFirst,
-  padEnd: padEnd,
-  padStart: padStart,
-  padZ: padZ,
-  pascalCase: pascalCase,
-  repeat: repeat,
-  replace: replace,
-  replaceAll: replaceAll,
-  snakeCase: snakeCase,
-  split: split$1,
-  startsWith: startsWith,
-  substring: substring,
-  test: test$1,
-  toFixed: toFixed,
-  toString: toString$1,
-  trim: trim,
-  trimEnd: trimEnd,
-  trimStart: trimStart,
-  truncate: truncate,
-  upperCase: upperCase,
-  upperFirst: upperFirst
+  add: add,
+  divide: divide,
+  max: max,
+  mean: mean,
+  median: median,
+  min: min,
+  minmax: minmax,
+  multiply: multiply,
+  randf: randf,
+  randi: randi,
+  subtract: subtract,
+  sum: sum
 });
 
 /**
@@ -3539,7 +6742,7 @@ function formatNumber(v, pattern = '#,##0.00') {
         return '\uFFFD';
     if (isNaN(parseFloat(v + '')))
         return v + '';
-    let formatter = cache$1[pattern];
+    let formatter = cache[pattern];
     if (!formatter) {
         const match = pattern.match(/(?<integer>[0,#]+)(?:\.(?<fraction>[0#]+))?(?<suffix>[%\u2030E])?/);
         if (match == null) {
@@ -3603,6 +6806,9 @@ function formatNumber(v, pattern = '#,##0.00') {
             if (fractionPtn) {
                 if (fraction.length >= fixedLen) {
                     dStr = parseFloat('0.' + fraction).toFixed(fixedLen);
+                    if (dStr[0] === '1') {
+                        integer += 1;
+                    }
                     dStr = dStr.substring(1);
                 }
                 else {
@@ -3655,33 +6861,7 @@ function formatNumber(v, pattern = '#,##0.00') {
     }
     return formatter(v);
 }
-const cache$1 = {};
-
-/**
- * 转换任何对象为数字类型
- *
- * @example
- * //NaN
- * console.log(_.toNumber(null))
- * //1
- * console.log(_.toNumber('1'))
- * //NaN
- * console.log(_.toNumber([3,6,9]))
- * //-0
- * console.log(_.toNumber(-0))
- * //NaN
- * console.log(_.toNumber(NaN))
- * //NaN
- * console.log(_.toNumber('123a'))
- *
- * @param v 任何值
- * @returns 对于null/undefined会返回NaN
- */
-function toNumber(v) {
-    if (v === undefined || v === null)
-        return NaN;
-    return Number(v);
-}
+const cache = {};
 
 /**
  * 判断a是否大于b
@@ -3804,1147 +6984,20 @@ var num = /*#__PURE__*/Object.freeze({
   inRange: inRange,
   lt: lt,
   lte: lte,
-  toInt: toInteger,
   toInteger: toInteger,
   toNumber: toNumber
 });
 
-const TIME_MAP$1 = {
-    s: 1000,
-    m: 1000 * 60,
-    h: 1000 * 60 * 60,
-    d: 1000 * 60 * 60 * 24,
-};
-/**
- * 对日期时间进行量变处理
- *
- * @example
- * //2020/5/1 08:00:20
- * console.log(_.formatDate(_.addTime(new Date('2020-05-01'),20),'yyyy/MM/dd hh:mm:ss'))
- * //2020-04-11 08:00
- * console.log(_.formatDate(_.addTime(new Date('2020-05-01'),-20,'d')))
- * //2022-01-01 00:00
- * console.log(_.formatDate(_.addTime(new Date('2020-05-01 0:0'),20,'M')))
- *
- * @param date 原日期时间
- * @param amount 变化量，可以为负数
- * @param [type='s'] 量变时间类型
- * <ul>
- * <li><code>y</code> 年</li>
- * <li><code>M</code> 月</li>
- * <li><code>d</code> 日</li>
- * <li><code>h</code> 时</li>
- * <li><code>m</code> 分</li>
- * <li><code>s</code> 秒</li>
- * </ul>
- * @returns 日期对象
- */
-function addTime(date, amount, type) {
-    type = type || 's';
-    const d = new Date(date);
-    switch (type) {
-        case 'y':
-            d.setFullYear(d.getFullYear() + amount);
-            break;
-        case 'M':
-            d.setMonth(d.getMonth() + amount);
-            break;
-        default:
-            let times = 0;
-            times = amount * TIME_MAP$1[type];
-            d.setTime(d.getTime() + times);
-    }
-    return d;
-}
-
-const TIME_MAP = {
-    s: 1000,
-    m: 1000 * 60,
-    h: 1000 * 60 * 60,
-    d: 1000 * 60 * 60 * 24,
-};
-// const DATE_CONVERT_EXP = /(\d+)-(\d+)-(\d+)/;
-/**
- * 比较两个日期，并返回由比较时间单位确定的相差时间。
- * <p>
- * 使用truncated对比算法 —— 小于指定时间单位的值会被视为相同，
- * 比如对比月，则两个日期的 日/时/分/秒 会被认为相同，以此类推。
- * </p>
- * 相差时间为正数表示date1日期晚于(大于)date2，负数相反，0表示时间/日期相同。
- * <p>
- * 注意，如果对比单位是 h/m/s，务必要保持格式一致，比如
- *
- * ```ts
- * //实际相差8小时
- * new Date('2020-01-01')
- * //vs
- * new Date('2020/01/01')
- * ```
- *
- * @example
- * //0
- * console.log(_.compareDate(new Date('2020/05/01'),'2020/5/1'))
- * //格式不一致，相差8小时
- * console.log(_.compareDate(new Date('2020-05-01'),'2020/5/1','h'))
- * //-59
- * console.log(_.compareDate(new Date('2019/01/01'),'2019/3/1'))
- *
- * @param date1 日期对象、时间戳或合法格式的日期时间字符串。
- * 对于字符串格式，可以时<a href="https://www.iso.org/iso-8601-date-and-time-format.html">UTC格式</a>，或者
- * <a href="https://tools.ietf.org/html/rfc2822#section-3.3">RFC2822</a>格式
- * @param date2 同date1
- * @param [type='d'] 比较时间单位
- * <ul>
- * <li><code>y</code> 年</li>
- * <li><code>M</code> 月</li>
- * <li><code>d</code> 日</li>
- * <li><code>h</code> 时</li>
- * <li><code>m</code> 分</li>
- * <li><code>s</code> 秒</li>
- * </ul>
- * @returns 根据比较时间单位返回的比较值。正数为date1日期晚于(大于)date2，负数相反，0表示相同。
- */
-function compareDate(date1, date2, type) {
-    const d1 = new Date(date1);
-    const d2 = new Date(date2);
-    type = type || 'd';
-    if (type === 'y') {
-        return d1.getFullYear() - d2.getFullYear();
-    }
-    else if (type === 'M') {
-        return ((d1.getFullYear() - d2.getFullYear()) * 12 +
-            (d1.getMonth() - d2.getMonth()));
-    }
-    else {
-        switch (type) {
-            case 'd':
-                d1.setHours(0, 0, 0, 0);
-                d2.setHours(0, 0, 0, 0);
-                break;
-            case 'h':
-                d1.setHours(d1.getHours(), 0, 0, 0);
-                d2.setHours(d2.getHours(), 0, 0, 0);
-                break;
-            case 'm':
-                d1.setHours(d1.getHours(), d1.getMinutes(), 0, 0);
-                d2.setHours(d2.getHours(), d2.getMinutes(), 0, 0);
-                break;
-        }
-        const diff = d1.getTime() - d2.getTime();
-        return diff / TIME_MAP[type];
-    }
-}
-
-/**
- * 判断值是不是一个整数
- *
- * @example
- * //true
- * console.log(_.isInteger(-0))
- * //true
- * console.log(_.isInteger(5.0))
- * //false
- * console.log(_.isSafeInteger(5.000000000000001))
- * //true
- * console.log(_.isSafeInteger(5.0000000000000001))
- * //false
- * console.log(_.isInteger('5'))
- * //true
- * console.log(_.isInteger(Number.MAX_SAFE_INTEGER))
- * //true
- * console.log(_.isInteger(Number.MAX_VALUE))
- *
- * @param v
- * @returns
- */
-function isInteger(v) {
-    return Number.isInteger(v);
-}
-
-/**
- * 判断参数是否为Array对象的实例
- *
- * @example
- * //true
- * console.log(_.isArray([]))
- * //false
- * console.log(_.isArray(document.body.children))
- *
- * @param v
- * @returns
- */
-function isArray$1(v) {
-    // 使用 instanceof Array 无法鉴别某些场景，比如
-    // Array.prototype instanceof Array => false
-    // Array.isArray(Array.prototype) => true
-    // typeof new Proxy([],{}) => object
-    // Array.isArray(new Proxy([],{})) => true
-    return Array.isArray(v);
-}
-
-/**
- * 通过指定参数得到日期对象。支持多种签名
- *
- * ```js
- * _.toDate(1320940800); //timestamp unix style
- * _.toDate(1320940800123); //timestamp javascript style
- * _.toDate([year,month,day]); //注意，month的索引从1开始
- * _.toDate([year,month,day,hour,min,sec]); //注意，month的索引从1开始
- * _.toDate(datetimeStr);
- * ```
- *
- * @example
- * //'2011/11/11 00:00:00'
- * console.log(_.toDate(1320940800).toLocaleString())
- * //'2011/11/11 00:01:39'
- * console.log(_.toDate(1320940899999).toLocaleString())
- * //'2022/12/12 00:00:00'
- * console.log(_.toDate([2022,11,12]).toLocaleString())
- * //'2022/12/12 12:12:12'
- * console.log(_.toDate([2022,11,12,12,12,12]).toLocaleString())
- * //'2022/2/2 00:00:00'
- * console.log(_.toDate('2022/2/2').toLocaleString())
- * //'2022/2/2 08:00:00'
- * console.log(_.toDate('2022-02-02').toLocaleString())
- *
- * @param value 转换参数
- *
- * @returns 转换后的日期。无效日期统一返回1970/1/1
- */
-function toDate(value) {
-    let rs;
-    if (isInteger(value)) {
-        if (value < TIMESTAMP_MIN) {
-            value = toNumber(padEnd(value + '', 13, '0'));
-        }
-        else if (value > TIMESTAMP_MAX) {
-            value = 0;
-        }
-        rs = new Date(value);
-    }
-    else if (isArray$1(value)) {
-        rs = new Date(...value);
-    }
-    else {
-        rs = new Date(value);
-    }
-    if (rs.toDateString() === 'Invalid Date') {
-        rs = new Date(0);
-    }
-    return rs;
-}
-const TIMESTAMP_MIN = 1000000000000;
-const TIMESTAMP_MAX = 9999999999999;
-
-/**
- * 指定日期是否是闰年
- * @param date 日期对象
- * @returns {number} 闰年返回true
- */
-function isLeapYear(date) {
-    date = toDate(date);
-    const year = date.getFullYear();
-    return year % 400 === 0 || year % 4 === 0;
-}
-
-const DaysOfMonth = [31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-/**
- * 获取指定日期在当前年中的天数并返回
- * @param date 日期对象
- * @returns {number} 当前年中的第几天
- */
-function getDayOfYear(date) {
-    date = toDate(date);
-    const leapYear = isLeapYear(date);
-    const month = date.getMonth();
-    let dates = date.getDate();
-    for (let i = 0; i < month; i++) {
-        const ds = DaysOfMonth[i] || (leapYear ? 29 : 28);
-        dates += ds;
-    }
-    return dates;
-}
-
-/**
- * 获取指定日期在当前月中的周数并返回
- * @param date 日期对象
- * @returns {number} 当前月中的第几周
- */
-function getWeekOfMonth(date) {
-    date = toDate(date);
-    const year = date.getFullYear();
-    let firstDayOfMonth = new Date(year, date.getMonth(), 1);
-    let extraWeek = 0;
-    //超过周5多1周
-    let d = firstDayOfMonth.getDay();
-    if (d === 0 || d > 5) {
-        extraWeek = 1;
-    }
-    return Math.ceil(date.getDate() / 7) + extraWeek;
-}
-
-/**
- * 获取指定日期在当前年中的周数并返回
- * @param date 日期对象
- * @returns {number} 当前年中的第几周
- */
-function getWeekOfYear(date) {
-    date = toDate(date);
-    const year = date.getFullYear();
-    let firstDayOfYear = new Date(year, 0, 1);
-    let extraWeek = 0;
-    //超过周5多1周
-    let d = firstDayOfYear.getDay();
-    if (d === 0 || d > 5) {
-        extraWeek = 1;
-    }
-    return Math.ceil(getDayOfYear(date) / 7) + extraWeek;
-}
-
-const INVALID_DATE = '';
-const SearchExp = /y{2,4}|M{1,3}|d{1,4}|h{1,2}|m{1,2}|s{1,2}|Q{1,2}|E{1,2}|W{1,2}|w{1,2}/gm;
-const pad0 = (str) => str.length > 1 ? '' : '0' + str;
-const pad00 = (str) => str.length > 2 ? '' : (str.length > 1 ? '0' + str : '00' + str);
-/**
- * 通过表达式格式化日期时间
- *
- * ```
- * yyyy-MM-dd hh:mm:ss => 2020-12-11 10:09:08
- * ```
- *
- * pattern解释：
- *
- * - `yy` 2位年 - 22
- * - `yyyy` 4位年 - 2022
- * - `M` 1位月(1-12)
- * - `MM` 2位月(01-12)
- * - `MMM` 月描述(一月 - 十二月)
- * - `d` 1位日(1-30/31/29/28)
-  - `dd` 2位日(01-30/31/29/28)
-  - `ddd` 一年中的日(1-365)
-  - `dddd` 一年中的日(001-365)
-  - `h` 1位小时(0-23)
-  - `hh` 2位小时(00-23)
-  - `m` 1位分钟(0-59)
-  - `mm` 2位分钟(00-59)
-  - `s` 1位秒(0-59)
-  - `ss` 2位秒(00-59)
-  - `Q` 季度(1-4)
-  - `QQ` 季度描述(春-冬)
-  - `W` 一年中的周(1-53)
-  - `WW` 一年中的周(01-53)
-  - `w` 一月中的周(1-6)
-  - `ww` 一月中的周描述(第一周 - 第六周)
-  - `E` 星期(1-7)
-  - `EE` 星期描述(星期一 - 星期日)
- *
- * @example
- * //now time
- * console.log(_.formatDate(_.now(),'yyyy-MM-dd hh:mm'))
- * //2/1/2021
- * console.log(_.formatDate('2021-2-1','M/d/yyyy'))
- * //2/1/21
- * console.log(_.formatDate('2021-2-1','M/d/yy'))
- * //02/01/21
- * console.log(_.formatDate('2021-2-1','MM/dd/yy'))
- * //02/01/2021
- * console.log(_.formatDate('2021-2-1','MM/dd/yyyy'))
- * //21/02/01
- * console.log(_.formatDate('2021-2-1','yy/MM/dd'))
- * //2021-02-01
- * console.log(_.formatDate('2021-2-1','yyyy-MM-dd'))
- * //21-12-11 10:09:08
- * console.log(_.formatDate('2021-12-11T10:09:08','yy-MM-dd hh:mm:ss'))
- * //12/11/2020 1009
- * console.log(_.formatDate('2020-12-11 10:09:08','MM/dd/yyyy hhmm'))
- * //2020-12-11 08:00
- * console.log(_.formatDate(1607644800000))
- * //''
- * console.log(_.formatDate('13:02'))
- * //''
- * console.log(_.formatDate(null))
- * //现在时间:(20-12-11 10:09:08)
- * console.log(_.formatDate('2020-12-11 10:09:08','现在时间:(yy-MM-dd hh:mm:ss)'))
- *
- * @param val 需要格式化的值，可以是日期对象或时间字符串或日期毫秒数
- * @param [pattern='yyyy-MM-dd hh:mm:ss'] 格式化模式
- * @returns 格式化后的日期字符串，无效日期返回空字符串
- */
-function formatDate(val, pattern) {
-    pattern = pattern || 'yyyy-MM-dd hh:mm:ss';
-    let formatter = cache[pattern];
-    if (!formatter) {
-        formatter = (date) => {
-            if (!date)
-                return INVALID_DATE;
-            let ptn = pattern + '';
-            if (typeof date === 'string' || typeof date === 'number') {
-                date = toDate(date);
-            }
-            if (date.toString().indexOf('Invalid') > -1)
-                return INVALID_DATE;
-            let valDate = date;
-            return ptn.replace(SearchExp, (tag) => {
-                const cap = tag[0];
-                const month = valDate.getMonth();
-                const locale = Locale[Lang];
-                if (cap === 'y') {
-                    const year = valDate.getFullYear();
-                    return tag === 'yy' ? (year % 100) + '' : year + '';
-                }
-                else if (cap === 'M') {
-                    switch (tag) {
-                        case 'M':
-                            return month + 1 + '';
-                        case 'MM':
-                            return pad0(month + 1 + '');
-                        case 'MMM':
-                            return locale?.months[month] || tag;
-                    }
-                }
-                else if (cap == 'd') {
-                    let dayOfMonth = valDate.getDate();
-                    switch (tag) {
-                        case 'd':
-                            return dayOfMonth + '';
-                        case 'dd':
-                            return pad0(dayOfMonth + '');
-                        case 'ddd':
-                            return getDayOfYear(valDate) + '';
-                        case 'dddd':
-                            return pad00(getDayOfYear(valDate) + '');
-                    }
-                }
-                else if (cap == 'h') {
-                    const val = valDate.getHours() + '';
-                    return tag.length > 1 ? pad0(val) : val;
-                }
-                else if (cap == 'm') {
-                    const val = valDate.getMinutes() + '';
-                    return tag.length > 1 ? pad0(val) : val;
-                }
-                else if (cap == 's') {
-                    const val = valDate.getSeconds() + '';
-                    return tag.length > 1 ? pad0(val) : val;
-                }
-                else if (cap == 'Q') {
-                    const quarter = Math.ceil(month / 3);
-                    if (tag === 'Q')
-                        return quarter + '';
-                    return locale?.quarters[quarter - 1] || tag;
-                }
-                else if (cap === 'W') {
-                    const val = getWeekOfYear(valDate) + '';
-                    return tag.length > 1 ? pad0(val) : val;
-                }
-                else if (cap === 'w') {
-                    const val = getWeekOfMonth(valDate);
-                    if (tag === 'w')
-                        return val + '';
-                    return locale?.weeks[val - 1] || tag;
-                }
-                else if (cap === 'E') {
-                    let dayOfWeek = valDate.getDay();
-                    dayOfWeek = dayOfWeek < 1 ? 7 : dayOfWeek;
-                    return tag === 'E'
-                        ? dayOfWeek + ''
-                        : locale?.days[dayOfWeek - 1] || tag;
-                }
-                return tag;
-            });
-        };
-    }
-    return formatter(val);
-}
-const cache = {};
-const Locale = {
-    'zh-CN': {
-        quarters: ['一季度', '二季度', '三季度', '四季度'],
-        months: [
-            '一',
-            '二',
-            '三',
-            '四',
-            '五',
-            '六',
-            '七',
-            '八',
-            '九',
-            '十',
-            '十一',
-            '十二',
-        ].map((v) => v + '月'),
-        weeks: ['一', '二', '三', '四', '五', '六'].map((v) => '第' + v + '周'),
-        days: ['一', '二', '三', '四', '五', '六', '日'].map((v) => '星期' + v),
-    },
-};
-let Lang = globalThis.navigator?.language || 'zh-CN';
-/**
- * 设置不同locale的配置
- * @param lang 语言标记，默认跟随系统
- * @param options 格式化选项
- * @param options.quarters 季度描述，默认"一 - 四季度"
- * @param options.months 月度描述，默认"一 - 十二月"
- * @param options.weeks 一月中的周描述，默认"第一 - 六周"
- * @param options.days 星期描述，默认"星期一 - 日"
- */
-formatDate.locale = function (lang, options) {
-    let locale = Locale[lang];
-    if (!locale) {
-        locale = Locale[lang] = { quarters: [], months: [], weeks: [], days: [] };
-    }
-    if (options?.quarters) {
-        locale.quarters = options?.quarters;
-    }
-    if (options?.months) {
-        locale.months = options?.months;
-    }
-    if (options?.weeks) {
-        locale.weeks = options?.weeks;
-    }
-    if (options?.days) {
-        locale.days = options?.days;
-    }
-};
-/**
- * 可以设置当前格式化使用的语言
- * @param lang 语言标记，默认跟随系统
- */
-formatDate.lang = function (lang) {
-    Lang = lang;
-};
-
-/**
- * 比较两个日期是否为同一天
- * @example
- * //true
- * console.log(_.isSameDay(new Date('2020-05-01'),'2020/5/1'))
- * //false
- * console.log(_.isSameDay(new Date('2020-05-01 23:59:59.999'),'2020/5/2 0:0:0.000'))
- *
- * @param date1 日期对象或合法格式的日期时间字符串
- * @param date2 同date1
- * @returns
- */
-function isSameDay(date1, date2) {
-    return (new Date(date1).setHours(0, 0, 0, 0) ===
-        new Date(date2).setHours(0, 0, 0, 0));
-}
-
-/**
- * 返回13位日期毫秒数，表示从1970 年 1 月 1 日 00:00:00 (UTC)起到当前时间
- *
- * @example
- * //now time
- * console.log(_.now())
- *
- * @returns 带毫秒数的时间戳
- */
-function now() {
-    return Date.now();
-}
-
-var datetime = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  addTime: addTime,
-  compareDate: compareDate,
-  formatDate: formatDate,
-  getDayOfYear: getDayOfYear,
-  getWeekOfMonth: getWeekOfMonth,
-  getWeekOfYear: getWeekOfYear,
-  isLeapYear: isLeapYear,
-  isSameDay: isSameDay,
-  now: now,
-  toDate: toDate
-});
-
-/**
- * 判断参数是否为函数对象
- *
- * @example
- * //true
- * console.log(_.isFunction(new Function()))
- * //true
- * console.log(_.isFunction(()=>{}))
- *
- * @param v
- * @returns
- */
-function isFunction$1(v) {
-    return typeof v == 'function' || v instanceof Function;
-}
-
-/**
- * 判断参数是否为类数组对象
- *
- * @example
- * //true
- * console.log(_.isArrayLike('abc123'))
- * //true
- * console.log(_.isArrayLike([]))
- * //true
- * console.log(_.isArrayLike(document.body.children))
- *
- * @param v
- * @returns
- */
-function isArrayLike$1(v) {
-    if (isString$1(v) && v.length > 0)
-        return true;
-    if (!isObject$1(v))
-        return false;
-    // 具有length属性
-    const list = v;
-    if (list.length !== undefined) {
-        const proto = list.constructor.prototype;
-        // NodeList/HTMLCollection/CSSRuleList/...
-        if (isFunction$1(proto.item))
-            return true;
-        // arguments
-        if (isFunction$1(list[Symbol.iterator]))
-            return true;
-    }
-    return false;
-}
-
-/**
- * 对字符串进行trim后进行验证。如果非字符串，转为字符串后进行验证
- * @example
- * //true
- * console.log(_.isBlank('  '))
- * //true
- * console.log(_.isBlank(null))
- * //false
- * console.log(_.isBlank({}))
- * //false
- * console.log(_.isBlank('     1'))
- *
- * @param v 字符串
- * @returns 如果字符串是null/undefined/\t \n \f \r或trim后长度为0，返回true
- * @since 0.16.0
- */
-function isBlank(v) {
-    return v === null || v === undefined || (v + '').trim().replace(/\t|\n|\f|\r/mg, '').length === 0;
-}
-
-/**
- * 判断值是不是一个布尔值
- *
- * @example
- * //true
- * console.log(_.isBoolean(false))
- * //false
- * console.log(_.isBoolean('true'))
- * //false
- * console.log(_.isBoolean(1))
- *
- * @param v
- * @returns
- */
-function isBoolean(v) {
-    return typeof v === 'boolean' || v instanceof Boolean;
-}
-
-/**
- * 判断值是不是一个Date实例
- *
- * @example
- * //true
- * console.log(_.isDate(new Date()))
- * //false
- * console.log(_.isDate('2020/1/1'))
- *
- * @param v
- * @returns
- */
-function isDate(v) {
-    return v instanceof Date;
-}
-
-/**
- * isUndefined()的反向验证函数，在需要验证是否变量存在的场景下非常有用
- * @example
- * //true
- * console.log(_.isDefined(null))
- * //false
- * console.log(_.isDefined(undefined))
- *
- * @param v
- * @returns
- */
-function isDefined(v) {
-    return v !== undefined;
-}
-
-/**
- * 判断值是不是Element的实例
- *
- * @example
- * //true
- * console.log(_.isElement(document.body))
- * //false
- * console.log(_.isElement(document))
- *
- * @param v
- * @returns
- * @since 1.0.0
- */
-function isElement(v) {
-    return typeof v === 'object' && v instanceof Element;
-}
-
-/**
- * 判断参数是否为空，包括`null/undefined/空字符串/0/[]/{}`都表示空
- *
- * 注意：相比isBlank，isEmpty只判断字符串长度是否为0
- *
- * @example
- * //true
- * console.log(_.isEmpty(null))
- * //true
- * console.log(_.isEmpty([]))
- * //false
- * console.log(_.isEmpty({x:1}))
- *
- * @param v
- * @returns
- */
-function isEmpty(v) {
-    if (null === v)
-        return true;
-    if (undefined === v)
-        return true;
-    if ('' === v)
-        return true;
-    if (0 === v)
-        return true;
-    if (isArrayLike$1(v) && v.length < 1)
-        return true;
-    if (v instanceof Object && Object.keys(v).length < 1)
-        return true;
-    return false;
-}
-
-function eq$1(a, b) {
-    if (Number.isNaN(a) && Number.isNaN(b))
-        return true;
-    return a === b;
-}
-
-/**
- * 同<code>isEqual</code>，但支持自定义比较器
- *
- * @example
- * //true
- * console.log(_.isEqualWith([new Date('2010-2-1'),'abcd'],['2010/2/1','Abcd'],(av,bv)=>_.isDate(av)?av.toLocaleDateString() == bv:_.test(av,bv,'i')))
- *
- * @param a
- * @param b
- * @param [comparator] 比较器，参数(v1,v2)，返回true表示匹配。如果返回undefined使用对应内置比较器处理
- * @returns
- * @since 1.0.0
- */
-function isEqualWith(a, b, comparator) {
-    let cptor = comparator;
-    if (!isObject$1(a) || !isObject$1(b)) {
-        return (cptor || eq$1)(a, b);
-    }
-    let keys = [];
-    if ((keys = Object.keys(a)).length !== Object.keys(b).length)
-        return false;
-    if (isDate(a) && isDate(b))
-        return cptor ? cptor(a, b) : a.getTime() === b.getTime();
-    if (isRegExp$1(a) && isRegExp$1(b))
-        return cptor ? cptor(a, b) : a.toString() === b.toString();
-    for (let i = keys.length; i--;) {
-        const k = keys[i];
-        const v1 = a[k], v2 = b[k];
-        if (!isEqualWith(v1, v2, cptor)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-/**
- * 判断两个值是否相等，对于非基本类型会进行深度比较，可以比较日期/正则/数组/对象等
- *
- * @example
- * //false
- * console.log(_.isEqual(1,'1'))
- * //true,false
- * let o = {a:1,b:[2,{c:['3','x']}]}
- * let oo = {a:1,b:[2,{c:['3','x']}]}
- * console.log(_.isEqual(o,oo),o == oo)
- * //true
- * console.log(_.isEqual([new Date('2010-2-1'),/12/],[new Date(1264953600000),new RegExp('12')]))
- * //false
- * console.log(_.isEqual([new Date('2010-2-1'),'abcd'],['2010/2/1','Abcd']))
- *
- * @param a
- * @param b
- * @returns
- * @since 1.0.0
- */
-function isEqual(a, b) {
-    return isEqualWith(a, b);
-}
-
-/**
- * 判断值是不是异常对象
- *
- * @example
- * //true
- * console.log(_.isError(new TypeError))
- * //false
- * console.log(_.isError(Error))
- * //true
- * try{a=b}catch(e){console.log(_.isError(e))}
- *
- * @param v
- * @returns
- * @since 1.0.0
- */
-function isError(v) {
-    return typeof v === 'object' && v instanceof Error;
-}
-
-/**
- * 判断值是不是有限数字
- *
- * @example
- * //false
- * console.log(_.isFinite('0'))
- * //true
- * console.log(_.isFinite(0))
- * //true
- * console.log(_.isFinite(Number.MAX_VALUE))
- * //true
- * console.log(_.isFinite(99999999999999999999999999999999999999999999999999999999999999999999999))
- * //false
- * console.log(_.isFinite(Infinity))
- *
- * @param v
- * @returns
- * @since 1.0.0
- */
-function isFinite(v) {
-    return Number.isFinite(v);
-}
-
-/**
- * 判断值是不是一个Map对象
- *
- * @example
- * //true
- * console.log(_.isMap(new Map()))
- * //false
- * console.log(_.isMap(new WeakMap()))
- *
- * @param v
- * @returns
- */
-function isMap$1(v) {
-    return v instanceof Map;
-}
-
-/**
- * 检测props对象中的所有属性是否在object中存在并使用自定义比较器对属性值进行对比。可以用于对象的深度对比。
- * 当comparator参数是默认值时，与<code>isMath</code>函数相同
- *
- * @example
- * let target = {a:{x:1,y:2},b:1}
- * //true
- * console.log(_.isMatchWith(target,{b:1}))
- * //false
- * console.log(_.isMatchWith(target,{b:'1'}))
- *
- * target = {a:null,b:0}
- * //true
- * console.log(_.isMatchWith(target,{a:'',b:'0'},(a,b)=>_.isEmpty(a) && _.isEmpty(b)?true:a==b))
- *
- * @param target 如果不是对象类型，返回false
- * @param props 对比属性对象，如果是nil，返回true
- * @param [comparator=eq] 比较器，参数(object[k],props[k],k,object,props)，返回true表示匹配
- * @returns 匹配所有props返回true
- * @since 0.18.1
- */
-function isMatchWith$1(target, props, comparator = eq$1) {
-    if (isNil$2(props))
-        return true;
-    const ks = Object.keys(props);
+function checkTarget(target) {
+    if (target === null || target === undefined)
+        return {};
     if (!isObject$1(target))
-        return false;
-    let rs = true;
-    for (let i = ks.length; i--;) {
-        const k = ks[i];
-        const v1 = target[k];
-        const v2 = props[k];
-        if (isObject$1(v1) && isObject$1(v2)) {
-            if (!isMatchWith$1(v1, v2, comparator)) {
-                rs = false;
-                break;
-            }
-        }
-        else {
-            if (!comparator(v1, v2, k, target, props)) {
-                rs = false;
-                break;
-            }
-        }
+        return new target.constructor(target);
+    if (!Object.isExtensible(target) ||
+        Object.isFrozen(target) ||
+        Object.isSealed(target)) {
+        return target;
     }
-    return rs;
-}
-
-/**
- * 检测props对象中的所有属性是否在object中存在，可用于对象的深度对比。
- * 使用<code>eq</code>作为值对比逻辑
- *
- * @example
- * let target = {a:{x:1,y:2},b:1}
- * //true
- * console.log(_.isMatch(target,{b:1}))
- * //true
- * console.log(_.isMatch(target,{a:{x:1}}))
- *
- * target = [{x:1,y:2},{b:1}]
- * //true
- * console.log(_.isMatch(target,{1:{b:1}}))
- * //true
- * console.log(_.isMatch(target,[{x:1}]))
- *
- * @param object
- * @param props 对比属性对象，如果是null，返回true
- * @returns 匹配所有props返回true
- * @since 0.17.0
- */
-function isMatch$1(object, props) {
-    return isMatchWith$1(object, props, eq$1);
-}
-
-/**
- * 判断值是否NaN本身。与全局isNaN函数相比，只有NaN值本身才会返回true
- * <p>
- * isNaN(undefined) => true <br>
- * _.isNaN(undefined) => false
- * </p>
- *
- * @example
- * //true
- * console.log(_.isNaN(NaN))
- * //false
- * console.log(_.isNaN(null))
- * //false
- * console.log(_.isNaN(undefined))
- *
- * @param v
- * @returns
- */
-function isNaN$1(v) {
-    return Number.isNaN(v);
-}
-
-/**
- * 判断参数是否为null
- *
- * @example
- * //true
- * console.log(_.isNull(null))
- * //false
- * console.log(_.isNull(undefined))
- *
- * @param v
- * @returns
- */
-function isNull(v) {
-    return null === v;
-}
-
-/**
- * 判断参数是否为数字类型值
- *
- * @example
- * //true
- * console.log(_.isNumber(1))
- * //true
- * console.log(_.isNumber(Number.MAX_VALUE))
- * //false
- * console.log(_.isNumber('1'))
- *
- * @param v
- * @returns
- */
-function isNumber(v) {
-    return typeof v === 'number' || v instanceof Number;
-}
-
-/**
- * 判断值是不是一个朴素对象，即通过Object创建的对象
- *
- * @example
- * //false
- * console.log(_.isPlainObject(1))
- * //false
- * console.log(_.isPlainObject(new String()))
- * //true
- * console.log(_.isPlainObject({}))
- * //false
- * console.log(_.isPlainObject(null))
- * //true
- * console.log(_.isPlainObject(new Object))
- * function Obj(){}
- * //false
- * console.log(_.isPlainObject(new Obj))
- *
- * @param v value
- * @returns 是否朴素对象
- * @since 0.19.0
- */
-function isPlainObject(v) {
-    return isObject$1(v) && v.constructor === Object.prototype.constructor;
-}
-
-/**
- * 判断值是不是一个安全整数
- *
- * @example
- * //true
- * console.log(_.isSafeInteger(-0))
- * //true
- * console.log(_.isSafeInteger(5.0))
- * //false
- * console.log(_.isSafeInteger(5.000000000000001))
- * //true
- * console.log(_.isSafeInteger(5.0000000000000001))
- * //false
- * console.log(_.isSafeInteger('5'))
- * //true
- * console.log(_.isSafeInteger(Number.MAX_SAFE_INTEGER))
- * //false
- * console.log(_.isSafeInteger(Number.MAX_VALUE))
- *
- * @param v
- * @returns
- */
-function isSafeInteger(v) {
-    return Number.isSafeInteger(v);
-}
-
-/**
- * 判断值是不是一个Set对象
- *
- * @example
- * //false
- * console.log(_.isSet(new WeakSet))
- * //true
- * console.log(_.isSet(new Set))
- *
- * @param v
- * @returns
- */
-function isSet$1(v) {
-    return v instanceof Set;
-}
-
-/**
- * 判断值是不是Symbol
- *
- * @example
- * //true
- * console.log(_.isSymbol(Symbol()))
- *
- * @param v
- * @returns
- * @since 1.0.0
- */
-function isSymbol(v) {
-    return typeof v === 'symbol';
-}
-
-/**
- * 判断参数是否为undefined
- * @example
- * //true
- * console.log(_.isUndefined(undefined))
- * //false
- * console.log(_.isUndefined(null))
- *
- * @param v
- * @returns
- */
-function isUndefined$1(v) {
-    return v === undefined;
-}
-
-/**
- * 判断值是不是一个WeakMap对象
- *
- * @example
- * //true
- * console.log(_.isWeakMap(new WeakMap))
- * //false
- * console.log(_.isWeakMap(new Map))
- *
- * @param v
- * @returns
- */
-function isWeakMap(v) {
-    return v instanceof WeakMap;
-}
-
-/**
- * 判断值是不是一个WeakSet对象
- *
- * @example
- * //true
- * console.log(_.isWeakSet(new WeakSet))
- * //false
- * console.log(_.isWeakSet(new Set))
- *
- * @param v
- * @returns
- */
-function isWeakSet(v) {
-    return v instanceof WeakSet;
-}
-
-var is = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  isArray: isArray$1,
-  isArrayLike: isArrayLike$1,
-  isBlank: isBlank,
-  isBoolean: isBoolean,
-  isDate: isDate,
-  isDefined: isDefined,
-  isElement: isElement,
-  isEmpty: isEmpty,
-  isEqual: isEqual,
-  isEqualWith: isEqualWith,
-  isError: isError,
-  isFinite: isFinite,
-  isFunction: isFunction$1,
-  isInteger: isInteger,
-  isMap: isMap$1,
-  isMatch: isMatch$1,
-  isMatchWith: isMatchWith$1,
-  isNaN: isNaN$1,
-  isNil: isNil$2,
-  isNull: isNull,
-  isNumber: isNumber,
-  isObject: isObject$1,
-  isPlainObject: isPlainObject,
-  isRegExp: isRegExp$1,
-  isSafeInteger: isSafeInteger,
-  isSet: isSet$1,
-  isString: isString$1,
-  isSymbol: isSymbol,
-  isUndefined: isUndefined$1,
-  isWeakMap: isWeakMap,
-  isWeakSet: isWeakSet
-});
-
-function identity$1(v) {
-    return v;
 }
 
 function eachSources(target, sources, handler, afterHandler) {
@@ -4959,18 +7012,6 @@ function eachSources(target, sources, handler, afterHandler) {
             afterHandler(v, src[k], target[k], k, src, target);
         });
     });
-}
-
-function checkTarget(target) {
-    if (target === null || target === undefined)
-        return {};
-    if (!isObject$1(target))
-        return new target.constructor(target);
-    if (!Object.isExtensible(target) ||
-        Object.isFrozen(target) ||
-        Object.isSealed(target)) {
-        return target;
-    }
 }
 
 /**
@@ -5033,82 +7074,32 @@ function cloneBuiltInObject(obj) {
         rs = new Date(obj.getTime());
     }
     else if (isBoolean(obj)) {
-        rs = Boolean(obj);
+        rs = new Boolean(obj.valueOf());
     }
     else if (isString$1(obj)) {
-        rs = String(obj);
+        rs = new String(obj);
     }
     else if (isRegExp$1(obj)) {
         rs = new RegExp(obj);
     }
+    else if (isNumber(obj)) {
+        rs = new Number(obj);
+    }
+    else if (isSet$1(obj)) {
+        rs = new Set(obj);
+    }
+    else if (isMap$1(obj)) {
+        rs = new Map(obj);
+    }
     return rs;
 }
 
-/**
- * 浅层复制对象，支持赋值处理器
- * 如果obj是基本类型，返回原值
- * 如果obj是函数类型，返回原值
- *
- * 只复制对象的自身可枚举属性
- *
- * @example
- * //{x: 1, y: 2, z: null}
- * console.log(_.cloneWith({x:1,y:2,z:3},(v,k)=>k=='z'?null:v))
- * //null
- * console.log(_.cloneWith(null))
- *
- * @param obj
- * @param  {Function} [handler=identity] (obj[k],k) 自定义赋值处理器，返回赋予新对象[k]的值
- * @returns 被复制的新对象
- */
-function cloneWith(obj, handler = identity$1) {
+function cloneWith(obj, handler, skip = (value, key) => false) {
     if (!isObject$1(obj))
         return obj;
     if (isFunction$1(obj))
         return obj;
-    let copy = cloneBuiltInObject(obj);
-    if (copy !== null)
-        return copy;
-    copy = new obj.constructor();
-    return assignWith(copy, obj, (sv, tv, k) => handler(sv, k));
-}
-
-/**
- * 浅层复制对象
- * 如果是基本类型，返回原值
- * 如果是函数类型，返回原值
- * 只复制对象的自身可枚举属性
- *
- * @example
- * //null
- * console.log(_.clone(null))
- *
- * @param obj
- * @returns 被复制的新对象
- */
-function clone(obj) {
-    return cloneWith(obj, identity$1);
-}
-
-/**
- * 完整复制对象,可以保持被复制属性的原有类型。支持赋值处理器
- *
- * 如果obj是基本类型，返回原值
- * 如果obj是函数类型，返回原值
- * 只复制对象的自身可枚举属性
- *
- * @example
- * //true
- * console.log(_.cloneDeepWith({d:new Date}).d instanceof Date)
- *
- * @param obj
- * @param handler (obj[k],k,obj) 自定义赋值处理器，返回赋予新对象[k]的值。默认 `identity`
- * @returns 被复制的新对象
- */
-function cloneDeepWith(obj, handler) {
-    if (!isObject$1(obj))
-        return obj;
-    if (isFunction$1(obj))
+    if (isElement(obj))
         return obj;
     let copy = cloneBuiltInObject(obj);
     if (copy !== null)
@@ -5116,8 +7107,42 @@ function cloneDeepWith(obj, handler) {
     copy = new obj.constructor();
     const propNames = Object.keys(obj);
     propNames.forEach((p) => {
-        let newProp = (handler || identity$1)(obj[p], p, obj);
-        if (isObject$1(newProp)) {
+        let skipTag = skip(obj[p], p);
+        if (skipTag)
+            return;
+        let newProp = (handler || identity$1)(obj[p], p);
+        try {
+            // maybe unwritable
+            ;
+            copy[p] = newProp;
+        }
+        catch (e) { }
+    });
+    return copy;
+}
+
+function clone(obj) {
+    return cloneWith(obj, identity$1);
+}
+
+function cloneDeepWith(obj, handler, skip = (value, key) => false) {
+    if (!isObject$1(obj))
+        return obj;
+    if (isFunction$1(obj))
+        return obj;
+    if (isElement(obj))
+        return obj;
+    let copy = cloneBuiltInObject(obj);
+    if (copy !== null)
+        return copy;
+    copy = new obj.constructor();
+    const propNames = Object.keys(obj);
+    propNames.forEach((p) => {
+        let skipTag = skip(obj[p], p);
+        if (skipTag)
+            return;
+        let newProp = (handler || clone)(obj[p], p, obj);
+        if (isObject$1(newProp) && newProp !== obj[p]) {
             newProp = cloneDeepWith(newProp, handler);
         }
         try {
@@ -5130,22 +7155,8 @@ function cloneDeepWith(obj, handler) {
     return copy;
 }
 
-/**
- * 完整复制对象,可以保持被复制属性的原有类型
- *
- * 如果obj是基本类型，返回原值
- * 如果obj是函数类型，返回原值
- * 只复制对象的自身可枚举属性
- *
- * @example
- * //true
- * console.log(_.cloneDeep({d:new Date}).d instanceof Date)
- *
- * @param obj
- * @returns 被复制的新对象
- */
 function cloneDeep(obj) {
-    return cloneDeepWith(obj, identity$1);
+    return cloneDeepWith(obj, clone);
 }
 
 /**
@@ -5227,143 +7238,6 @@ function eq$2(a, b) {
     return eq$1(a, b);
 }
 
-function toPath$1$1(path) {
-    let chain = path;
-    if (isArray$1(chain)) {
-        chain = chain.join('.');
-    }
-    else {
-        chain += '';
-    }
-    const rs = (chain + '')
-        .replace(/\[([^\]]+)\]/gm, '.$1')
-        .replace(/^\./g, '')
-        .split('.');
-    return rs;
-}
-
-/**
- * 通过path获取对象属性值
- *
- * @example
- * //2
- * console.log(_.get([1,2,3],1))
- * //Holyhigh
- * console.log(_.get({a:{b:[{x:'Holyhigh'}]}},['a','b',0,'x']))
- * //Holyhigh2
- * console.log(_.get({a:{b:[{x:'Holyhigh2'}]}},'a.b.0.x'))
- * //Holyhigh
- * console.log(_.get({a:{b:[{x:'Holyhigh'}]}},'a.b[0].x'))
- * //hi
- * console.log(_.get([[null,[null,null,'hi']]],'[0][1][2]'))
- * //not find
- * console.log(_.get({},'a.b[0].x','not find'))
- *
- * @param obj 需要获取属性值的对象，如果obj不是对象(isObject返回false)，则返回defaultValue
- * @param path 属性路径，可以是索引数字，字符串key，或者多级属性数组
- * @param [defaultValue] 如果path未定义，返回默认值
- * @returns 属性值或默认值
- */
-function get$1(obj, path, defaultValue) {
-    if (!isObject$1(obj))
-        return defaultValue;
-    const chain = toPath$1$1(path);
-    let target = obj;
-    for (let i = 0; i < chain.length; i++) {
-        const seg = chain[i];
-        target = target[seg];
-        if (!target)
-            break;
-    }
-    if (target === undefined)
-        target = defaultValue;
-    return target;
-}
-
-/**
- * 创建一个函数，该函数返回指定对象的path属性值
- * @example
- * const libs = [
- *  {name:'func.js',platform:['web','nodejs'],tags:{utils:true},js:false},
- *  {name:'juth2',platform:['web','java'],tags:{utils:false,middleware:true},js:true},
- *  {name:'soya2d',platform:['web'],tags:{utils:true},js:true}
- * ];
- * //[true,false,true]
- * console.log(_.map(libs,_.prop('tags.utils')))
- * //nodejs
- * console.log(_.prop(['platform',1])(libs[0]))
- *
- * @param path
- * @returns 接收一个对象作为参数的函数
- * @since 0.17.0
- */
-function prop$1(path) {
-    return (obj) => {
-        return get$1(obj, path);
-    };
-}
-
-/**
- * 解析path并返回数组
- * @example
- * //['a', 'b', '2', 'c']
- * console.log(_.toPath('a.b[2].c'))
- * //['a', 'b', 'c', '1']
- * console.log(_.toPath(['a','b','c[1]']))
- * //['1']
- * console.log(_.toPath(1))
- *
- * @param path 属性路径，可以是数字索引，字符串key，或者多级属性数组
- * @returns path数组
- * @since 0.16.0
- */
-function toPath$2(path) {
-    return toPath$1$1(path);
-}
-
-/**
- * 创建一个函数，该函数接收一个对象为参数并返回对该对象使用props进行验证的的断言结果。
- *
- *
- * @example
- * const libs = [
- *  {name:'func.js',platform:['web','nodejs'],tags:{utils:true},js:true},
- *  {name:'juth2',platform:['web','java'],tags:{utils:false,middleware:true},js:false},
- *  {name:'soya2d',platform:['web'],tags:{utils:true},js:false}
- * ];
- *
- * //[{func.js...}]
- * console.log(_.filter(libs,_.matcher({tags:{utils:true},js:true})))
- *
- * @param props 断言条件对象
- * @returns matcher(v)函数
- * @since 0.17.0
- */
-function matcher$1(props) {
-    return (obj) => {
-        return isMatch$1(obj, props);
-    };
-}
-
-function iteratee$1(value) {
-    if (isUndefined$1(value)) {
-        return identity$1;
-    }
-    else if (isFunction$1(value)) {
-        return value;
-    }
-    else if (isString$1(value)) {
-        return prop$1(value);
-    }
-    else if (isArray$1(value)) {
-        return prop$1(toPath$2(value));
-    }
-    else if (isObject$1(value)) {
-        return matcher$1(value);
-    }
-    return () => false;
-}
-
 /**
  * 对`object`内的所有属性进行断言并返回第一个匹配的属性key
  *
@@ -5438,10 +7312,18 @@ function fromPairs(pairs) {
  * @returns 函数名数组
  * @since 0.18.0
  */
-function functions$1(obj) {
+function functions(obj) {
     let rs = [];
-    for (let k in obj) {
-        if (isFunction$1(obj[k])) {
+    let ks = Object.keys(obj);
+    //通过描述信息value判断而不是直接获取obj[k]可以避免getter的直接调用
+    // let descrs = Object.getOwnPropertyDescriptors<Record<string, any>>(obj)
+    // let ks = Object.keys(descrs)
+    for (const k of ks) {
+        let descr = Object.getOwnPropertyDescriptor(obj, k);
+        if (!descr)
+            continue;
+        // let { value } = descrs[k]
+        if (isFunction$1(descr.value)) {
             rs.push(k);
         }
     }
@@ -5449,7 +7331,7 @@ function functions$1(obj) {
 }
 
 /**
- * 检查指定key是否存在于指定的obj中
+ * 检查指定key是否存在于指定的obj中（不含prototype中）
  *
  * @example
  * //true
@@ -5463,40 +7345,10 @@ function has(obj, key) {
     return obj && obj.hasOwnProperty && obj.hasOwnProperty(key);
 }
 
-/**
- * 返回对象的所有key数组
- *
- * > 只返回对象的自身可枚举属性
- *
- * @example
- * let f = new Function("this.a=1;this.b=2;");
- * f.prototype.c = 3;
- * //[a,b]
- * console.log(_.keys(new f()))
- *
- * @param obj
- * @returns 对象的key
- */
-function keys$1(obj) {
-    if (obj === null || obj === undefined)
-        return [];
-    return Object.keys(obj);
-}
-
-/**
- * 返回对象的所有key数组
- * 包括原型链中的属性key
- *
- * @example
- * let f = new Function("this.a=1;this.b=2;");
- * f.prototype.c = 3;
- * //[a,b,c]
- * console.log(_.keysIn(new f()))
- *
- * @param obj
- * @returns 对象的key
- */
 function keysIn(obj) {
+    if (isMap$1(obj)) {
+        return Array.from(obj.keys());
+    }
     const rs = [];
     // eslint-disable-next-line guard-for-in
     for (const k in obj) {
@@ -5511,93 +7363,6 @@ function noop() {
 }
 
 /**
- * 返回对象的所有value数组
- * <div class="alert alert-secondary">
-      只返回对象的自身可枚举属性
-    </div>
- *
- *
- * @example
- * let f = new Function("this.a=1;this.b=2;");
- * f.prototype.c = 3;
- * //[1,2]
- * console.log(_.values(new f()))
- *
- * @param obj
- * @returns 对象根属性对应的值列表
- */
-function values$1(obj) {
-    return keys$1(obj).map((k) => obj[k]);
-}
-
-/**
- * 把一个集合对象转为array对象。对于非集合对象，
- * <ul>
- * <li>字符串 - 每个字符都会变成数组的元素</li>
- * <li>其他情况 - 返回包含一个collection元素的数组</li>
- * </ul>
- *
- * @example
- * //[1,2,3]
- * console.log(_.toArray(new Set([1,2,3])))
- * //['a','b','c']
- * console.log(_.toArray('abc'))
- * //[1,2,'b']
- * console.log(_.toArray({x:1,y:2,z:'b'}))
- * //[[1, 'a'], [3, 'b'], ['a', 5]]
- * console.log(_.toArray(new Map([[1,'a'],[3,'b'],['a',5]])))
- *
- * @param collection 如果是Map/Object对象会转换为值列表
- *
- * @returns 转换后的数组对象
- */
-function toArray$1(collection) {
-    if (isArray$1(collection))
-        return collection.concat();
-    if (isFunction$1(collection))
-        return [collection];
-    if (isSet$1(collection)) {
-        return Array.from(collection);
-    }
-    else if (isString$1(collection)) {
-        return collection.split('');
-    }
-    else if (isArrayLike$1(collection)) {
-        return Array.from(collection);
-    }
-    else if (isMap$1(collection)) {
-        return Array.from(collection.values());
-    }
-    else if (isObject$1(collection)) {
-        return values$1(collection);
-    }
-    return [collection];
-}
-
-/**
- * 合并数组或值并返回新数组，元素可以重复。基于 `Array.prototype.concat` 实现
- *
- * @example
- * //[a/b/a]
- * console.log(_.concat([{name:'a'},{name:'b'}],[{name:'a'}]))
- * //[1, 2, 3, 1, 2]
- * console.log(_.concat([1,2,3],[1,2]))
- * //[1, 2, 3, 1, 2, null, 0]
- * console.log(_.concat([1,2,3],[1,2],null,0))
- * //[1, 2, 3, 1, 2, doms..., 0, null]
- * console.log(_.concat([1,2,3],[1,2],document.body.children,0,null))
- *
- * @param arrays 1-n个数组对象
- * @returns 如果参数为空，返回空数组
- */
-function concat(...arrays) {
-    if (arrays.length < 1)
-        return [];
-    arrays = arrays.map((alk) => (isArrayLike$1(alk) ? toArray$1(alk) : alk));
-    return toArray$1(arrays[0]).concat(...arrays.slice(1));
-}
-
-/**
  * 与<code>merge</code>相同，但支持自定义处理器
  *
  * > 该函数会修改目标对象
@@ -5607,8 +7372,9 @@ function concat(...arrays) {
  * console.log(_.mergeWith({x:1,y:{a:1,b:2,c:3}},{x:2,y:{a:2,d:3}},{y:{b:4}},(sv,tv,k)=>k=='d'?sv*9:undefined))
  *
  * @param target 目标对象
- * @param sources 1-n个源对象
- * @param [handler=noop] (src[k],target[k],k,src,target,chain) 自定义赋值处理器，返回赋予target[k]的值
+ * @param sources (...src[,handler(src[k],target[k],k,src,target,chain)])
+ * src - 1-n个源对象;
+ * handler - 自定义赋值处理器，返回赋予target[k]的值。默认使用<code>noop</code>
  * @returns 返回target
  * @since 0.22.0
  */
@@ -5698,48 +7464,6 @@ function omitBy(obj, predicate) {
 }
 
 /**
- * 按照指定的嵌套深度递归遍历数组，并将所有元素与子数组中的元素合并为一个新数组返回
- *
- * @example
- * //[1,2,3,4,5]
- * console.log(_.flat([1,[2,3],[4,5]]))
- * //[1,2,3,4,5,[6,7]]
- * console.log(_.flat([1,[2,3],[4,5,[6,7]]]))
- * //[1,2,3,[4]]
- * console.log(_.flat([1,[2,[3,[4]]]],2))
- * //[1,2,1,3,4]
- * console.log(_.flat(new Set([1,1,[2,[1,[3,4]]]]),Infinity))
- *
- * @param array 数组
- * @param [depth=1] 嵌套深度
- * @returns 扁平化后的新数组
- */
-function flat(array, depth = 1) {
-    if (depth < 1)
-        return array.concat();
-    const rs = toArray$1(array).reduce((acc, val) => {
-        return acc.concat(Array.isArray(val) && depth > 0 ? flat(val, depth - 1) : val);
-    }, []);
-    return rs;
-}
-
-/**
- * 无限深度遍历数组，并将所有元素与子数组中的元素合并为一个新数组返回
- *
- * @example
- * //[1,2,1,3,4]
- * console.log(_.flatDeep(new Set([1,1,[2,[1,[3,4]]]])))
- * //[1,2,3,4]
- * console.log(_.flatDeep([1,[2,[3,[4]]]]))
- *
- * @param array 数组
- * @returns 扁平化后的新数组
- */
-function flatDeep(array) {
-    return flat(array, Infinity);
-}
-
-/**
  * 创建一个剔除指定属性的对象子集并返回。与pick()刚好相反
  * @example
  * //{a: 1, c: '3'}
@@ -5759,6 +7483,42 @@ function omit(obj, ...props) {
     return omitBy(obj, (v, k) => {
         return keys.includes(k);
     });
+}
+
+/**
+ * 解析标准/非标准JSON字符串
+ * 如果str非字符串类型，返回原值
+ * 如果str是无效JSON字符串，返回原值
+ *
+ * @example
+ * //{a:1,b:2,c:'3'}
+ * console.log(_.parseJSON("{a:1,b:2,c:'3'}"))
+ * //{a:1,b:2,c:'3"'}
+ * console.log(_.parseJSON(`[{"a":1,"b":2,"c":"3\\""}]`))
+ * //true
+ * console.log(_.parseJSON('true')
+ * //12
+ * console.log(_.parseJSON('12')
+ *
+ *
+ * @param str JSON字符串
+ * @param ignore 如果为true，当值为 NaN/Infinity 时忽略该属性，否则返回值对应字符串。默认false
+ * @returns 解析后的对象或空对象
+ * @since 1.9.0
+ */
+function parseJSON(str, ignore = false) {
+    if (!isString$1(str))
+        return str;
+    let s = (str + '').replace(/:\s*(['`])(.*)\1(?=\s*[},])/mg, ':"$2"').replace(/([{,])\s*([a-zA-Z0-9_$]+)\s*:/mg, '$1"$2":');
+    s = ignore ? s.replace(/[{,]\s*"[a-zA-Z0-9_$]+"\s*:\s*([-+]?NaN|[-+]?Infinity)\s*/mg, '') : s.replace(/:\s*([-+]?NaN|[-+]?Infinity)\s*([,}])/mg, ':"$1"$2');
+    let rs;
+    try {
+        rs = JSON.parse(s);
+    }
+    catch (e) {
+        rs = str;
+    }
+    return rs;
 }
 
 /**
@@ -5785,155 +7545,6 @@ function pickBy(obj, predicate) {
     return rs;
 }
 
-function _eachIterator$1(collection, callback, forRight) {
-    let values;
-    let keys;
-    if (isString$1(collection) || isArrayLike$1(collection)) {
-        let size = collection.length;
-        if (forRight) {
-            while (size--) {
-                const r = callback(collection[size], size, collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            for (let i = 0; i < size; i++) {
-                const r = callback(collection[i], i, collection);
-                if (r === false)
-                    return;
-            }
-        }
-    }
-    else if (isSet$1(collection)) {
-        let size = collection.size;
-        if (forRight) {
-            values = Array.from(collection);
-            while (size--) {
-                const r = callback(values[size], size, collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            values = collection.values();
-            for (let i = 0; i < size; i++) {
-                const r = callback(values.next().value, i, collection);
-                if (r === false)
-                    return;
-            }
-        }
-    }
-    else if (isMap$1(collection)) {
-        let size = collection.size;
-        keys = collection.keys();
-        values = collection.values();
-        if (forRight) {
-            keys = Array.from(keys);
-            values = Array.from(values);
-            while (size--) {
-                const r = callback(values[size], keys[size], collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            for (let i = 0; i < size; i++) {
-                const r = callback(values.next().value, keys.next().value, collection);
-                if (r === false)
-                    return;
-            }
-        }
-    }
-    else if (isObject$1(collection)) {
-        keys = Object.keys(collection);
-        let size = keys.length;
-        if (forRight) {
-            while (size--) {
-                const k = keys[size];
-                const r = callback(collection[k], k, collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            for (let i = 0; i < size; i++) {
-                const k = keys[i];
-                const r = callback(collection[k], k, collection);
-                if (r === false)
-                    return;
-            }
-        }
-    }
-}
-
-function each$1(collection, callback) {
-    _eachIterator$1(collection, callback, false);
-}
-
-/**
- * 对数组进行切片，并返回切片后的新数组，原数组不变。新数组内容是对原数组内容的浅拷贝
- *
- * @example
- * //[2,3,4]
- * console.log(_.slice([1,2,3,4,5],1,4))
- * //[2,3,4,5]
- * console.log(_.slice([1,2,3,4,5],1))
- *
- *
- * @param array 数组
- * @param [begin=0] 切片起始下标，包含下标位置元素
- * @param [end] 切片结束下标，<b>不包含</b>下标位置元素
- * @returns 切片元素组成的新数组
- */
-function slice$1(array, begin, end) {
-    return toArray$1(array).slice(begin || 0, end);
-}
-
-/**
- * 判断集合中是否包含给定的值。使用<code>eq</code>函数进行等值判断。
- *
- * @example
- * //true
- * console.log(_.includes({a:1,b:2},2))
- * //false
- * console.log(_.includes([1,3,5,7,[2]],2))
- * //true
- * console.log(_.includes([1,3,5,7,[2]],3))
- * //false
- * console.log(_.includes([1,3,5,7,[2]],3,2))
- * //true
- * console.log(_.includes([0,null,undefined,NaN],NaN))
- * //true
- * console.log(_.includes('abcdefg','abc'))
- * //false
- * console.log(_.includes('abcdefg','abc',2))
- * //false
- * console.log(_.includes('aBcDeFg','abc'))
- *
- * @param collection 如果集合是map/object对象，则只对value进行比对
- * @param value
- * @param [fromIndex=0] 从集合的fromIndex 索引处开始查找。如果集合是map/object对象，无效
- * @returns 如果包含返回true否则返回false
- */
-function includes(collection, value, fromIndex) {
-    let rs = false;
-    fromIndex = fromIndex || 0;
-    if (isString$1(collection)) {
-        return collection.includes(value, fromIndex);
-    }
-    collection = isArrayLike$1(collection)
-        ? slice$1(collection, fromIndex)
-        : collection;
-    each$1(collection, (v) => {
-        if (eq$1(v, value)) {
-            rs = true;
-            return false;
-        }
-    });
-    return rs;
-}
-
 /**
  * 创建一个指定属性的对象子集并返回
  * @example
@@ -5954,43 +7565,6 @@ function pick(obj, ...props) {
     return pickBy(obj, (v, k) => {
         return includes(keys, k);
     });
-}
-
-/**
- * 通过path设置对象属性值。如果路径不存在则创建，索引会创建数组，属性会创建对象
- * <div class="alert alert-secondary">
-      该函数会修改源对象
-    </div>
-
-    @example
- * //{"a":1,"b":{"c":[undefined,{"x":10}]}}
- * console.log(_.set({a:1},'b.c.1.x',10))
- *
- * @param obj 需要设置属性值的对象，如果obj不是对象(isObject返回false)，直接返回obj
- * @param path 属性路径，可以是索引数字，字符串key，或者多级属性数组
- * @param value 任何值
- * @returns obj 修改后的源对象
- * @since 0.16.0
- */
-function set(obj, path, value) {
-    if (!isObject$1(obj))
-        return obj;
-    const chain = toPath$1$1(path);
-    let target = obj;
-    for (let i = 0; i < chain.length; i++) {
-        const seg = chain[i];
-        const nextSeg = chain[i + 1];
-        let tmp = target[seg];
-        if (nextSeg) {
-            tmp = target[seg] = !tmp ? (isNaN(nextSeg) ? {} : []) : tmp;
-        }
-        else {
-            target[seg] = value;
-            break;
-        }
-        target = tmp;
-    }
-    return obj;
 }
 
 /**
@@ -6024,6 +7598,11 @@ function toObject(...vals) {
         if (isArray$1(v)) {
             const tmp = toObject(...v);
             assign(rs, tmp);
+        }
+        else if (isMap$1(v)) {
+            v.forEach((val, k) => {
+                rs[k] = val;
+            });
         }
         else if (isObject$1(v)) {
             if (key) {
@@ -6091,7 +7670,7 @@ function unset(obj, path) {
         const nextSeg = chain[i + 1];
         let tmp = target[seg];
         if (nextSeg) {
-            tmp = target[seg] = !tmp ? (isNaN(nextSeg) ? {} : []) : tmp;
+            tmp = target[seg] = !tmp ? (isNaN(parseInt(nextSeg)) ? {} : []) : tmp;
         }
         else {
             return delete target[seg];
@@ -6102,7 +7681,7 @@ function unset(obj, path) {
 }
 
 /**
- * 返回对象的所有value数组
+ * 返回对象/Map的所有value数组
  * 包括原型链中的属性
  *
  * @example
@@ -6112,9 +7691,12 @@ function unset(obj, path) {
  * console.log(_.valuesIn(new f()))
  *
  * @param obj
- * @returns 对象根属性对应的值列表
+ * @returns 值列表
  */
 function valuesIn(obj) {
+    if (isMap$1(obj)) {
+        return Array.from(obj.values());
+    }
     return keysIn(obj).map((k) => obj[k]);
 }
 
@@ -6131,7 +7713,7 @@ var object = /*#__PURE__*/Object.freeze({
   eq: eq$2,
   findKey: findKey,
   fromPairs: fromPairs,
-  functions: functions$1,
+  functions: functions,
   get: get$1,
   has: has,
   keys: keys$1,
@@ -6140,6 +7722,7 @@ var object = /*#__PURE__*/Object.freeze({
   mergeWith: mergeWith,
   omit: omit,
   omitBy: omitBy,
+  parseJSON: parseJSON,
   pick: pick,
   pickBy: pickBy,
   prop: prop$1,
@@ -6151,1544 +7734,1347 @@ var object = /*#__PURE__*/Object.freeze({
   valuesIn: valuesIn
 });
 
-function countBy(collection, itee) {
-    const stat = {};
-    const cb = iteratee$1(itee || identity$1);
-    each$1(collection, (el) => {
-        const key = cb(el);
-        if (stat[key] === undefined)
-            stat[key] = 0;
-        stat[key]++;
-    });
-    return stat;
-}
-
-function eachRight(collection, callback) {
-    _eachIterator$1(collection, callback, true);
-}
-
-function every(collection, predicate) {
-    let rs = true;
-    const callback = iteratee$1(predicate);
-    each$1(collection, (v, k, c) => {
-        const r = callback(v, k, c);
-        if (!r) {
-            rs = false;
-            return false;
-        }
-    });
-    return rs;
-}
-
-function filter(collection, predicate) {
-    const rs = [];
-    const callback = iteratee$1(predicate);
-    each$1(collection, (v, k, c) => {
-        const r = callback(v, k, c);
-        if (r) {
-            rs.push(v);
-        }
-    });
-    return rs;
-}
-
-function find(collection, predicate) {
-    const callback = iteratee$1(predicate);
-    let rs;
-    each$1(collection, (v, k, c) => {
-        const r = callback(v, k, c);
-        if (r) {
-            rs = v;
-            return false;
-        }
-    });
-    return rs;
-}
-
-function findLast(collection, predicate) {
-    const callback = iteratee$1(predicate);
-    let rs;
-    eachRight(collection, (v, k, c) => {
-        const r = callback(v, k, c);
-        if (r) {
-            rs = v;
-            return false;
-        }
-    });
-    return rs;
-}
-
-function map(collection, itee) {
-    const rs = [];
-    const cb = iteratee$1(itee);
-    each$1(collection, (v, k, c) => {
-        const r = cb(v, k, c);
-        rs.push(r);
-    });
-    return rs;
-}
-
-function flatMap(collection, itee, depth) {
-    return flat(map(collection, itee), depth || 1);
-}
-
-function flatMapDeep(collection, itee) {
-    return flatMap(collection, itee, Infinity);
+/**
+ * 转换字符串第一个字符为小写并返回
+ *
+ * @example
+ * //'fIRST'
+ * console.log(_.lowerFirst('FIRST'))//mixCase
+ * //'love loves to love Love'
+ * console.log(_.lowerFirst('Love loves to love Love'))//spaces
+ *
+ * @param str
+ * @returns 返回新字符串
+ */
+function lowerFirst(str) {
+    str = toString$1(str);
+    if (str.length < 1)
+        return str;
+    return str[0].toLowerCase() + str.substring(1);
 }
 
 /**
- * 创建一个统计对象，对象的key是iteratee返回的值，对应的值是由所有key对应值组成的数组
- * @example
- * //{true: [1, 3, 5, 7, 9], false: ['a', 'b', 'c', 'd']}
- * console.log(_.groupBy([1,'a',3,'b',5,'c',7,'d',9],_.isNumber))
- * const users = [
- *  {name:'zhangsan',sex:'m',age:33},
- *  {name:'lisi',sex:'f',age:21},
- *  {name:'wangwu',sex:'m',age:25},
- *  {name:'zhaoliu',sex:'m',age:44},
- * ]
- * //{m: [{...},{...},{...}], f: [{...}]} 性别分布统计
- * console.log(_.groupBy(users,u=>u.sex))
- * //{20: [{...},{...}], 30: [{...}], 40: [{...}]} 年龄段分布统计
- * console.log(_.groupBy(users,u=>(u.age/10>>0)*10))
+ * 返回帕斯卡风格的字符串
  *
- * @param collection 任何可遍历的集合类型，比如array / arraylike / set / map / object / ...
- * @param [iteratee=identity] (value)回调函数，返回统计key
- * @returns 统计对象
+ * @example
+ * //'LoveLovesToLoveLove'
+ * console.log(_.pascalCase('Love loves to love Love'))//spaces
+ * //'ABC'
+ * console.log(_.pascalCase('a B-c'))//mixCase
+ * //'GetMyUrl'
+ * console.log(_.pascalCase('getMyURL'))//camelCase
+ * //'AbCdEf'
+ * console.log(_.pascalCase('AB_CD_EF'))//snakeCase
+ * //'ABcDEfGhXy'
+ * console.log(_.pascalCase('aBc   D__EF_GH----XY_'))//mixCase
+ *
+ * @param str
+ * @returns 返回新字符串
+ */
+function pascalCase(str) {
+    let rs = "";
+    str = toString$1(str);
+    let prevType = 0; //1小写字母；2大写字母；3分隔符
+    for (let i = 0; i < str.length; i++) {
+        let s = str[i];
+        if (isLowerCaseChar(s)) {
+            if (prevType === 3 || prevType === 0) {
+                s = s.toUpperCase();
+            }
+            rs += s;
+            prevType = 1;
+            continue;
+        }
+        if (s === " " || s === "-" || s === "_") {
+            if (prevType === 3)
+                continue;
+            prevType = 3;
+            continue;
+        }
+        if (isUpperCaseChar(s)) {
+            if (prevType === 2) {
+                s = s.toLowerCase();
+            }
+            rs += s;
+            prevType = 2;
+        }
+    }
+    return rs;
+}
+
+/**
+ * 返回驼峰风格的字符串
+ *
+ * @example
+ * //'aBC'
+ * console.log(_.camelCase('a-b c'))//mixCase
+ * //'loveLovesToLoveLove'
+ * console.log(_.camelCase('Love loves to love Love'))//spaces
+ * //'aBC'
+ * console.log(_.camelCase('a B-c'))//camelCase
+ * //'getMyUrl'
+ * console.log(_.camelCase('getMyURL'))//camelCase
+ *
+ * @param str
+ * @returns 返回新字符串
+ */
+function camelCase(str) {
+    return lowerFirst(pascalCase(toString$1(str)));
+}
+
+/**
+ * 把字符串的首字母大写，如果首字母不是ascii中的a-z则返回原值
+ *
+ * @example
+ * //Abc
+ * console.log(_.capitalize('abc'))
+ * //''
+ * console.log(_.capitalize(null))
+ * //1
+ * console.log(_.capitalize(1))
+ *
+ *
+ * @param str 字符串
+ * @returns 对于null/undefined会返回空字符串
+ */
+function capitalize(str) {
+    str = toString$1(str);
+    if (str.length < 1)
+        return str;
+    return str[0].toUpperCase() + toString$1(str.substring(1)).toLowerCase();
+}
+
+/**
+ * 验证字符串是否以查询子字符串结尾
+ *
+ * @example
+ * //true
+ * console.log(_.endsWith('func.js','js'))
+ * //true
+ * console.log(_.endsWith('func.js','c',4))
+ *
+ * @param str
+ * @param searchStr 查询字符串
+ * @param position 索引
+ * @returns 如果以查询子字符串开头返回true，否则返回false
+ */
+function endsWith(str, searchStr, position) {
+    return toString$1(str).endsWith(searchStr, position);
+}
+
+/**
+ * 转义正则字符串中的特殊字符，包括 '\', '$', '(', ')', '*', '+', '.', '[', ']', '?', '^', '\{', '\}', '|'
+ *
+ * @example
+ * //\^\[func\.js\] \+ \{crud-vue\} = \.\*\?\$
+ * console.log(_.escapeRegExp('^[func.js] + {crud-vue} = .*?$'))
+ *
+ * @param str 需要转义的字符串
+ * @returns 转义后的新字符串
  * @since 1.0.0
  */
-function groupBy(collection, itee) {
-    const stat = {};
-    const cb = iteratee$1(itee || identity$1);
-    each$1(collection, (el) => {
-        const key = cb(el);
-        if (stat[key] === undefined)
-            stat[key] = [];
-        stat[key].push(el);
-    });
-    return stat;
-}
-
-function keyBy(collection, itee) {
-    const stat = {};
-    const cb = iteratee$1(itee || identity$1);
-    each$1(collection, (el) => {
-        const key = cb(el);
-        stat[key] = el;
-    });
-    return stat;
-}
-
-function partition(collection, predicate) {
-    const matched = [];
-    const mismatched = [];
-    const callback = iteratee$1(predicate);
-    each$1(collection, (v, k, c) => {
-        const r = callback(v, k, c);
-        if (r) {
-            matched.push(v);
+function escapeRegExp(str) {
+    let rs = "";
+    str = toString$1(str);
+    for (let i = 0; i < str.length; i++) {
+        let s = str[i];
+        const code = s.charCodeAt(0);
+        if (code === 36 ||
+            code === 46 ||
+            code === 63 ||
+            (code >= 40 && code <= 43) ||
+            (code >= 91 && code <= 94) ||
+            (code >= 123 && code <= 125)) {
+            s = "\\" + s;
         }
-        else {
-            mismatched.push(v);
-        }
-    });
-    return [matched, mismatched];
-}
-
-/**
- * 对集合中的每个元素执行一次reducer函数，并将其结果汇总为单个值返回。
- * <p>
- * 如果没有提供initialValue，reduce 会从集合索引1开始执行 callback 方法。如果提供initialValue则从索引0开始。
- * </p>
- * <p>
- * 注意，对于Object类型的对象，如果未提供initialValue，则accumulator会是索引0元素的value，而不是key
- * </p>
- *
- * @example
- * //25
- * console.log(_.reduce([1,3,5,7,9],(a,v)=>a+v))
- * //35
- * console.log(_.reduce([1,3,5,7,9],(a,v)=>a+v,10))
- * //x-y-z
- * console.log(_.reduce({x:1,y:2,z:3},(a,v,k)=>a+'-'+k,'').substr(1))
- *
- * @param collection
- * @param callback (accumulator,value[,key|index[,collection]]);reducer函数
- * @param [initialValue] 第一次调用 callback函数时的第一个参数的值
- * @returns 汇总值
- */
-function reduce(collection, callback, initialValue) {
-    let accumulator = initialValue;
-    let hasInitVal = initialValue !== undefined;
-    each$1(collection, (v, k, c) => {
-        if (hasInitVal) {
-            accumulator = callback(accumulator, v, k, c);
-        }
-        else {
-            accumulator = v;
-            hasInitVal = true;
-        }
-    });
-    return accumulator;
-}
-
-function reject(collection, predicate) {
-    const rs = [];
-    const callback = iteratee$1(predicate);
-    each$1(collection, (v, k, c) => {
-        const r = callback(v, k, c);
-        if (!r) {
-            rs.push(v);
-        }
-    });
-    return rs;
-}
-
-function randi(min, max) {
-    let maxNum = max || min;
-    if (max === undefined) {
-        min = 0;
-    }
-    maxNum >>= 0;
-    min >>= 0;
-    return (Math.random() * (maxNum - min) + min) >> 0;
-}
-
-/**
- * 返回对指定列表的唯一随机采样结果
- * @example
- * //随机值
- * console.log(_.sample([1,2,3,4,5,6,7,8,9,0]))
- * //随机值
- * console.log(_.sample({a:1,b:2,c:3,d:4,e:5}))
- *
- * @param collection 任何可遍历的集合类型，比如array / arraylike / set / map / object / ...
- * @returns 采样结果
- * @since 0.16.0
- */
-function sample(collection) {
-    const ary = toArray$1(collection);
-    return ary[randi(ary.length)];
-}
-
-function range(start = 0, end, step) {
-    let startNum = 0;
-    let endNum = 0;
-    let stepNum = 1;
-    if (isNumber(start) && isUndefined$1(end) && isUndefined$1(step)) {
-        endNum = start >> 0;
-    }
-    else if (isNumber(start) && isNumber(end) && isUndefined$1(step)) {
-        startNum = start >> 0;
-        endNum = end >> 0;
-    }
-    else if (isNumber(start) && isNumber(end) && isNumber(step)) {
-        startNum = start >> 0;
-        endNum = end >> 0;
-        stepNum = step || 1;
-    }
-    const rs = Array(Math.round(Math.abs(endNum - startNum) / stepNum));
-    let rsIndex = 0;
-    if (endNum > startNum) {
-        for (let i = startNum; i < endNum; i += stepNum) {
-            rs[rsIndex++] = i;
-        }
-    }
-    else if (endNum < startNum) {
-        for (let i = startNum; i > endNum; i -= stepNum) {
-            rs[rsIndex++] = i;
-        }
+        rs += s;
     }
     return rs;
 }
 
 /**
- * 删除数组末尾或指定索引的一个元素并返回被删除的元素
- *
- * > 该函数会修改原数组
+ * 查找指定值在字符串中首次出现的位置索引
  *
  * @example
- * //3, [1, 2]
- * let ary = [1,2,3];
- * console.log(_.pop(ary),ary)
- * //{a: 1}, [{"a":2},{"a":3}]
- * ary = [{a:1},{a:2},{a:3}];
- * console.log(_.pop(ary,0),ary)
+ * //10
+ * console.log(_.indexOf('cyberfunc.js','js'))
+ * //10
+ * console.log(_.indexOf('cyberfunc.js','js',5))
  *
- * @param array 数组对象。如果非数组类型会直接返回null
- * @param [index=-1] 要删除元素的索引。默认删除最后一个元素
- * @returns 被删除的值或null
+ * @param str
+ * @param search 指定字符串
+ * @param [fromIndex=0] 起始索引
+ * @returns 第一个匹配搜索字符串的位置索引或-1
  */
-function pop(array, index) {
-    index = index || -1;
-    let rs = null;
-    if (isArray$1(array)) {
-        const i = toNumber(index);
-        if (i > -1) {
-            rs = array.splice(i, 1);
-            if (rs.length < 1)
-                rs = null;
-            else {
-                rs = rs[0];
+function indexOf(str, search, fromIndex) {
+    str = toString$1(str);
+    return str.indexOf(search, fromIndex || 0);
+}
+
+/**
+ * 返回短横线风格的字符串
+ *
+ * @example
+ * //'a-b-c'
+ * console.log(_.kebabCase('a_b_c'))//snakeCase
+ * //'webkit-perspective-origin-x'
+ * console.log(_.kebabCase('webkitPerspectiveOriginX'))//camelCase
+ * //'a-b-c'
+ * console.log(_.kebabCase('a B-c'))//mixCase
+ * //'get-my-url'
+ * console.log(_.kebabCase('getMyURL'))//camelCase
+ *
+ * @param str
+ * @returns 返回新字符串
+ */
+function kebabCase(str) {
+    let rs = "";
+    str = toString$1(str);
+    let prevType = 0; //1小写字母；2大写字母；3分隔符
+    let lastPos = str.length - 1;
+    for (let i = 0; i < str.length; i++) {
+        const s = str[i];
+        if (isLowerCaseChar(s)) {
+            rs += s;
+            prevType = 1;
+            continue;
+        }
+        if (s === " " || s === "-" || s === "_") {
+            if (prevType === 3 || i === lastPos)
+                continue;
+            rs += "-";
+            prevType = 3;
+            continue;
+        }
+        if (isUpperCaseChar(s)) {
+            if (prevType === 1) {
+                rs += "-";
             }
-        }
-        else {
-            rs = array.pop();
+            rs += s.toLowerCase();
+            prevType = 2;
         }
     }
     return rs;
 }
 
 /**
- * 返回对指定列表的指定数量随机采样结果
- * @example
- * //[随机值]
- * console.log(_.sampleSize([1,2,3,4,5,6,7,8,9,0]))
- * //[随机值1,随机值2]
- * console.log(_.sampleSize([{a:1},{b:2},{c:3},{d:4},{e:5}],2))
+ * 查找指定值在字符串中最后出现的位置索引
  *
- * @param collection 任何可遍历的集合类型，比如array / arraylike / set / map / object / ...
- * @param [count=1] 采样数量
- * @returns 采样结果
- * @since 0.16.0
+ * @example
+ * //10
+ * console.log(_.lastIndexOf('cyberfunc.js','js'))
+ * //-1
+ * console.log(_.lastIndexOf('cyberfunc.js','js',5))
+ *
+ * @param str
+ * @param search 指定字符串
+ * @param [fromIndex=Infinity] 起始索引，从起始索引位置向左查找指定字符串
+ * @returns 最后一个匹配搜索字符串的位置索引或-1
  */
-function sampleSize(collection, count) {
-    count = count || 1;
-    const ary = toArray$1(collection);
-    const seeds = range(0, ary.length);
-    const ks = [];
-    while (seeds.length > 0) {
-        if (count-- < 1)
-            break;
-        const i = pop(seeds, randi(seeds.length));
-        if (i)
-            ks.push(i);
+function lastIndexOf(str, search, fromIndex) {
+    str = toString$1(str);
+    return str.lastIndexOf(search, fromIndex || Infinity);
+}
+
+/**
+ * 返回所有字母是小写格式的字符串
+ *
+ * @example
+ * //''
+ * console.log(_.lowerCase())
+ * //'func.js'
+ * console.log(_.lowerCase('FUNC.JS'))
+ *
+ * @param str
+ * @returns 返回新字符串
+ */
+function lowerCase(str) {
+    return toString$1(str).toLowerCase();
+}
+
+/**
+ * 使用填充字符串填充原字符串达到指定长度。从原字符串起始开始填充。
+ *
+ * @example
+ * //001
+ * console.log(_.padStart('1',3,'0'))
+ *
+ * @param str 原字符串。如果非字符串则会自动转换成字符串
+ * @param len 填充后的字符串长度，如果长度小于原字符串长度，返回原字符串
+ * @param [padString=' '] 填充字符串，如果填充后超出指定长度，会自动截取并保留右侧字符串
+ * @returns 在原字符串起始填充至指定长度后的字符串
+ */
+function padStart(str, len, padString) {
+    str = toString$1(str);
+    if (str.padStart)
+        return str.padStart(len, padString);
+    padString = padString || ' ';
+    const diff = len - str.length;
+    if (diff < 1)
+        return str;
+    let fill = '';
+    let i = Math.ceil(diff / padString.length);
+    while (i--) {
+        fill += padString;
     }
-    const rs = map(ks, (v) => ary[v]);
+    return fill.substring(fill.length - diff, fill.length) + str;
+}
+
+/**
+ * 使用字符0填充原字符串达到指定长度。从原字符串起始位置开始填充。
+ *
+ * @example
+ * //001
+ * console.log(_.padZ('1',3))
+ *
+ * @param str 原字符串
+ * @param len 填充后的字符串长度
+ * @returns 填充后的字符串
+ */
+function padZ(str, len) {
+    return padStart(str, len, '0');
+}
+
+/**
+ * 创建一个以原字符串为模板，重复指定次数的新字符串
+ *
+ * @example
+ * //funcfuncfunc
+ * console.log(_.repeat('func',3))
+ *
+ * @param str 原字符串
+ * @param count 重复次数
+ * @returns 对于null/undefined会返回空字符串
+ */
+function repeat(str, count) {
+    str = toString$1(str);
+    count = Number.isFinite(count) ? count : 0;
+    if (count < 1)
+        return '';
+    if (str.repeat)
+        return str.repeat(count);
+    let i = count;
+    let rs = '';
+    while (i--) {
+        rs += str;
+    }
     return rs;
 }
 
 /**
- * 获取集合对象的内容数量，对于map/object对象获取的是键/值对的数量
+ * 使用<code>replaceValue</code>替换<code>str</code>中的首个<code>searchValue</code>部分
  *
  * @example
- * //3
- * console.log(_.size({a:1,b:2,c:{x:1}}))
- * //0
- * console.log(_.size(null))
- * //3
- * console.log(_.size(new Set([1,2,3])))
- * //2
- * console.log(_.size([1,[2,[3]]]))
- * //2
- * console.log(_.size(document.body.children))
- * //4
- * console.log(_.size(document.body.childNodes))
- * //3 arguments已不推荐使用，请使用Rest参数
- * console.log((function(){return _.size(arguments)})('a',2,'b'))
- * //7
- * console.log(_.size('func.js'))
+ * //'func-js'
+ * console.log(_.replace('func.js','.','-'))
+ * //''
+ * console.log(_.replace(null,'.','-'))
+ * //'kelikeli'
+ * console.log(_.replace('geligeli',/ge/g,'ke'))
+ * //'geligeli'
+ * console.log(_.replace('kelikeli',/ke/g,()=>'ge'))
  *
- * @param collection
- * @returns 集合长度，对于null/undefined/WeakMap/WeakSet返回0
+ * @param str 字符串。非字符串值会自动转换成字符串
+ * @param searchValue 查找内容，正则或者字符串
+ * @param replaceValue 替换内容，字符串或处理函数。函数的返回值将用于替换
+ * @returns 替换后的新字符串
  */
-function size(collection) {
-    if (isNil$2(collection))
-        return 0;
-    if ((collection.length))
-        return collection.length;
-    if (isMap$1(collection) || isSet$1(collection))
-        return collection.size;
-    if (isObject$1(collection))
-        return Object.keys(collection).length;
-    return 0;
+function replace(str, searchValue, replaceValue) {
+    return toString$1(str).replace(searchValue, replaceValue);
 }
 
-/**
- * 返回指定数组的一个随机乱序副本
- * @example
- * //[随机内容]
- * console.log(_.shuffle([1,2,3,4,5,6,7,8,9,0]))
- * //[随机内容]
- * console.log(_.shuffle([{a:1},{a:2},{a:3},{a:4},{a:5}]))
- * //[随机内容]
- * console.log(_.shuffle({a:1,b:2,c:3,d:4,e:5}))
- *
- * @param collection 任何可遍历的集合类型，比如array / arraylike / set / map / object / ...
- * @returns 乱序副本
- * @since 0.16.0
- */
-function shuffle(collection) {
-    return sampleSize(collection, size(collection));
-}
-
-function some(collection, predicate) {
-    let rs = false;
-    const callback = iteratee$1(predicate || (() => true));
-    each$1(collection, (v, k, c) => {
-        const r = callback(v, k, c);
-        if (r) {
-            rs = true;
-            return false;
+function replaceAll(str, searchValue, replaceValue) {
+    let searchExp;
+    let strRs = toString$1(str);
+    if (isRegExp$1(searchValue)) {
+        searchExp = searchValue;
+        if (!searchValue.global) {
+            searchExp = new RegExp(searchValue, searchValue.flags + 'g');
         }
-    });
-    return rs;
-}
-
-function sortBy(collection, itee) {
-    if (size(collection) < 1)
-        return [];
-    const cb = iteratee$1(itee || identity$1);
-    let i = 0;
-    const list = map(collection, (v, k) => {
-        return {
-            src: v,
-            index: i++,
-            value: cb(v, k),
-        };
-    });
-    const comparator = getComparator(list[0].value);
-    return map(list.sort((a, b) => !eq$1(a.value, b.value) ? comparator(a.value, b.value) : a.index - b.index), (item) => item.src);
-}
-// comparators
-const compareNumAsc = (a, b) => {
-    if (isNil$2(a) || !isNumber(a))
-        return 1;
-    if (isNil$2(b) || !isNumber(b))
-        return -1;
-    return a - b;
-};
-const compareStrAsc = (a, b) => {
-    if (isNil$2(a))
-        return 1;
-    if (isNil$2(b))
-        return -1;
-    return toString$1(a).localeCompare(toString$1(b));
-};
-const compareDateAsc = (a, b) => {
-    if (isNil$2(a))
-        return 1;
-    if (isNil$2(b))
-        return -1;
-    return compareDate(a, b);
-};
-// eslint-disable-next-line require-jsdoc
-function getComparator(el) {
-    let comparator;
-    if (isNumber(el)) {
-        comparator = compareNumAsc;
+        return strRs.replace(searchExp, replaceValue);
     }
-    else if (isDate(el)) {
-        comparator = compareDateAsc;
+    else if (isString$1(searchValue)) {
+        searchExp = new RegExp(escapeRegExp(searchValue), 'g');
+        return strRs.replace(searchExp, replaceValue);
     }
-    else {
-        comparator = compareStrAsc;
-    }
-    return comparator;
-}
-
-/**
- * 对集合进行排序，并返回排序后的数组副本。
- *
- * @example
- * //字符排序 ['lao1', 'lao2', 'lao3']
- * console.log(_.sort(['lao1','lao3','lao2']))
- * //数字排序[7, 9, 80]
- * console.log(_.sort([9,80,7]))
- * //日期排序["3/1/2019", "2020/1/1", Wed Apr 01 2020...]
- * console.log(_.sort([new Date(2020,3,1),'2020/1/1','3/1/2019']))
- * //第一个元素不是日期对象，需要转换
- * console.log(_.sort(_.map(['2020/1/1',new Date(2020,3,1),'3/1/2019'],v=>new Date(v))))
- * //对象排序
- * const users = [
- *  {name:'zhangsan',age:53},
- *  {name:'lisi',age:44},
- *  {name:'wangwu',age:25},
- *  {name:'zhaoliu',age:36}
- * ];
- * //[25,36,44,53]
- * console.log(_.sort(users,(a,b)=>a.age-b.age))
- * // 倒排
- * console.log(_.sort(users,(a,b)=>b.age-a.age))
- *
- * @param collection 任何可遍历的集合类型，比如array / arraylike / set / map / object / ...
- * @param [comparator] (a,b) 排序函数，如果为空使用sortBy逻辑
- * @returns 排序后的数组
- */
-function sort(collection, comparator) {
-    const ary = toArray$1(collection);
-    if (ary.length < 1)
-        return ary;
-    if (isFunction$1(comparator)) {
-        return ary.sort(comparator);
-    }
-    else {
-        return sortBy(collection);
-    }
-}
-
-var collection = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  countBy: countBy,
-  each: each$1,
-  eachRight: eachRight,
-  every: every,
-  filter: filter,
-  find: find,
-  findLast: findLast,
-  flatMap: flatMap,
-  flatMapDeep: flatMapDeep,
-  groupBy: groupBy,
-  includes: includes,
-  keyBy: keyBy,
-  map: map,
-  partition: partition,
-  reduce: reduce,
-  reject: reject,
-  sample: sample,
-  sampleSize: sampleSize,
-  shuffle: shuffle,
-  size: size,
-  some: some,
-  sort: sort,
-  sortBy: sortBy,
-  toArray: toArray$1
-});
-
-/**
- * 向数组末尾追加一个或多个元素并返回
- *
- * > 该函数会修改原数组
- *
- * @example
- * //[1, 2, 3, 4]
- * let ary = [1,2];
- * _.append(ary,3,4);
- * console.log(ary);
- * //[1, 2, Array(2), 5]
- * ary = [1,2];
- * _.append(ary,[3,4],5);
- * console.log(ary);
- * //[1, 2, 3, 4]
- * ary = [1,2];
- * _.append(ary,...[3,4]);
- * console.log(ary);
- *
- * @param array 数组对象。如果非数组类型会自动转为数组
- * @param values 1-n个需要插入列表的值
- * @returns 插入值后的数组对象
- */
-function append(array, ...values) {
-    const rs = isArray$1(array) ? array : toArray$1(array);
-    rs.push(...values);
-    return rs;
-}
-
-/**
- * 把指定数组拆分成多个长度为size的子数组，并返回子数组组成的二维数组
- * @example
- * //[[1,2],[3,4]]
- * console.log(_.chunk([1,2,3,4],2))
- * //[[1,2,3],[4]]
- * console.log(_.chunk([1,2,3,4],3))
- *
- * @param array 数组对象。如果非数组类型会转成数组
- * @param [size=1] 子数组长度
- * @returns 拆分后的新数组
- * @since 0.23.0
- */
-function chunk(array, size = 1) {
-    const ary = toArray$1(array);
-    const sizeNum = (size || 1) >> 0;
-    const rs = [];
-    ary.forEach((v, i) => {
-        if (i % sizeNum == 0) {
-            rs.push(ary.slice(i, i + sizeNum));
+    else if (isObject$1(searchValue)) {
+        const ks = Object.keys(searchValue);
+        for (let i = ks.length; i--;) {
+            const k = ks[i];
+            const v = searchValue[k];
+            searchExp = new RegExp(escapeRegExp(k), 'g');
+            strRs = strRs.replace(searchExp, v);
         }
-    });
-    return rs;
-}
-
-/**
- * 对集合内的假值进行剔除，并返回剔除后的新数组。假值包括 null/undefined/NaN/0/''/false
- * @example
- * //[1,2,4,'a','1']
- * console.log(_.compact([0,1,false,2,4,undefined,'a','1','',null]))
- *
- * @param array 数组
- * @returns 转换后的新数组对象
- */
-function compact$1(array) {
-    return toArray$1(array).filter(identity$1);
-}
-
-/**
- * 对所有集合做差集并返回差集元素组成的新数组
- *
- * @example
- * //[1]
- * console.log(_.except([1,2,3],[2,3]))
- * //[1,4]
- * console.log(_.except([1,2,3],[2,3],[3,2,1,4]))
- * //[{name: "b"}]
- * console.log(_.except([{name:'a'},{name:'b'}],[{name:'a'}],v=>v.name))
- * //[2, 3, "2", "3"] '2'和2不相等
- * console.log(_.except([1,2,3],[1,'2',3],[2,'3',1]))
- *
- * @param [arrays] 1-n个数组或arraylike对象，非arraylike参数会被忽略
- * @param [identifier] (v);标识函数，用来对每个元素返回唯一标识，标识相同的值会认为相等。使用<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Equality_comparisons_and_sameness#Same-value-zero_equality">SameValueZero</a>
- * 算法进行值比较。如果为空，直接使用值自身比较
- * @returns 差集元素组成的新数组
- */
-function except(...params) {
-    let comparator;
-    let list = params;
-    const sl = params.length;
-    if (sl > 2) {
-        const lp = params[sl - 1];
-        if (isFunction$1(lp)) {
-            comparator = lp;
-            list = params.slice(0, params.length - 1);
-        }
+        return strRs;
     }
-    list = list.filter((v) => isArrayLike$1(v) || isArray$1(v));
-    if (list.length < 1)
-        return list;
-    const len = list.length;
-    const kvMap = new Map();
-    // 遍历所有元素
-    for (let j = 0; j < len; j++) {
-        const ary = list[j];
-        const localMap = new Map();
-        for (let i = 0; i < ary.length; i++) {
-            const v = ary[i];
-            const id = comparator ? comparator(v) : v;
-            if (!kvMap.get(id)) {
-                // 防止组内重复
-                kvMap.set(id, { i: 0, v: v });
+    return str;
+}
+
+/**
+ * 返回下划线风格的字符串
+ *
+ * @example
+ * //'a_b_c'
+ * console.log(_.snakeCase('a-b c'))//mixCase
+ * //'love_loves_to_love_love'
+ * console.log(_.snakeCase('Love loves to love Love'))//spaces
+ * //'a_b_c'
+ * console.log(_.snakeCase('a B-c'))//camelCase
+ * //'get_my_url'
+ * console.log(_.snakeCase('getMyURL'))//camelCase
+ *
+ * @param str
+ * @returns 返回新字符串
+ */
+function snakeCase(str) {
+    let rs = "";
+    str = toString$1(str);
+    let prevType = 0; //1小写字母；2大写字母；3分隔符
+    let lastPos = str.length - 1;
+    for (let i = 0; i < str.length; i++) {
+        const s = str[i];
+        if (isLowerCaseChar(s)) {
+            rs += s;
+            prevType = 1;
+            continue;
+        }
+        if (s === " " || s === "-" || s === "_") {
+            if (prevType === 3 || i === lastPos)
+                continue;
+            rs += "_";
+            prevType = 3;
+            continue;
+        }
+        if (isUpperCaseChar(s)) {
+            if (prevType === 1) {
+                rs += "_";
             }
-            if (kvMap.get(id) && !localMap.get(id)) {
-                kvMap.get(id).i++;
-                // 相同id本组内不再匹配
-                localMap.set(id, true);
-            }
+            rs += s.toLowerCase();
+            prevType = 2;
         }
     }
-    const rs = [];
-    each$1(kvMap, (v) => {
-        if (v.i < len) {
-            rs.push(v.v);
-        }
-    });
     return rs;
 }
 
 /**
- * 使用固定值填充arrayLike中从起始索引到终止索引内的全部元素
+ * 使用分隔符将字符串分割为多段数组
  *
  * @example
- * //[6, 6, 6]
- * console.log(_.fill(new Array(3), 6))
- * //[1, 'x', 'x', 'x', 5]
- * console.log(_.fill([1, 2, 3, 4, 5], 'x', 1, 4))
+ * //["func", "js"]
+ * console.log(_.split('func.js','.'))
+ * //["func"]
+ * console.log(_.split('func.js','.',1))
  *
- * @param array 数组
- * @param value 填充值
- * @param [start=0] 起始索引，包含
- * @param [end] 终止索引，不包含
- * @returns 填充后的新数组
+ * @param str 原字符串。如果非字符串则会自动转换成字符串
+ * @param separator 分隔符
+ * @param [limit] 限制返回的结果数量，为空返回所有结果
+ * @returns 分割后的数组
  */
-function fill(array, value, start = 0, end) {
-    const rs = toArray$1(array);
-    rs.fill(value, start, end);
-    return rs;
+function split$1(str, separator, limit) {
+    return toString$1(str).split(separator, limit);
 }
 
 /**
- * 对集合内的所有元素进行断言并返回第一个匹配的元素索引
+ * 验证字符串是否以查询子字符串开头
  *
  * @example
- * //3 查询数组的索引
- * console.log(_.findIndex(['a','b','c',1,3,6],_.isNumber))
- * //0
- * console.log(_.findIndex([{a:1},{a:2},{a:3}],'a'))
- * //2
- * console.log(_.findIndex([{a:1},{a:2},{a:3}],{a:3}))
+ * //true
+ * console.log(_.startsWith('func.js','func'))
+ * //false
+ * console.log(_.startsWith('func.js','func',3))
+ * //true
+ * console.log(_.startsWith('func.js','c',3))
  *
- * @param array 数组
- * @param predicate (value[,index[,array]]);断言
- * <br>当断言是函数时回调参数见定义
- * <br>其他类型请参考 {@link utils!iteratee}
- * @param fromIndex 从0开始的起始索引，设置该参数可以减少实际遍历次数。默认0
- * @returns 第一个匹配断言的元素索引或-1
+ * @param str
+ * @param searchStr 查询字符串
+ * @param [position=0] 索引
+ * @returns 如果以查询子字符串开头返回true，否则返回false
  */
-function findIndex$1(array, predicate, fromIndex) {
-    let rs = -1;
-    let fromIndexNum = fromIndex || 0;
-    const itee = iteratee$1(predicate);
-    each$1(slice$1(array, fromIndexNum), (v, k, c) => {
-        const r = itee(v, k, c);
-        if (r) {
-            rs = k + fromIndexNum;
-            return false;
-        }
-    });
-    return rs;
+function startsWith(str, searchStr, position) {
+    return toString$1(str).startsWith(searchStr, position);
 }
 
 /**
- * 对集合内的所有元素进行断言并返回最后一个匹配的元素索引
+ * 对字符串进行截取，返回从起始索引到结束索引间的新字符串。
  *
  * @example
- * //5 查询数组的索引
- * console.log(_.findLastIndex(['a','b','c',1,3,6],_.isNumber))
- * //2
- * console.log(_.findLastIndex([{a:1},{a:2},{a:3}],'a'))
+ * //"34567"
+ * console.log(_.substring('12345678',2,7))
+ * //"345678"
+ * console.log(_.substring('12345678',2))
+ * //""
+ * console.log(_.substring())
  *
- * @param array arrayLike对象及set对象
- * @param predicate (value[,index[,array]]);断言
- * <br>当断言是函数时回调参数见定义
- * <br>其他类型请参考 {@link utils!iteratee}
- * @param [fromIndex=array.length - 1] 从集合长度-1开始的起始索引。设置该参数可以减少实际遍历次数
- * @returns 最后一个匹配断言的元素索引或-1
+ * @param str 需要截取的字符串，如果非字符串对象会进行字符化处理。基本类型会直接转为字符值，对象类型会调用toString()方法
+ * @param [indexStart=0] 起始索引，包含
+ * @param [indexEnd=str.length] 结束索引，不包含
+ * @returns
+ */
+function substring(str, indexStart, indexEnd) {
+    str = toString$1(str);
+    indexStart = indexStart || 0;
+    return str.substring(indexStart, indexEnd);
+}
+
+/**
+ * 检测字符串是否与指定的正则匹配
+ *
+ * @example
+ * //true 忽略大小写包含判断
+ * console.log(_.test('func.js','Func','i'))
+ * //true 忽略大小写相等判断
+ * console.log(_.test('func.js',/^FUNC\.js$/i))
+ * //false
+ * console.log(_.test('func.js',/FUNC/))
+ *
+ * @param str
+ * @param pattern 指定正则。如果非正则类型会自动转换为正则再进行匹配
+ * @param [flags] 如果pattern参数不是正则类型，会使用该标记作为正则构造的第二个参数
+ * @returns 匹配返回true
  * @since 0.19.0
  */
-function findLastIndex(array, predicate, fromIndex) {
-    let rs = -1;
-    let fromIndexNum = fromIndex || 0;
-    const itee = iteratee$1(predicate);
-    if (fromIndex === undefined) {
-        fromIndexNum = size(array) - 1;
+function test$1(str, pattern, flags) {
+    let regExp = pattern;
+    if (!isRegExp$1(regExp)) {
+        regExp = new RegExp(pattern, flags);
     }
-    eachRight(slice$1(array, 0, fromIndexNum + 1), (v, k, c) => {
-        const r = itee(v, k, c);
-        if (r) {
-            rs = k;
-            return false;
+    return regExp.test(str);
+}
+
+/**
+ * 截取数字小数位。用来修复原生toFixed函数的bug
+ *
+ * @example
+ * //14.05
+ * console.log(_.toFixed(14.049,2))
+ * //-15
+ * console.log(_.toFixed(-14.6))
+ * //14.0001
+ * console.log(_.toFixed(14.00005,4))
+ * //0.101
+ * console.log(_.toFixed(0.1009,3))
+ * //2.47
+ * console.log(_.toFixed(2.465,2))
+ * //2.46 原生
+ * console.log((2.465).toFixed(2))
+ *
+ * @param v 数字或数字字符串
+ * @param [scale=0] 小数位长度
+ * @returns 截取后的字符串
+ */
+function toFixed(v, scale) {
+    scale = scale || 0;
+    const num = parseFloat(v + '');
+    if (isNaN(num))
+        return v;
+    let numStr = num + '';
+    if (numStr.includes('e')) {
+        let [coefficient, power] = numStr.split('e');
+        let p = parseInt(power);
+        let cn = coefficient.replace('.', '');
+        numStr = p < 0 ? `0.${'0'.repeat(-p - 1)}${cn}` : `${cn}${'0'.repeat(p - cn.length + 1)}`;
+    }
+    const isNeg = num < 0 ? -1 : 1;
+    const tmp = numStr.split('.');
+    const frac = tmp[1] || '';
+    const diff = scale - frac.length;
+    let rs = '';
+    if (diff > 0) {
+        let z = padEnd(frac, scale, '0');
+        z = z ? '.' + z : z;
+        rs = tmp[0] + z;
+    }
+    else if (diff === 0) {
+        rs = numStr;
+    }
+    else {
+        let integ = parseInt(tmp[0]);
+        const i = frac.length + diff;
+        const round = frac.substring(i);
+        let keep = frac.substring(0, i);
+        let startZ = false;
+        if (keep[0] === '0' && keep.length > 1) {
+            keep = 1 + keep.substring(1);
+            startZ = true;
         }
-    });
+        let n = Math.round(parseFloat(keep + '.' + round));
+        let nStr = n + '';
+        const strN = n + '';
+        if (n > 0 && strN.length > keep.length) {
+            integ += 1 * isNeg;
+            nStr = strN.substring(1);
+        }
+        if (startZ) {
+            nStr = parseInt(strN[0]) - 1 + strN.substring(1);
+        }
+        nStr = nStr !== '' && keep.length > 0 ? '.' + nStr : nStr;
+        rs = integ + nStr + '';
+        if (isNeg < 0 && rs[0] !== '-')
+            rs = '-' + rs;
+    }
     return rs;
 }
 
 /**
- * 获取数组中的第一个元素
+ * 从字符串的两端删除空白字符。
  *
  * @example
- * //1
- * console.log(_.first([1,2,3]))
- * //"1"
- * console.log(_.first(new Set(['1',1])))
+ * //holyhigh
+ * console.log(_.trim('  holyhigh '))
  *
- * @param array 数组
- * @returns 数组中第一个元素
+ * @param str
+ * @returns 对于null/undefined会返回空字符串
  */
-function first(array) {
-    return toArray$1(array)[0];
+function trim(str) {
+    str = toString$1(str);
+    return str.trim();
 }
 
 /**
- * 返回除最后一个元素外的所有元素组成的新数组
+ * 从字符串末尾删除空白字符。
  *
  * @example
- * //[1, 2]
- * console.log(_.initial([1, 2, 3]))
+ * //'  holyhigh'
+ * console.log(_.trimEnd('  holyhigh '))
  *
- * @param array 数组
- * @returns 新数组
- * @since 0.19.0
+ * @param str
+ * @returns 对于null/undefined会返回空字符串
  */
-function initial(array) {
-    return array.slice(0, array.length - 1);
+function trimEnd(str) {
+    str = toString$1(str);
+    if (str.trimEnd)
+        return str.trimEnd();
+    return str.replace(/\s*$/, '');
 }
 
 /**
- * 向数组中指定位置插入一个或多个元素并返回
- *
- * > 该函数会修改原数组
+ * 从字符串起始位置删除空白字符。
  *
  * @example
- * //[1, 2, Array(1), 'a', 3, 4]
- * let ary = [1,2,3,4];
- * _.insert(ary,2,[1],'a');
- * console.log(ary);
- * //[1, 2, 3, 4]
- * ary = [3,4];
- * _.insert(ary,0,1,2);
- * console.log(ary);
+ * //'holyhigh '
+ * console.log(_.trimStart('  holyhigh '))
+ *
+ * @param str
+ * @returns 对于null/undefined会返回空字符串
+ */
+function trimStart(str) {
+    str = toString$1(str);
+    if (str.trimStart)
+        return str.trimStart();
+    return str.replace(/^\s*/, '');
+}
+
+/**
+ * 对超过指定长度的字符串进行截取并在末尾追加代替字符
+ *
+ * @example
+ * //func...
+ * console.log(_.truncate('func.js',4))
+ * //func...
+ * console.log(_.truncate('func.js',6,{separator:/\.\w+/g}))
+ * //func.js.com...
+ * console.log(_.truncate('func.js.com.cn',13,{separator:'.'}))
  * //func.js
- * console.log(_.insert('funcjs',4,'.').join(''));
+ * console.log(_.truncate('func.js',10))
+ * //fun!!!
+ * console.log(_.truncate('func.js',3,{omission:'!!!'}))
  *
- * @param array 数组对象。如果非数组类型会自动转为数组
- * @param index 插入位置索引，0 - 列表长度
- * @param values 1-n个需要插入列表的值
- * @returns 插入值后的数组对象
- */
-function insert(array, index, ...values) {
-    const rs = isArray$1(array) ? array : toArray$1(array);
-    if (!isNumber(index) || index < 0)
-        index = 0;
-    rs.splice(index, 0, ...values);
-    return rs;
-}
-
-/**
- * 对所有集合做交集并返回交集元素组成的新数组
- * <p>
- * 关于算法性能可以查看文章<a href="https://www.jianshu.com/p/aa131d573575" target="_holyhigh">《如何实现高性能集合操作(intersect)》</a>
- * </p>
- *
- * @example
- * //[2]
- * console.log(_.intersect([1,2,3],[2,3],[1,2]))
- * //[3]
- * console.log(_.intersect([1,1,2,2,3],[1,2,3,4,4,4],[3,3,3,3,3,3]))
- * //[{name: "a"}] 最后一个参数是函数时作为标识函数
- * console.log(_.intersect([{name:'a'},{name:'b'}],[{name:'a'}],v=>v.name))
- * //[]
- * console.log(_.intersect())
- * //[3] 第三个参数被忽略，然后求交集
- * console.log(_.intersect([1,2,3],[3],undefined))
- * //[1] "2"和2不相同，3和"3"不相同
- * console.log(_.intersect([1,2,3],[1,'2',3],[2,'3',1]))
- *
- * @param [arrays] 1-n个数组或arraylike对象，非arraylike参数会被忽略
- * @param [identifier] (v);标识函数，用来对每个元素返回唯一标识，标识相同的值会认为相等。使用<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Equality_comparisons_and_sameness#Same-value-zero_equality">SameValueZero</a>
- * 算法进行值比较。如果为空，直接使用值自身比较
- * @returns 交集元素组成的新数组
- */
-function intersect(...params) {
-    let comparator;
-    let list = params;
-    const sl = params.length;
-    if (sl > 2) {
-        const lp = params[sl - 1];
-        if (isFunction$1(lp)) {
-            comparator = lp;
-            list = params.slice(0, sl - 1);
-        }
-    }
-    list = list.filter((v) => isArrayLike$1(v) || isArray$1(v));
-    if (list.length < 1)
-        return list;
-    const len = list.length;
-    // 取得最短集合
-    list.sort((a, b) => a.length - b.length);
-    const kvMap = new Map();
-    // 记录最少id
-    let idLength = 0; // 用于快速匹配
-    for (let i = list[0].length; i--;) {
-        const v = list[0][i];
-        const id = comparator ? comparator(v) : v;
-        if (!kvMap.get(id)) {
-            // 防止组内重复
-            kvMap.set(id, { i: 1, v: v });
-            idLength++;
-        }
-    }
-    for (let j = 1; j < len; j++) {
-        const ary = list[j];
-        const localMap = new Map();
-        let localMatchedCount = 0;
-        for (let i = 0; i < ary.length; i++) {
-            const v = ary[i];
-            const id = comparator ? comparator(v) : v;
-            if (kvMap.get(id) && !localMap.get(id)) {
-                kvMap.get(id).i++;
-                // 相同id本组内不再匹配
-                localMap.set(id, true);
-                // 匹配次数加1
-                localMatchedCount++;
-                // 已经匹配完所有可交集元素，无需继续检查
-                if (localMatchedCount === idLength)
-                    break;
-            }
-        }
-    }
-    const rs = [];
-    each$1(kvMap, (v) => {
-        if (v.i === len) {
-            rs.push(v.v);
-        }
-    });
-    return rs;
-}
-
-/**
- * 把arrayLike中所有元素连接成字符串并返回。对于基本类型元素会直接转为字符值，对象类型会调用toString()方法
- *
- * @example
- * //'1/2/3/4'
- * console.log(_.join([1, 2, 3, 4], '/'))
- * //'1,2,3,4'
- * console.log(_.join([1, 2, 3, 4]))
- *
- * @param array 数组
- * @param [separator=','] 分隔符
- * @returns 拼接字符串
- */
-function join(array, separator) {
-    return toArray$1(array).join(separator || ',');
-}
-
-/**
- * 获取数组中的最后一个元素
- *
- * @example
- * //3
- * console.log(_.last([1,2,3]))
- *
- * @param array 数组
- * @returns 数组中最后一个元素
- */
-function last(array) {
-    const ary = toArray$1(array);
-    return ary[ary.length - 1];
-}
-
-/**
- * 删除数组中断言结果为true的元素并返回被删除的元素
- * <div class="alert alert-secondary">
-      该函数会修改原数组
-    </div>
- *
- * @example
- * //[1, 3] [2, 4]
- * let ary = [1,2,3,4];
- * console.log(_.remove(ary,x=>x%2),ary)
- * //[2] [1,3]
- * ary = [{a:1},{a:2},{a:3}];
- * console.log(_.remove(ary,v=>v.a===2),ary)
- * //[3] [1,2]
- * ary = [{a:1},{a:2},{a:3}];
- * console.log(_.remove(ary,{a:3}),ary)
- *
- * @param array 数组对象，如果参数非数组直接返回
- * @param predicate (value[,index[,array]]);断言
- * <br>当断言是函数时回调参数见定义
- * <br>其他类型请参考 {@link utils!iteratee}
- * @returns 被删除的元素数组或空数组
- * @since 0.19.0
- */
-function remove(array, predicate) {
-    const rs = [];
-    if (!isArray$1(array))
-        return rs;
-    const itee = iteratee$1(predicate);
-    let i = 0;
-    for (let l = 0; l < array.length; l++) {
-        const item = array[l];
-        const r = itee(item, l, array);
-        if (r) {
-            rs.push(item);
-        }
-        else {
-            array[i++] = item;
-        }
-    }
-    array.length = i;
-    return rs;
-}
-
-/**
- * 与without相同，但会修改原数组
- * <div class="alert alert-secondary">
-      该函数会修改原数组
-    </div>
- *
- * @example
- * //[1, 1] true
- * let ary = [1,2,3,4,3,2,1];
- * let newAry = _.pull(ary,2,3,4)
- * console.log(newAry,ary === newAry)
- *
- * @param array 数组对象
- * @param values 需要删除的值
- * @returns 新数组
- * @since 0.19.0
- */
-function pull(array, ...values) {
-    remove(array, (item) => includes(values, item));
-    return array;
-}
-
-/**
- * 对数组元素位置进行颠倒，返回改变后的数组。
- *
- *  @example
- * //[3, 2, 1]
- * console.log(_.reverse([1, 2, 3]))
- *
- * @param array 数组
- * @returns 颠倒后的新数组
- */
-function reverse(array) {
-    const rs = toArray$1(array);
-    return rs.reverse();
-}
-
-/**
- * 同<code>sortedIndex</code>，但支持自定义回调用来获取对比值
- * @example
- * //2
- * console.log(_.sortedIndexBy([{a:1},{a:2},{a:3}], {a:2.5},'a'))
- *
- * @param keys 对象属性标识符数组
- * @param value 需要插入数组的值
- * @param [iteratee=identity] (value)回调函数，返回排序对比值
- * @returns array索引
+ * @param str
+ * @param len 最大长度。如果长度大于<code>str</code>长度，直接返回str
+ * @param {object} options 可选项
+ * @param options.omission 替代字符，默认 '...'
+ * @param [options.separator] 截断符。如果截取后的字符串中包含截断符，则最终只会返回截断符之前的内容
+ * @returns 返回新字符串
  * @since 1.0.0
  */
-function sortedIndexBy(array, value, itee) {
-    let left = 0;
-    let right = size(array);
-    let index = 0;
-    const cb = iteratee$1(itee || identity$1);
-    value = cb(value);
-    while (left < right) {
-        const mid = parseInt((left + right) / 2);
-        if (cb(array[mid]) < value) {
-            left = mid + 1;
-            index = left;
+function truncate(str, len, options) {
+    str = toString$1(str);
+    if (str.length <= len)
+        return str;
+    if (!isObject$1(options)) {
+        options = { omission: '...' };
+    }
+    options.omission = options.omission || '...';
+    str = str.substring(0, len);
+    if (options.separator) {
+        let separator = options.separator;
+        if (!isObject$1(separator)) {
+            separator = new RegExp(escapeRegExp(separator), 'g');
         }
-        else {
-            right = mid;
+        else if (!separator.global) {
+            separator = new RegExp(separator, separator.flags + 'g');
+        }
+        let rs;
+        let tmp;
+        while ((tmp = separator.exec(str)) !== null) {
+            rs = tmp;
+        }
+        if (rs) {
+            str = str.substring(0, rs.index);
         }
     }
-    return index;
+    return str + options.omission;
 }
 
 /**
- * 使用二分法确定在array保持排序不变的情况下，value可以插入array的最小索引
- * @example
- * //1
- * console.log(_.sortedIndex([1,2,3],1.5))
- * //1
- * console.log(_.sortedIndex(['a', 'c'], 'b'))
- * //0
- * console.log(_.sortedIndex([{a:1},{a:2},{a:3}], {a:2.5}))
+ * 返回所有字母是大写格式的字符串
  *
- * @param array 对象属性标识符数组
- * @param value 需要插入数组的值
- * @returns array索引
- * @since 1.0.0
+ * @example
+ * //''
+ * console.log(_.upperCase())
+ * //'FUNC.JS'
+ * console.log(_.upperCase('func.js'))
+ *
+ * @param str
+ * @returns 返回新字符串
  */
-function sortedIndex(array, value) {
-    return sortedIndexBy(array, value);
+function upperCase(str) {
+    return toString$1(str).toUpperCase();
 }
 
 /**
- * 返回除第一个元素外的所有元素组成的新数组
+ * 转换字符串第一个字符为大写并返回
  *
  * @example
- * //[2, 3]
- * console.log(_.tail([1, 2, 3]))
+ * //'First'
+ * console.log(_.upperFirst('first'))//mixCase
+ * //'GetMyURL'
+ * console.log(_.upperFirst('getMyURL'))//camelCase
  *
- * @param array 数组
- * @returns 新数组
+ * @param str
+ * @returns 返回新字符串
  */
-function tail(array) {
-    const rs = toArray$1(array);
-    return rs.slice(1);
+function upperFirst(str) {
+    str = toString$1(str);
+    if (str.length < 1)
+        return str;
+    return str[0].toUpperCase() + str.substring(1);
 }
 
-/**
- * 从起始位置获取指定数量的元素并放入新数组后返回
- *
- * @example
- * //[1, 2, 3]
- * console.log(_.take([1, 2, 3, 4, 5],3))
- * //[1, 2, 3, 4, 5]
- * console.log(_.take([1, 2, 3, 4, 5]))
- *
- * @param array 数组
- * @param [length] 获取元素数量，默认数组长度
- * @returns 新数组
- */
-function take(array, length) {
-    const rs = toArray$1(array);
-    return rs.slice(0, length);
-}
-
-/**
- * 从数组末尾位置获取指定数量的元素放入新数组并返回
- *
- * @example
- * //[3, 4, 5]
- * console.log(_.takeRight([1, 2, 3, 4, 5],3))
- * //[1, 2, 3, 4, 5]
- * console.log(_.takeRight([1, 2, 3, 4, 5]))
- *
- * @param array 数组
- * @param length
- * @returns 新数组
- * @since 1.0.0
- */
-function takeRight(array, length) {
-    const rs = toArray$1(array);
-    const maxLength = rs.length;
-    return rs.slice(maxLength - (length || maxLength), maxLength);
-}
-
-/**
- * 对所有集合做并集并返回并集元素组成的新数组。并集类似concat()但不允许重复值
- *
- * @example
- * //[1, 2, 3]
- * console.log(_.union([1,2,3],[2,3]))
- * //[1, 2, 3, "1", "2"]
- * console.log(_.union([1,2,3],['1','2']))
- * //[{name: "a"},{name: "b"}]
- * console.log(_.union([{name:'a'},{name:'b'}],[{name:'a'}],v=>v.name))
- * //[a/b/a] 没有标识函数无法去重
- * console.log(_.union([{name:'a'},{name:'b'}],[{name:'a'}]))
- * //[1, 2, 3, "3"] "3"和3不相等
- * console.log(_.union([1,2,3],[1,3],[2,'3',1]))
- *
- * @param [arrays] 1-n个数组或arraylike对象，非arraylike参数会被忽略
- * @param [identifier] (v);标识函数，用来对每个元素返回唯一标识，标识相同的值会认为相等。使用<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Equality_comparisons_and_sameness#Same-value-zero_equality">SameValueZero</a>
- * 算法进行值比较。如果为空，直接使用值自身比较
- * @returns 并集元素组成的新数组
- */
-function union(...params) {
-    let comparator;
-    let list = params;
-    const sl = params.length;
-    if (sl > 2 && isFunction$1(params[sl - 1])) {
-        comparator = params[sl - 1];
-        list = params.slice(0, sl - 1);
-    }
-    list = list.filter((v) => isArrayLike$1(v) || isArray$1(v));
-    if (list.length < 1)
-        return list;
-    let rs;
-    if (comparator) {
-        const kvMap = new Map();
-        flat(list).forEach((v) => {
-            const id = comparator(v);
-            if (!kvMap.get(id)) {
-                kvMap.set(id, v);
-            }
-        });
-        rs = map(kvMap, (v) => v);
-    }
-    else {
-        rs = toArray$1(new Set(flat(list)));
-    }
-    return rs;
-}
-
-/**
- * 对数组内的值进行去重
- * @example
- * // [1,2,4,"a","1",null]
- * console.log(_.unique([1,2,2,4,4,'a','1','a',null,null]))
- *
- * @param array 数组
- * @returns 转换后的新数组对象
- */
-function uniq(array) {
-    const ary = toArray$1(array);
-    return toArray$1(new Set(ary));
-}
-
-/**
- * 同<code>uniq</code>，但支持自定义筛选函数
- * @example
- * // [{"a":1},{"a":"1"},{"a":2},{"a":"2"}]
- * console.log(_.uniqBy([{a:1},{a:1},{a:'1'},{a:2},{a:'2'},{a:2}],'a'))
- * // [{"a":1},{"a":2}]
- * console.log(_.uniqBy([{a:1},{a:1},{a:'1'},{a:2},{a:'2'},{a:2}],v=>v.a>>0))
- *
- * @param array 数组
- * @param iteratee (value,index) 筛选函数，返回需要对比的值。默认identity
- * <br>当iteratee是函数时回调参数见定义
- * <br>其他类型请参考 {@link utils.iteratee}
- * @returns 去重后的新数组对象
- * @since 1.0.0
- */
-function uniqBy(array, itee) {
-    const cb = iteratee$1(itee || identity$1);
-    const keyMap = new Map();
-    const rs = [];
-    each$1(array, (v, k) => {
-        const key = cb(v, k);
-        if (keyMap.get(key))
-            return;
-        keyMap.set(key, 1);
-        rs.push(v);
-    });
-    return rs;
-}
-
-/**
- * <code>zip</code>的反操作
- * @example
- * //[[1,2,undefined],['a','b','c']]
- * console.log(_.unzip([[1, 'a'],[2, 'b'],[undefined, 'c']]))
- * //[['a', 'b', 'c'], [1, 2, undefined],['1', undefined,undefined]]
- * console.log(_.unzip([['a', 1, '1'], ['b', 2],['c']]))
- *
- * @param array 包含若干分组的数组
- * @returns 重新分组后的新数组
- * @since 0.23.0
- */
-function unzip(array) {
-    const rs = [];
-    const len = size(array);
-    each$1(array, (group, colIndex) => {
-        each$1(group, (el, rowIndex) => {
-            let row = rs[rowIndex];
-            if (!row) {
-                row = rs[rowIndex] = new Array(len);
-            }
-            row[colIndex] = el;
-        });
-    });
-    return rs;
-}
-
-/**
- * 返回删除所有values后的新数组。使用<code>eq</code>函数进行等值判断
- *
- * @example
- * //[1, 1]
- * console.log(_.without([1,2,3,4,3,2,1],2,3,4))
- *
- * @param array 数组对象
- * @param values 需要删除的值
- * @returns 新数组
- * @since 0.19.0
- */
-function without(array, ...values) {
-    return filter(array, (item) => !includes(values, item));
-}
-
-/**
- * 创建一个由指定数组arrays内元素重新分组后组成的二维数组，
- * 第一个子数组由每个数组内的第一个元素组成，第二个子数组由每个数组内的第二个元素组成，以此类推。
- * 子数组的数量由参数中数组内元素最多的数组决定。
- * @example
- * //[[1, 'a'],[2, 'b'],[undefined, 'c']]
- * console.log(_.zip([1,2],['a','b','c']))
- * //[['a', 1, '1'], ['b', 2, undefined],['c', undefined,undefined]]
- * console.log(_.zip(['a','b','c'],[1,2],['1']))
- *
- * @param arrays 1-n个数组
- * @returns 重新分组后的新数组
- * @since 0.23.0
- */
-function zip(...arrays) {
-    const rs = [];
-    const size = arrays.length;
-    arrays.forEach((ary, colIndex) => {
-        each$1(ary, (el, i) => {
-            let group = rs[i];
-            if (!group) {
-                group = rs[i] = new Array(size);
-            }
-            group[colIndex] = el;
-        });
-    });
-    return rs;
-}
-
-/**
- * 创建一个对象，属性名称与属性值分别来自两个数组
- * @example
- * //{a: 1, b: 2}
- * console.log(_.zipObject(['a','b'],[1,2,3]))
- *
- * @param keys 对象属性标识符数组
- * @param values 对象值数组
- * @returns 组合后的对象
- * @since 0.23.0
- */
-function zipObject(keys, values) {
-    const rs = {};
-    each$1(keys, (k, i) => {
-        rs[k] = get$1(values, i);
-    });
-    return rs;
-}
-
-/**
- * 与<code>zip</code>相同，但支持自定义组合逻辑
- * @example
- * //[[1, 3, 5], [2, 4, 6]]
- * console.log(_.zipWith([1,2],[3,4],[5,6]))
- * //[9, 12]
- * console.log(_.zipWith([1,2],[3,4],[5,6],_.sum))
- * //[3, 4]
- * console.log(_.zipWith([1,2],[3,4],[5,6],group=>_.avg(group)))
- *
- * @param arrays 1-n个数组
- * @param [iteratee=identity] (group)回调函数，返回组合后的分组值
- * @returns 重新分组后的新数组
- * @since 1.0.0
- */
-function zipWith(...params) {
-    const sl = params.length;
-    let itee = params[sl - 1];
-    const arys = params;
-    if (!isFunction$1(itee)) {
-        itee = identity$1;
-    }
-    else {
-        pop(arys);
-    }
-    const rs = zip(...arys);
-    return map(rs, (group) => itee(group));
-}
-
-var array = /*#__PURE__*/Object.freeze({
+var str = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  append: append,
-  chunk: chunk,
-  compact: compact$1,
-  concat: concat,
-  except: except,
-  fill: fill,
-  findIndex: findIndex$1,
-  findLastIndex: findLastIndex,
-  first: first,
-  flat: flat,
-  flatDeep: flatDeep,
-  head: first,
-  initial: initial,
-  insert: insert,
-  intersect: intersect,
-  join: join,
-  last: last,
-  pop: pop,
-  pull: pull,
-  range: range,
-  remove: remove,
-  reverse: reverse,
-  slice: slice$1,
-  sortedIndex: sortedIndex,
-  sortedIndexBy: sortedIndexBy,
-  tail: tail,
-  take: take,
-  takeRight: takeRight,
-  union: union,
-  uniq: uniq,
-  uniqBy: uniqBy,
-  unzip: unzip,
-  without: without,
-  zip: zip,
-  zipObject: zipObject,
-  zipWith: zipWith
+  camelCase: camelCase,
+  capitalize: capitalize,
+  endsWith: endsWith,
+  escapeRegExp: escapeRegExp,
+  indexOf: indexOf,
+  kebabCase: kebabCase,
+  lastIndexOf: lastIndexOf,
+  lowerCase: lowerCase,
+  lowerFirst: lowerFirst,
+  padEnd: padEnd,
+  padStart: padStart,
+  padZ: padZ,
+  pascalCase: pascalCase,
+  repeat: repeat,
+  replace: replace,
+  replaceAll: replaceAll,
+  snakeCase: snakeCase,
+  split: split$1,
+  startsWith: startsWith,
+  substring: substring,
+  test: test$1,
+  toFixed: toFixed,
+  toString: toString$1,
+  trim: trim,
+  trimEnd: trimEnd,
+  trimStart: trimStart,
+  truncate: truncate,
+  upperCase: upperCase,
+  upperFirst: upperFirst
+});
+
+/* eslint-disable max-len */
+/**
+ * 模板函数
+ *
+ * @packageDocumentation
+ */
+/**
+ *
+ * @author holyhigh
+ */
+/**
+ * 使用MTL(Myfx Template Language)编译字符串模板，并返回编译后的render函数
+ *
+ * ### 一个MTL模板由如下部分组成：
+ * - **文本** 原样内容输出
+ * - **注释** `[%-- 注释 --%]` 仅在模板中显示，编译后不存在也不会输出
+ * - **插值** `[%= 插值内容 %]` 输出表达式的结果，支持js语法
+ * - **混入** `[%@名称 {参数} %]` 可以混入模板片段。被混入的片段具有独立作用域，可以通过JSON格式的对象传递参数给片段
+ * - **语句** `[% _.each(xxxx... %]` 原生js语句
+ *
+ * @example
+ * let render = _.template("1 [%= a %] 3");
+ * //1 4 3
+ * console.log(render({a:4}))
+ *
+ * render = _.template("1 [% print(_.range(2,5)) %] 5");
+ * //1 2,3,4 5
+ * console.log(render())
+ *
+ * render = _.template("[%-- 注释1 --%] [%@mix {x:5}%] [%-- 注释2 --%]",{
+ *  mixins:{
+ *    mix:'<div>[%= x %]</div>'
+ *  }
+ * });
+ * //<div>5</div>
+ * console.log(render())
+ *
+ * @param string 模板字符串
+ * @param {object} options MTL参数
+ * @param options.delimiters 分隔符，默认 ['[%' , '%]']
+ * @param options.mixins 混入对象。\{名称:模板字符串\}
+ * @param options.globals 全局变量对象，可以在任意位置引用。模板内置的全局对象有两个：`print(content)`函数、`_` 对象，Myfx的命名空间
+ * @param options.stripWhite 是否剔除空白，默认false。剔除发生在编译期间，渲染时不会受到影响。剔除规则：如果一行只有一个MTL注释或语句，则该行所占空白会被移除。
+ * @returns 编译后的执行函数。该函数需要传递一个对象类型的参数作为运行时参数
+ * @since 1.0.0
+ */
+function template$1(string, options) {
+    let delimiters = map(options?.delimiters || template$1.settings.delimiters, (d) => {
+        const letters = replace(d, /\//gim, "");
+        return map(letters, (l) => {
+            return includes(ESCAPES, l) ? "\\" + l : l;
+        }).join("");
+    });
+    if (!options) {
+        options = {
+            delimiters: delimiters,
+            globals: {},
+            mixins: undefined,
+            stripWhite: false
+        };
+    }
+    const mixins = options.mixins;
+    const stripWhite = options.stripWhite || false;
+    const comment = delimiters[0] + template$1.settings.comment + delimiters[1];
+    const interpolate = delimiters[0] + template$1.settings.interpolate + delimiters[1];
+    const evaluate = delimiters[0] + template$1.settings.evaluate + delimiters[1];
+    const mixin = delimiters[0] + template$1.settings.mixin + delimiters[1];
+    const splitExp = new RegExp(`(?:${comment})|(?:${mixin})|(?:${interpolate})|(?:${evaluate})`, "mg");
+    // ///////////////////////////////----拆分表达式与文本
+    // 1. 对指令及插值进行分段
+    const tokens = parse(string, splitExp, mixins, stripWhite, delimiters);
+    // 2. 编译render函数
+    const render = compile(tokens, options);
+    return render;
+}
+const ESCAPES = ["[", "]", "{", "}", "$"];
+/**
+ * 模板设置对象
+ */
+template$1.settings = {
+    /**
+     * @defaultValue ['[%', '%]']
+     */
+    delimiters: ["[%", "%]"],
+    interpolate: "=([\\s\\S]+?)",
+    comment: "--[\\s\\S]+?--",
+    mixin: "@([a-zA-Z_$][\\w_$]*)([\\s\\S]+?)",
+    evaluate: "([\\s\\S]+?)",
+};
+function parse(str, splitExp, mixins, stripWhite, delimiters) {
+    let indicator = 0;
+    let lastSegLength = 0;
+    const fullStack = [];
+    let prevText = null;
+    while (true) {
+        const rs = splitExp.exec(str);
+        if (rs == null) {
+            break;
+        }
+        else {
+            let text = str.substring(indicator + lastSegLength, rs.index);
+            if (prevText) {
+                // check strip white
+                if (stripWhite) {
+                    const stripStart = prevText.replace(/\n\s*$/, "\n");
+                    const stripEnd = text.replace(/^\s*\n/, "");
+                    if (stripStart.length !== prevText.length &&
+                        stripEnd.length !== text.length) {
+                        text = stripEnd;
+                    }
+                }
+            }
+            prevText = text;
+            indicator = rs.index;
+            if (text) {
+                const node = getText(text);
+                fullStack.push(node);
+            }
+            try {
+                const node2 = parseNode(rs, mixins, delimiters);
+                fullStack.push(node2);
+            }
+            catch (error) {
+                // 获取最近信息
+                const recInfo = takeRight(fullStack, 5);
+                const tipInfo = map(recInfo, "source").join("") + rs[0];
+                let tipIndicator = map(rs[0], () => "^").join("");
+                const tipLineStartIndex = lastIndexOf(substring(str, 0, rs.index), "\n") + 1;
+                tipIndicator = padStart(tipIndicator, rs.index - tipLineStartIndex + tipIndicator.length, " ");
+                console.error("...", tipInfo + "\n" + tipIndicator + "\n", error);
+                return fullStack;
+            }
+            lastSegLength = rs[0].length;
+        }
+    }
+    let lastText = trim(str.substring(indicator + lastSegLength));
+    if (lastText) {
+        const node = getText(lastText);
+        fullStack.push(node);
+    }
+    return fullStack;
+}
+function getText(str) {
+    return {
+        text: true,
+        source: str,
+    };
+}
+function parseNode(rs, mixins, delimiters) {
+    const parts = compact$1(rs);
+    const src = parts[0];
+    const modifier = src.replace(new RegExp(delimiters[0]), "")[0];
+    switch (modifier) {
+        case "-":
+            return {
+                comment: true,
+                source: src,
+            };
+        case "=":
+            return {
+                interpolate: true,
+                source: src,
+                expression: parts[1],
+            };
+        case "@":
+            const mixin = parts[1];
+            if (!mixins || !mixins[mixin]) {
+                throw new SyntaxError(`The mixin '${mixin}' does not exist, check if the options.mixins has been set`);
+            }
+            let paramters = trim(parts[2]);
+            if (paramters) {
+                const matcher = paramters.match(/\{(?:,?[a-zA-Z_$][a-zA-Z0-9_$]*(?::.*?)?)+\}/gm);
+                if (!matcher) {
+                    throw new SyntaxError(`Invalid mixin paramters '${parts[2]}', must be JSON form`);
+                }
+                paramters = matcher[0];
+            }
+            return {
+                mixin: true,
+                source: src,
+                tmpl: mixins[mixin],
+                paramters,
+            };
+        default:
+            return {
+                evaluate: true,
+                source: src,
+                expression: parts[1],
+            };
+    }
+}
+// 返回编译后的render函数
+// 函数中不能出现异步代码，否则会导致render失败
+// 默认全局变量 print() / _
+function compile(tokens, options) {
+    let funcStr = "";
+    each(tokens, (token) => {
+        if (token.comment)
+            return;
+        if (token.text) {
+            funcStr += "\nprint(`" + token.source + "`);";
+        }
+        else if (token.interpolate) {
+            funcStr += `\nprint(${token.expression});`;
+        }
+        else if (token.evaluate) {
+            funcStr += "\n" + token.expression;
+        }
+        else if (token.mixin) {
+            funcStr += `\nprint(_.template(${JSON.stringify(token.tmpl)},$options)(${token.paramters}));`;
+        }
+    });
+    return (obj) => {
+        let declarations = keys$1(obj).join(",");
+        if (declarations) {
+            declarations = "{" + declarations + "}";
+        }
+        let globalKeys = [];
+        let globalValues = [];
+        const paramAry = unzip(toPairs(options.globals));
+        if (size(paramAry) > 0) {
+            globalKeys = paramAry[0];
+            globalValues = paramAry[1];
+        }
+        if (!globalKeys.includes("_") && globalThis.myfx) {
+            globalKeys.push("_");
+            globalValues.push(globalThis.myfx);
+        }
+        const getRender = new Function(...globalKeys, "$options", `return function(${declarations}){
+      const textQ=[];
+      const print=(str)=>{
+        textQ.push(str)
+      };` +
+            funcStr +
+            ';return textQ.join("")}')(...globalValues, options);
+        return getRender(obj);
+    };
+}
+
+var template = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  template: template$1
 });
 
 /**
- * a + b
+ * 使用高性能算法，将array结构数据变为tree结构数据。*注意，会修改原始数据*
  * @example
- * //3
- * console.log(_.add(1,2))
- * //1
- * console.log(_.add(1,null))
- * //NaN
- * console.log(_.add(1,NaN))
+ * //生成测试数据
+ * function addChildren(count,parent){
+ *  const data = [];
+ *  const pid = parent?parent.id:null;
+ *  const parentName = parent?parent.name+'-':'';
+ *  _.each(_.range(0,count),i=>{
+ *    const sortNo = _.randi(0,count);
+ *    data.push({id:_.alphaId(),pid,name:parentName+i,sortNo})
+ *  });
+ *  return data;
+ * }
  *
- * @param a
- * @param b
- * @returns a+b
+ * function genTree(depth,parents,data){
+ *  _.each(parents,r=>{
+ *    const children = addChildren(_.randi(1,4),r);
+ *    if(depth-1>0){
+ *      genTree(depth-1,children,data);
+ *    }
+ *    _.append(data,...children);
+ *  });
+ * }
+ *
+ * const roots = addChildren(2);
+ * const data = [];
+ * genTree(2,roots,data);
+ * _.insert(data,0,...roots);
+ *
+ * const tree = _.arrayToTree(data,'id','pid',{attrMap:{text:'name'}});
+ * _.walkTree(tree,(parentNode,node,chain)=>console.log('node',node.text,'sortNo',node.sortNo,'chain',_.map(chain,n=>n.name)));
+ *
+ *
+ * @param array 原始数据集。如果非Array类型，返回空数组
+ * @param idKey id标识
+ * @param pidKey='pid' 父id标识
+ * @param {object} options 自定义选项
+ * @param options.rootParentValue 根节点的parentValue，用于识别根节点。默认null
+ * @param options.childrenKey 包含子节点容器的key。默认'children'
+ * @param options.attrMap 转换tree节点时的属性映射，如\{text:'name'\}表示把array中一条记录的name属性映射为tree节点的text属性
+ * @param options.sortKey 如果指定排序字段，则会在转换tree时自动排序。字段值可以是数字或字符等可直接进行比较的类型。性能高于转换后再排序
+ * @returns 返回转换好的顶级节点数组或空数组
  * @since 1.0.0
  */
-function add(a, b) {
-    a = isNil$2(a) ? 0 : a;
-    b = isNil$2(b) ? 0 : b;
-    return a + b;
-}
-
-/**
- * a / b
- * @example
- * //0.5
- * console.log(_.divide(1,2))
- * //Infinity
- * console.log(_.divide(1,null))
- * //NaN
- * console.log(_.divide(1,NaN))
- *
- * @param a
- * @param b
- * @returns a/b
- * @since 1.0.0
- */
-function divide(a, b) {
-    a = isNil$2(a) ? 0 : a;
-    b = isNil$2(b) ? 0 : b;
-    return a / b;
-}
-
-/**
- * 返回给定数字序列中最大的一个。忽略NaN，null，undefined
- * @example
- * //7
- * console.log(_.max([2,3,1,NaN,7,4,null]))
- * //6
- * console.log(_.max([4,5,6,'x','y']))
- * //Infinity
- * console.log(_.max([4,5,6,Infinity]))
- *
- * @param values 数字/字符数组/Set
- * @returns
- * @since 1.0.0
- */
-function max(values) {
-    const vals = flatMap(values, v => isNil$2(v) || isNaN(v) ? [] : v);
-    let f64a = new Float64Array(vals);
-    f64a.sort();
-    return f64a[f64a.length - 1];
-}
-
-/**
- * 对多个数字或数字列表计算平均值并返回结果
- * @example
- * //2.5
- * console.log(_.mean([1,2,'3',4]))
- * //NaN
- * console.log(_.mean([1,'2',3,'a',4]))
- * //2
- * console.log(_.mean([1,'2',3,null,4]))
- *
- * @param values 数字/字符数组/Set
- * @returns mean value
- * @since 1.0.0
- */
-function mean(values) {
-    const vals = map(values, v => isNil$2(v) ? 0 : v);
-    let f64a = new Float64Array(vals);
-    let rs = 0;
-    f64a.forEach(v => {
-        rs += v;
+function arrayToTree(array, idKey = 'id', pidKey, options = { childrenKey: 'children', rootParentValue: null, attrMap: undefined, sortKey: '' }) {
+    if (!isArray$1(array))
+        return [];
+    const pk = pidKey || 'pid';
+    const attrMap = options.attrMap;
+    const hasAttrMap = !!attrMap && isObject$1(attrMap);
+    const rootParentValue = get$1(options, 'rootParentValue', null);
+    const childrenKey = options.childrenKey || 'children';
+    const sortKey = options.sortKey;
+    const hasSortKey = !!sortKey;
+    const roots = [];
+    const nodeMap = {};
+    const sortMap = {};
+    const initParentMap = {};
+    array.forEach((record) => {
+        const nodeId = record[idKey || 'id'];
+        nodeMap[nodeId] = record;
+        if (hasSortKey) {
+            const sortNo = record[sortKey];
+            sortMap[nodeId] = [sortNo, sortNo]; // min,max
+        }
+        if (record[pk] === rootParentValue) {
+            if (hasAttrMap) {
+                each(attrMap, (v, k) => (record[k] = record[v]));
+            }
+            roots.push(record);
+        }
     });
-    return rs / f64a.length;
-}
-
-/**
- * 返回给定数字序列中最小的一个。忽略NaN，null，undefined
- * @example
- * //-1
- * console.log(_.min([2,3,1,7,'-1']))
- * //0
- * console.log(_.min([4,3,6,0,'x','y']))
- * //-Infinity
- * console.log(_.min([-Infinity,-9999,0,null]))
- * @param values 数字/字符数组/Set
- * @returns
- * @since 1.0.0
- */
-function min(values) {
-    const vals = flatMap(values, v => isNil$2(v) || isNaN(v) ? [] : v);
-    let f64a = new Float64Array(vals);
-    f64a.sort();
-    return f64a[0];
-}
-
-/**
- * 返回min/max如果value超出范围
- * @example
- * //1
- * console.log(_.minmax([1,10,0]))
- * //6
- * console.log(_.minmax([4,8,6]))
- *
- * @param min
- * @param max
- * @param value
- * @returns
- */
-function minmax(min, max, value) {
-    if (value < min)
-        return min;
-    if (value > max)
-        return max;
-    return value;
-}
-
-/**
- * a * b
- * @example
- * //2
- * console.log(_.multiply(1,2))
- * //0
- * console.log(_.multiply(1,null))
- * //NaN
- * console.log(_.multiply(1,NaN))
- *
- * @param a
- * @param b
- * @returns a*b
- * @since 1.0.0
- */
-function multiply(a, b) {
-    a = isNil$2(a) ? 0 : a;
-    b = isNil$2(b) ? 0 : b;
-    return a * b;
-}
-
-function randf(min, max) {
-    if (max === undefined) {
-        if (!min)
-            return Math.random();
-        max = min;
-        min = 0;
-    }
-    max = parseFloat(max + '') || 0;
-    min = parseFloat(min + '') || 0;
-    return Math.random() * (max - min) + min;
-}
-
-/**
- * a - b
- * @example
- * //-1
- * console.log(_.subtract(1,2))
- * //1
- * console.log(_.subtract(1,null))
- * //NaN
- * console.log(_.subtract(1,NaN))
- *
- * @param a
- * @param b
- * @returns a - b
- * @since 1.0.0
- */
-function subtract(a, b) {
-    a = isNil$2(a) ? 0 : a;
-    b = isNil$2(b) ? 0 : b;
-    return a - b;
-}
-
-function sum(...values) {
-    let ary = values;
-    if (ary.length === 1 && isArrayLike$1(ary[0])) {
-        ary = ary[0];
-    }
-    const vals = ary.map((v) => isNil$2(v) ? 0 : v);
-    let rs = 0;
-    const f64a = new Float64Array(vals);
-    f64a.forEach((v) => {
-        rs += v;
+    array.forEach((record) => {
+        const parentId = record[pk];
+        const parentNode = nodeMap[parentId];
+        if (parentNode) {
+            let children = parentNode[childrenKey];
+            if (!initParentMap[parentId]) {
+                children = parentNode[childrenKey] = [];
+                initParentMap[parentId] = true;
+            }
+            if (hasAttrMap) {
+                each(attrMap, (v, k) => (record[k] = record[v]));
+            }
+            if (hasSortKey) {
+                const [min, max] = sortMap[parentId];
+                const sortNo = record[sortKey];
+                if (sortNo <= min) {
+                    children.unshift(record);
+                    sortMap[parentId][0] = sortNo;
+                }
+                else if (sortNo >= max) {
+                    children.push(record);
+                    sortMap[parentId][1] = sortNo;
+                }
+                else {
+                    const i = sortedIndexBy(children, { [sortKey]: sortNo }, sortKey);
+                    children.splice(i, 0, record);
+                }
+            }
+            else {
+                children.push(record);
+            }
+        }
     });
-    return rs;
+    return hasSortKey ? sortBy(roots, sortKey) : roots;
 }
 
-var math = /*#__PURE__*/Object.freeze({
+function closest(node, predicate, parentKey) {
+    let p = node;
+    let t = null;
+    let k = true;
+    let i = 0;
+    while (k && p) {
+        if (predicate(p, i++, () => { k = false; })) {
+            t = p;
+            break;
+        }
+        p = p[parentKey];
+    }
+    return t;
+}
+
+/**
+ * 以给定节点为根遍历所有子孙节点。深度优先
+ * @example
+ * //生成测试数据
+ * function addChildren(count,parent){
+ *  const data = [];
+ *  const pid = parent?parent.id:null;
+ *  const parentName = parent?parent.name+'-':'';
+ *  _.each(_.range(0,count),i=>{
+ *    const sortNo = _.randi(0,count);
+ *    data.push({id:_.alphaId(),pid,name:parentName+i,sortNo})
+ *  });
+ *  return data;
+ * }
+ *
+ * function genTree(depth,parents,data){
+ *  _.each(parents,r=>{
+ *    const children = addChildren(_.randi(1,4),r);
+ *    if(depth-1>0){
+ *      genTree(depth-1,children,data);
+ *    }
+ *    _.append(data,...children);
+ *  });
+ * }
+ *
+ * const roots = addChildren(2);
+ * const data = [];
+ * genTree(2,roots,data);
+ * _.insert(data,0,...roots);
+ * const tree = _.arrayToTree(data,'id','pid',{sortKey:'sortNo'});
+ *
+ * _.walkTree(tree,(node,parentNode,chain)=>console.log('node',node.name,'sortNo',node.sortNo,'chain',_.map(chain,n=>n.name)))
+ *
+ * @param treeNodes 一组节点或一个节点
+ * @param callback (node,parentNode,chain,level,index)回调函数，如果返回false则中断遍历，如果返回-1则停止分支遍历
+ * @param {object} options 自定义选项
+ * @param options.childrenKey 包含子节点容器的key。默认'children'
+ * @since 1.0.0
+ */
+function walkTree(treeNodes, callback, options) {
+    _walkTree(treeNodes, callback, options);
+}
+function _walkTree(treeNodes, callback, options, ...rest) {
+    if (!isObject$1(treeNodes))
+        return;
+    options = options || {};
+    const parentNode = rest[0];
+    const chain = rest[1] || [];
+    const childrenKey = options.childrenKey || 'children';
+    const data = isArrayLike$1(treeNodes) ? treeNodes : [treeNodes];
+    for (let i = 0; i < data.length; i++) {
+        const node = data[i];
+        const rs = callback(node, parentNode, chain, chain.length, i);
+        if (rs === false)
+            return false;
+        if (rs === -1)
+            continue;
+        if (!isEmpty(node[childrenKey])) {
+            let nextChain = [node];
+            if (parentNode) {
+                nextChain = chain.concat(nextChain);
+            }
+            const rs = _walkTree(node[childrenKey], callback, options, node, nextChain);
+            if (rs === false)
+                return;
+        }
+    }
+}
+
+/**
+ * 类似<code>findTreeNodes</code>，但会返回包含所有父节点的节点副本数组，已做去重处理。
+ * 结果集可用于重新构建tree
+ * @example
+ * //生成测试数据
+ * function addChildren(count,parent){
+ *  const data = [];
+ *  const pid = parent?parent.id:null;
+ *  const parentName = parent?parent.name+'-':'';
+ *  _.each(_.range(0,count),i=>{
+ *    const sortNo = _.randi(1,4);
+ *    data.push({id:_.alphaId(),pid,name:parentName+i,sortNo})
+ *  });
+ *  return data;
+ * }
+ *
+ * function genTree(depth,parents,data){
+ *  _.each(parents,r=>{
+ *    const children = addChildren(_.randi(1,4),r);
+ *    if(depth-1>0){
+ *      genTree(depth-1,children,data);
+ *    }
+ *    _.append(data,...children);
+ *  });
+ * }
+ *
+ * const roots = addChildren(2);
+ * const data = [];
+ * genTree(2,roots,data);
+ * _.insert(data,0,...roots);
+ * const tree = _.arrayToTree(data,'id','pid',{sortKey:'sortNo'});
+ *
+ * _.each(_.filterTree(tree,node=>node.sortNo>1),node=>console.log(_.omit(node,'children','id','pid')))
+ *
+ *
+ * @param treeNodes 一组节点或一个节点
+ * @param predicate (node,parentNode,chain,level) 断言
+ * <br>当断言是函数时回调参数见定义
+ * <br>其他类型请参考 {@link utils!iteratee}
+ * @param {object} options 自定义选项
+ * @param options.childrenKey 包含子节点容器的key。默认'children'
+ * @returns 找到的符合条件的所有节点副本或空数组
+ * @since 1.0.0
+ */
+function filterTree(treeNodes, predicate, options = { childrenKey: 'children' }) {
+    const callback = iteratee$1(predicate);
+    const childrenKey = options.childrenKey || 'children';
+    let nodes = [];
+    walkTree(treeNodes, (n, p, c, l) => {
+        const rs = callback(n, p, c, l);
+        if (rs) {
+            c.forEach((node) => {
+                if (!includes(nodes, node)) {
+                    nodes.push(node);
+                }
+            });
+            nodes.push(n);
+        }
+    }, options);
+    nodes = map(nodes, (item) => cloneWith(item, (v, k) => (k === childrenKey ? null : v)));
+    return nodes;
+}
+
+function findTreeNode(treeNodes, predicate, options) {
+    const callback = iteratee$1(predicate);
+    let node;
+    walkTree(treeNodes, (n, p, c, l, i) => {
+        const rs = callback(n, p, c, l, i);
+        if (rs) {
+            node = n;
+            return false;
+        }
+    }, options);
+    return node;
+}
+
+function findTreeNodes(treeNodes, predicate, options) {
+    const callback = iteratee$1(predicate);
+    const nodes = [];
+    walkTree(treeNodes, (n, p, c, l, i) => {
+        const rs = callback(n, p, c, l, i);
+        if (rs) {
+            nodes.push(n);
+        }
+    }, options);
+    return nodes;
+}
+
+/**
+ * 对给定节点及所有子孙节点(同级)排序
+ * @example
+ * //生成测试数据
+ * function addChildren(count,parent){
+ *  const data = [];
+ *  const pid = parent?parent.id:null;
+ *  const parentName = parent?parent.name+'-':'';
+ *  _.each(_.range(0,count),i=>{
+ *    const sortNo = _.randi(0,9);
+ *    data.push({id:_.alphaId(),pid,name:parentName+i,sortNo})
+ *  });
+ *  return data;
+ * }
+ *
+ * function genTree(depth,parents,data){
+ *  _.each(parents,r=>{
+ *    const children = addChildren(_.randi(1,4),r);
+ *    if(depth-1>0){
+ *      genTree(depth-1,children,data);
+ *    }
+ *    _.append(data,...children);
+ *  });
+ * }
+ *
+ * const roots = addChildren(1);
+ * const data = [];
+ * genTree(2,roots,data);
+ * _.insert(data,0,...roots);
+ * let tree = _.arrayToTree(data,'id','pid');
+ *
+ * console.log('Before sort---------------');
+ * _.walkTree(_.cloneDeep(tree),(parentNode,node,chain)=>console.log('node',node.name,'sortNo',node.sortNo))
+ * _.sortTree(tree,(a,b)=>a.sortNo - b.sortNo);
+ * console.log('After sort---------------');
+ * _.walkTree(tree,(parentNode,node,chain)=>console.log('node',node.name,'sortNo',node.sortNo))
+ *
+ * @param treeNodes 一组节点或一个节点
+ * @param comparator (a,b) 排序函数
+ * @param {object} options 自定义选项
+ * @param options.childrenKey 包含子节点容器的key。默认'children'
+ *
+ * @since 1.0.0
+ */
+function sortTree(treeNodes, comparator, options = { childrenKey: 'children' }) {
+    const childrenKey = options.childrenKey || 'children';
+    const data = isArray$1(treeNodes)
+        ? treeNodes
+        : [treeNodes];
+    data.sort((a, b) => comparator(a, b));
+    data.forEach((node) => {
+        if (!isEmpty(node[childrenKey])) {
+            sortTree(node[childrenKey], comparator);
+        }
+    });
+}
+
+var tree = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  add: add,
-  divide: divide,
-  max: max,
-  mean: mean,
-  min: min,
-  minmax: minmax,
-  multiply: multiply,
-  randf: randf,
-  randi: randi,
-  subtract: subtract,
-  sum: sum
+  arrayToTree: arrayToTree,
+  closest: closest,
+  filterTree: filterTree,
+  findTreeNode: findTreeNode,
+  findTreeNodes: findTreeNodes,
+  sortTree: sortTree,
+  walkTree: walkTree
 });
 
 const ALPHABET$1 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'.split('');
@@ -7705,7 +9091,7 @@ const ALPHABET$1 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567
  * @since 1.0.0
  */
 function alphaId$1(len) {
-    const bytes = self.crypto.getRandomValues(new Uint8Array(len || 16));
+    const bytes = globalThis.crypto.getRandomValues(new Uint8Array(len || 16));
     let rs = '';
     bytes.forEach(b => rs += ALPHABET$1[b % ALPHABET$1.length]);
     return rs;
@@ -7739,7 +9125,7 @@ function defaultTo(v, defaultValue) {
  *  select:_.get,
  *  from:_.chain,
  *  where:_.filter,
- *  top:_.head
+ *  top:_.first
  * });
  *
  * const libs = [
@@ -7753,19 +9139,19 @@ function defaultTo(v, defaultValue) {
  * @param obj 扩展的函数声明
  */
 function mixin(target, obj) {
-    functions$1(obj).forEach((fnName) => {
+    functions(obj).forEach((fnName) => {
         const fn = obj[fnName];
-        if (isFunction$1(target)) {
-            target[fnName] = fn;
-        }
-        else {
-            target.prototype[fnName] = function (...rest) {
+        if (target.prototype && target.prototype.constructor.name === 'FuncChain') {
+            target.prototype['_' + fnName] = function (...rest) {
                 this._chain.push({
                     fn: fn,
                     params: rest,
                 });
                 return this;
             };
+        }
+        else {
+            target['_' + fnName] = fn;
         }
     });
 }
@@ -7892,9 +9278,9 @@ const VARIANTS = ['8', '9', 'a', 'b'];
  */
 function uuid(delimiter) {
     let uuid = '';
-    if (self.crypto.randomUUID) {
+    if (globalThis.crypto && globalThis.crypto.randomUUID) {
         // only in https
-        uuid = self.crypto.randomUUID();
+        uuid = globalThis.crypto.randomUUID();
     }
     else {
         const r32 = Math.random();
@@ -7932,306 +9318,6 @@ var utils = /*#__PURE__*/Object.freeze({
   uuid: uuid
 });
 
-/**
- * 创建一个包含指定函数逻辑且内置计数的包装函数并返回。
- * 该函数每调用一次计数会减一，直到计数为0后生效。可用于异步结果汇总时只调用一次的场景
- *
- * @example
- * //undefined, undefined, 'data saved'
- * let saveTip = _.after(()=>'data saved',2);
- * console.log(saveTip(),saveTip(),saveTip())
- *
- * @param fn 需要调用的函数
- * @param [count=0] 计数
- * @returns 包装后的函数
- */
-function after(fn, count) {
-    const proxy = fn;
-    let i = count || 0;
-    let rtn;
-    return (...args) => {
-        if (i === 0) {
-            rtn = proxy(...args);
-        }
-        if (i > 0)
-            i--;
-        return rtn;
-    };
-}
-
-/**
- * 传递v为参数执行interceptor1函数，如果该函数返回值未定义(undefined)则执行interceptor2函数，并返回函数返回值。
- * 用于函数链中的分支操作
- * @example
- * //false
- * console.log(_.alt(9,v=>false,v=>20))
- *
- * @param v
- * @param interceptor1 (v)
- * @param interceptor2 (v)
- * @returns 函数返回值
- */
-function alt(v, interceptor1, interceptor2) {
-    let rs = interceptor1(v);
-    if (rs === undefined) {
-        rs = interceptor2(v);
-    }
-    return rs;
-}
-
-const PLACEHOLDER = void 0;
-/**
- * 创建一个新的函数，该函数会调用fn，并传入指定的部分参数。
- *
- * `partial()`常用来创建函数模板或扩展核心函数，比如
- *
- * ```js
- * let delay2 = _.partial(setTimeout,undefined,2000);
- * delay2(()=>\{console.log('2秒后调用')\})
- * ```
- *
- * @example
- * //2748
- * let hax2num = _.partial(parseInt,undefined,16);
- * console.log(hax2num('abc'))
- * //9
- * let square = _.partial(Math.pow,undefined,2);
- * console.log(square(3))
- * //￥12,345.00元
- * let formatYuan = _.partial(_.formatNumber,undefined,'￥,000.00元');
- * console.log(formatYuan(12345))
- * //[func.js] hi...
- * let log = _.partial((...args)=>args.join(' '),'[func.js][',undefined,']',undefined);
- * console.log(log('info','hi...'))
- *
- * @param fn 需要调用的函数
- * @param args 参数可以使用undefined作为占位符，以此来确定不同的实参位置
- * @returns 部分应用后的新函数
- */
-function partial(fn, ...args) {
-    return function (...params) {
-        let p = 0;
-        const applyArgs = args.map((v) => (v === PLACEHOLDER ? params[p++] : v));
-        if (params.length > p) {
-            for (let i = p; i < params.length; i++) {
-                applyArgs.push(params[i]);
-            }
-        }
-        return fn(...applyArgs);
-    };
-}
-
-/**
- * 创建一个新的函数，并且绑定函数的this上下文。默认参数部分同<code>partial()</code>
- *
- * @example
- * const obj = {
- *  text:'Func.js',
- *  click:function(a,b,c){console.log('welcome to '+this.text,a,b,c)},
- *  blur:function(){console.log('bye '+this.text)}
- * }
- * //自动填充参数
- * let click = _.bind(obj.click,obj,'a',undefined,'c');
- * click('hi')
- * //1秒后执行，无参数
- * setTimeout(click,1000)
- *
- * @param fn 需要调用的函数
- * @param thisArg fn函数内this所指向的值
- * @param args 参数可以使用undefined作为占位符，以此来确定不同的实参位置
- * @returns 绑定thisArg的新函数
- * @since 0.17.0
- */
-function bind(fn, thisArg, ...args) {
-    return partial(fn.bind(thisArg), ...args);
-}
-
-/**
- * 批量绑定对象内的函数属性，将这些函数的this上下文指向绑定对象。经常用于模型中的函数用于外部场景，比如setTimeout/事件绑定等
- *
- * @example
- * const obj = {
- *  text:'Func.js',
- *  click:function(a,b,c){console.log('welcome to '+this.text,a,b,c)},
- *  click2:function(){console.log('hi '+this.text)}
- * }
- * //自动填充参数
- * _.bindAll(obj,'click',['click2']);
- * //1秒后执行，无参数
- * setTimeout(obj.click,1000)
- * //事件
- * top.onclick = obj.click2
- *
- * @param object 绑定对象
- * @param  {...(string | Array<string>)} methodNames 属性名或path
- * @returns 绑定对象
- * @since 0.17.0
- */
-function bindAll(object, ...methodNames) {
-    const pathList = flatDeep(methodNames);
-    each$1(pathList, (path) => {
-        const fn = get$1(object, path);
-        set(object, path, fn.bind(object));
-    });
-    return object;
-}
-
-/**
- * 通过给定参数调用fn并返回执行结果
- *
- * @example
- * //自动填充参数
- * _.call(fn,1,2);
- * //事件
- * _.call(fn,1,2);
- *
- * @param fn 需要执行的函数
- * @param args 可变参数
- * @returns 执行结果。如果函数无效或无返回值返回undefined
- * @since 1.0.0
- */
-function call(fn, ...args) {
-    if (!isFunction$1(fn))
-        return undefined;
-    return fn(...args);
-}
-
-/**
- * 创建一个新的函数，该函数的参数会传递给第一个<code>fns</code>函数来计算结果，而结果又是第二个fns函数的参数，以此类推，
- * 直到所有函数执行完成。常用于封装不同的可重用函数模块组成新的函数或实现惰性计算，比如
- *
- * <pre><code class="language-javascript">
- * let checkName = _.compose(_.trim,v=>v.length>6);
- * checkName(' holyhigh') //=> true
- * checkName(' ') //=> false
- * </code></pre>
- *
- * @example
- * // Holyhigh
- * let formatName = _.compose(_.lowerCase,_.capitalize);
- * console.log(formatName('HOLYHIGH'))
- *
- * @param  {...function} fns
- * @returns 组合后的入口函数
- */
-function compose(...fns) {
-    return function (...args) {
-        let rs = fns[0](...args);
-        for (let i = 1; i < fns.length; i++) {
-            if (isFunction$1(fns[i])) {
-                rs = fns[i](rs);
-            }
-        }
-        return rs;
-    };
-}
-
-/**
- * 启动计时器，并在倒计时为0后调用函数。
- * 内部使用setTimeout进行倒计时，如需中断延迟可以使用clearTimeout函数
- * <div class="alert alert-secondary">
-      注意，函数并不提供防抖逻辑。如果需要处理重复调用必须自己处理计时器id
-    </div>
- *
- * @example
- * //1000ms 后显示some text !
- * _.delay(console.log,1000,'some text','!');
- *
- * @param fn 需要调用的函数
- * @param [wait=0] 倒计时。单位ms
- * @param [args] 传入定时函数的参数
- * @returns 计时器id
- */
-function delay(fn, wait, ...args) {
-    return setTimeout(() => {
-        fn(...args);
-    }, wait || 0);
-}
-
-/**
- * 类似eval，对表达式进行求值并返回结果。不同于eval，fval()执行在严格模式下
- *
- * > 注意，如果页面设置了<a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP">CSP</a>可能会导致该函数失效
- *
- * @example
- * //5
- * console.log(_.fval('3+2'));
- * //{name:"func.js"}
- * console.log(_.fval("{name:'func.js'}"));
- * //0
- * console.log(_.fval('1+x-b',{x:2,b:3}))
- *
- * @param expression 计算表达式
- * @param args 参数对象
- * @returns 表达式计算结果
- */
-function fval(expression, args) {
-    const ks = keys$1(args);
-    const val = values$1(args);
-    return Function(...ks, '"use strict";return ' + expression)(...val);
-}
-
-/**
- * 创建一个包含指定函数逻辑的包装函数并返回。该函数仅执行一次
- *
- * @example
- * //2748, undefined
- * let parseInt2 = _.once(parseInt);
- * console.log(parseInt2('abc',16),parseInt2('abc',16))
- *
- * @param fn 需要调用的函数
- * @returns 包装后的函数
- */
-function once(fn) {
-    let proxy = fn;
-    return (...args) => {
-        let rtn;
-        if (proxy) {
-            rtn = proxy(...args);
-        }
-        proxy = null;
-        return rtn;
-    };
-}
-
-/**
- * 传递v为参数执行interceptor函数，然后返回v。常用于函数链的过程调试，比如在filter后执行日志操作
- * <p>
- * 注意，一旦函数链执行了shortcut fusion，tap函数的执行会延迟到一个数组推导完成后执行
- * </p>
- *
- * @example
- * //shortut fusion中的tap只保留最后一个
- * _([1,2,3,4])
- * .map(v=>v*3).tap(v=>console.log(v))//被覆盖
- * .filter(v=>v%2===0).tap(v=>console.log(v))//会延迟，并输出结果[6,12]
- * .join('-')
- * .value()
- *
- * @param v
- * @param interceptor (v);如果v是引用值，改变v将影响后续函数流
- * @returns v
- */
-function tap(v, interceptor) {
-    interceptor(v);
-    return v;
-}
-
-var functions = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  after: after,
-  alt: alt,
-  bind: bind,
-  bindAll: bindAll,
-  call: call,
-  compose: compose,
-  delay: delay,
-  fval: fval,
-  once: once,
-  partial: partial,
-  tap: tap
-});
-
 /* eslint-disable no-invalid-this */
 /* eslint-disable require-jsdoc */
 /* eslint-disable max-len */
@@ -8240,14 +9326,232 @@ var functions = /*#__PURE__*/Object.freeze({
  * @author holyhigh
  */
 /**
+ * chain 函数集
+ */
+class ChainFx {
+    append(...values) { return get$1(FuncChain.prototype, '_append').call(this, ...arguments); }
+    chunk(size = 1) { return get$1(FuncChain.prototype, '_chunk').call(this, ...arguments); }
+    compact() { return get$1(FuncChain.prototype, '_compact').call(this, ...arguments); }
+    concat() { return get$1(FuncChain.prototype, '_concat').call(this, ...arguments); }
+    except() { return get$1(FuncChain.prototype, '_except').call(this, ...arguments); }
+    fill(value, start = 0, end) { return get$1(FuncChain.prototype, '_fill').call(this, ...arguments); }
+    findIndex(predicate, fromIndex) { return get$1(FuncChain.prototype, '_findIndex').call(this, ...arguments); }
+    findLastIndex(predicate, fromIndex) { return get$1(FuncChain.prototype, '_findLastIndex').call(this, ...arguments); }
+    flat(depth = 1) { return get$1(FuncChain.prototype, '_flat').call(this, ...arguments); }
+    flatDeep() { return get$1(FuncChain.prototype, '_flatDeep').call(this, ...arguments); }
+    insert(index, ...values) { return get$1(FuncChain.prototype, '_insert').call(this, ...arguments); }
+    intersect() { return get$1(FuncChain.prototype, '_intersect').call(this, ...arguments); }
+    join(separator) { return get$1(FuncChain.prototype, '_join').call(this, ...arguments); }
+    pop(index) { return get$1(FuncChain.prototype, '_pop').call(this, ...arguments); }
+    pull(...values) { return get$1(FuncChain.prototype, '_pull').call(this, ...arguments); }
+    range(end, step) { return get$1(FuncChain.prototype, '_range').call(this, ...arguments); }
+    remove(predicate) { return get$1(FuncChain.prototype, '_remove').call(this, ...arguments); }
+    reverse() { return get$1(FuncChain.prototype, '_reverse').call(this, ...arguments); }
+    slice(begin, end) { return get$1(FuncChain.prototype, '_slice').call(this, ...arguments); }
+    sortedIndex(value) { return get$1(FuncChain.prototype, '_sortedIndex').call(this, ...arguments); }
+    sortedIndexBy(value, itee) { return get$1(FuncChain.prototype, '_sortedIndexBy').call(this, ...arguments); }
+    union() { return get$1(FuncChain.prototype, '_union').call(this, ...arguments); }
+    uniq() { return get$1(FuncChain.prototype, '_uniq').call(this, ...arguments); }
+    uniqBy(itee) { return get$1(FuncChain.prototype, '_uniqBy').call(this, ...arguments); }
+    unzip() { return get$1(FuncChain.prototype, '_unzip').call(this, ...arguments); }
+    without(...values) { return get$1(FuncChain.prototype, '_without').call(this, ...arguments); }
+    zip() { return get$1(FuncChain.prototype, '_zip').call(this, ...arguments); }
+    zipObject(values) { return get$1(FuncChain.prototype, '_zipObject').call(this, ...arguments); }
+    zipWith() { return get$1(FuncChain.prototype, '_zipWith').call(this, ...arguments); }
+    countBy(itee) { return get$1(FuncChain.prototype, '_countBy').call(this, ...arguments); }
+    every(predicate) { return get$1(FuncChain.prototype, '_every').call(this, ...arguments); }
+    filter(predicate) { return get$1(FuncChain.prototype, '_filter').call(this, ...arguments); }
+    find(predicate) { return get$1(FuncChain.prototype, '_find').call(this, ...arguments); }
+    findLast(predicate) { return get$1(FuncChain.prototype, '_findLast').call(this, ...arguments); }
+    first() { return get$1(FuncChain.prototype, '_first').call(this, ...arguments); }
+    flatMap(itee, depth) { return get$1(FuncChain.prototype, '_flatMap').call(this, ...arguments); }
+    flatMapDeep(itee) { return get$1(FuncChain.prototype, '_flatMapDeep').call(this, ...arguments); }
+    groupBy(itee) { return get$1(FuncChain.prototype, '_groupBy').call(this, ...arguments); }
+    includes(value, fromIndex) { return get$1(FuncChain.prototype, '_includes').call(this, ...arguments); }
+    initial() { return get$1(FuncChain.prototype, '_initial').call(this, ...arguments); }
+    keyBy(itee) { return get$1(FuncChain.prototype, '_keyBy').call(this, ...arguments); }
+    last() { return get$1(FuncChain.prototype, '_last').call(this, ...arguments); }
+    map(itee) { return get$1(FuncChain.prototype, '_map').call(this, ...arguments); }
+    partition(predicate) { return get$1(FuncChain.prototype, '_partition').call(this, ...arguments); }
+    reduce(callback, initialValue) { return get$1(FuncChain.prototype, '_reduce').call(this, ...arguments); }
+    reject(predicate) { return get$1(FuncChain.prototype, '_reject').call(this, ...arguments); }
+    sample() { return get$1(FuncChain.prototype, '_sample').call(this, ...arguments); }
+    sampleSize(count) { return get$1(FuncChain.prototype, '_sampleSize').call(this, ...arguments); }
+    shuffle() { return get$1(FuncChain.prototype, '_shuffle').call(this, ...arguments); }
+    size() { return get$1(FuncChain.prototype, '_size').call(this, ...arguments); }
+    some(predicate) { return get$1(FuncChain.prototype, '_some').call(this, ...arguments); }
+    sort(comparator) { return get$1(FuncChain.prototype, '_sort').call(this, ...arguments); }
+    sortBy(itee) { return get$1(FuncChain.prototype, '_sortBy').call(this, ...arguments); }
+    tail() { return get$1(FuncChain.prototype, '_tail').call(this, ...arguments); }
+    take(length) { return get$1(FuncChain.prototype, '_take').call(this, ...arguments); }
+    takeRight(length) { return get$1(FuncChain.prototype, '_takeRight').call(this, ...arguments); }
+    toArray() { return get$1(FuncChain.prototype, '_toArray').call(this, ...arguments); }
+    addTime(amount, type) { return get$1(FuncChain.prototype, '_addTime').call(this, ...arguments); }
+    compareDate(date2, type) { return get$1(FuncChain.prototype, '_compareDate').call(this, ...arguments); }
+    formatDate(pattern) { return get$1(FuncChain.prototype, '_formatDate').call(this, ...arguments); }
+    getDayOfYear() { return get$1(FuncChain.prototype, '_getDayOfYear').call(this, ...arguments); }
+    getWeekOfMonth() { return get$1(FuncChain.prototype, '_getWeekOfMonth').call(this, ...arguments); }
+    getWeekOfYear() { return get$1(FuncChain.prototype, '_getWeekOfYear').call(this, ...arguments); }
+    isLeapYear() { return get$1(FuncChain.prototype, '_isLeapYear').call(this, ...arguments); }
+    isSameDay(date2) { return get$1(FuncChain.prototype, '_isSameDay').call(this, ...arguments); }
+    now() { return get$1(FuncChain.prototype, '_now').call(this, ...arguments); }
+    toDate() { return get$1(FuncChain.prototype, '_toDate').call(this, ...arguments); }
+    after(count) { return get$1(FuncChain.prototype, '_after').call(this, ...arguments); }
+    alt(interceptor1, interceptor2) { return get$1(FuncChain.prototype, '_alt').call(this, ...arguments); }
+    bind(thisArg, ...args) { return get$1(FuncChain.prototype, '_bind').call(this, ...arguments); }
+    bindAll(...methodNames) { return get$1(FuncChain.prototype, '_bindAll').call(this, ...arguments); }
+    call(...args) { return get$1(FuncChain.prototype, '_call').call(this, ...arguments); }
+    compose() { return get$1(FuncChain.prototype, '_compose').call(this, ...arguments); }
+    debounce(wait, immediate = false) { return get$1(FuncChain.prototype, '_debounce').call(this, ...arguments); }
+    delay(wait, ...args) { return get$1(FuncChain.prototype, '_delay').call(this, ...arguments); }
+    fval(args, context) { return get$1(FuncChain.prototype, '_fval').call(this, ...arguments); }
+    once() { return get$1(FuncChain.prototype, '_once').call(this, ...arguments); }
+    partial(...args) { return get$1(FuncChain.prototype, '_partial').call(this, ...arguments); }
+    tap(interceptor) { return get$1(FuncChain.prototype, '_tap').call(this, ...arguments); }
+    throttle(wait, options) { return get$1(FuncChain.prototype, '_throttle').call(this, ...arguments); }
+    isArray() { return get$1(FuncChain.prototype, '_isArray').call(this, ...arguments); }
+    isArrayLike() { return get$1(FuncChain.prototype, '_isArrayLike').call(this, ...arguments); }
+    isBlank() { return get$1(FuncChain.prototype, '_isBlank').call(this, ...arguments); }
+    isBoolean() { return get$1(FuncChain.prototype, '_isBoolean').call(this, ...arguments); }
+    isCustomElement() { return get$1(FuncChain.prototype, '_isCustomElement').call(this, ...arguments); }
+    isDate() { return get$1(FuncChain.prototype, '_isDate').call(this, ...arguments); }
+    isDefined() { return get$1(FuncChain.prototype, '_isDefined').call(this, ...arguments); }
+    isElement() { return get$1(FuncChain.prototype, '_isElement').call(this, ...arguments); }
+    isEmpty() { return get$1(FuncChain.prototype, '_isEmpty').call(this, ...arguments); }
+    isEqual(b) { return get$1(FuncChain.prototype, '_isEqual').call(this, ...arguments); }
+    isEqualWith(b, comparator) { return get$1(FuncChain.prototype, '_isEqualWith').call(this, ...arguments); }
+    isError() { return get$1(FuncChain.prototype, '_isError').call(this, ...arguments); }
+    isFinite() { return get$1(FuncChain.prototype, '_isFinite').call(this, ...arguments); }
+    isFunction() { return get$1(FuncChain.prototype, '_isFunction').call(this, ...arguments); }
+    isInteger() { return get$1(FuncChain.prototype, '_isInteger').call(this, ...arguments); }
+    isIterator() { return get$1(FuncChain.prototype, '_isIterator').call(this, ...arguments); }
+    isLowerCaseChar() { return get$1(FuncChain.prototype, '_isLowerCaseChar').call(this, ...arguments); }
+    isMap() { return get$1(FuncChain.prototype, '_isMap').call(this, ...arguments); }
+    isMatch(props) { return get$1(FuncChain.prototype, '_isMatch').call(this, ...arguments); }
+    isMatchWith(props, comparator) { return get$1(FuncChain.prototype, '_isMatchWith').call(this, ...arguments); }
+    isNaN() { return get$1(FuncChain.prototype, '_isNaN').call(this, ...arguments); }
+    isNative() { return get$1(FuncChain.prototype, '_isNative').call(this, ...arguments); }
+    isNil() { return get$1(FuncChain.prototype, '_isNil').call(this, ...arguments); }
+    isNode() { return get$1(FuncChain.prototype, '_isNode').call(this, ...arguments); }
+    isNull() { return get$1(FuncChain.prototype, '_isNull').call(this, ...arguments); }
+    isNumber() { return get$1(FuncChain.prototype, '_isNumber').call(this, ...arguments); }
+    isNumeric() { return get$1(FuncChain.prototype, '_isNumeric').call(this, ...arguments); }
+    isObject() { return get$1(FuncChain.prototype, '_isObject').call(this, ...arguments); }
+    isPlainObject() { return get$1(FuncChain.prototype, '_isPlainObject').call(this, ...arguments); }
+    isPrimitive() { return get$1(FuncChain.prototype, '_isPrimitive').call(this, ...arguments); }
+    isRegExp() { return get$1(FuncChain.prototype, '_isRegExp').call(this, ...arguments); }
+    isSafeInteger() { return get$1(FuncChain.prototype, '_isSafeInteger').call(this, ...arguments); }
+    isSet() { return get$1(FuncChain.prototype, '_isSet').call(this, ...arguments); }
+    isString() { return get$1(FuncChain.prototype, '_isString').call(this, ...arguments); }
+    isSymbol() { return get$1(FuncChain.prototype, '_isSymbol').call(this, ...arguments); }
+    isUndefined() { return get$1(FuncChain.prototype, '_isUndefined').call(this, ...arguments); }
+    isUpperCaseChar() { return get$1(FuncChain.prototype, '_isUpperCaseChar').call(this, ...arguments); }
+    isWeakMap() { return get$1(FuncChain.prototype, '_isWeakMap').call(this, ...arguments); }
+    isWeakSet() { return get$1(FuncChain.prototype, '_isWeakSet').call(this, ...arguments); }
+    add(b) { return get$1(FuncChain.prototype, '_add').call(this, ...arguments); }
+    divide(b) { return get$1(FuncChain.prototype, '_divide').call(this, ...arguments); }
+    max() { return get$1(FuncChain.prototype, '_max').call(this, ...arguments); }
+    mean() { return get$1(FuncChain.prototype, '_mean').call(this, ...arguments); }
+    median() { return get$1(FuncChain.prototype, '_median').call(this, ...arguments); }
+    min() { return get$1(FuncChain.prototype, '_min').call(this, ...arguments); }
+    minmax(max, value) { return get$1(FuncChain.prototype, '_minmax').call(this, ...arguments); }
+    multiply(b) { return get$1(FuncChain.prototype, '_multiply').call(this, ...arguments); }
+    randf(max) { return get$1(FuncChain.prototype, '_randf').call(this, ...arguments); }
+    randi(max) { return get$1(FuncChain.prototype, '_randi').call(this, ...arguments); }
+    subtract(b) { return get$1(FuncChain.prototype, '_subtract').call(this, ...arguments); }
+    sum() { return get$1(FuncChain.prototype, '_sum').call(this, ...arguments); }
+    formatNumber(pattern = '#,##0.00') { return get$1(FuncChain.prototype, '_formatNumber').call(this, ...arguments); }
+    gt(b) { return get$1(FuncChain.prototype, '_gt').call(this, ...arguments); }
+    gte(b) { return get$1(FuncChain.prototype, '_gte').call(this, ...arguments); }
+    inRange(start, end) { return get$1(FuncChain.prototype, '_inRange').call(this, ...arguments); }
+    lt(b) { return get$1(FuncChain.prototype, '_lt').call(this, ...arguments); }
+    lte(b) { return get$1(FuncChain.prototype, '_lte').call(this, ...arguments); }
+    toInteger() { return get$1(FuncChain.prototype, '_toInteger').call(this, ...arguments); }
+    toNumber() { return get$1(FuncChain.prototype, '_toNumber').call(this, ...arguments); }
+    assign(...sources) { return get$1(FuncChain.prototype, '_assign').call(this, ...arguments); }
+    assignWith(...sources) { return get$1(FuncChain.prototype, '_assignWith').call(this, ...arguments); }
+    clone() { return get$1(FuncChain.prototype, '_clone').call(this, ...arguments); }
+    cloneDeep() { return get$1(FuncChain.prototype, '_cloneDeep').call(this, ...arguments); }
+    cloneDeepWith(handler, skip = (value, key) => false) { return get$1(FuncChain.prototype, '_cloneDeepWith').call(this, ...arguments); }
+    cloneWith(handler, skip = (value, key) => false) { return get$1(FuncChain.prototype, '_cloneWith').call(this, ...arguments); }
+    defaults(...sources) { return get$1(FuncChain.prototype, '_defaults').call(this, ...arguments); }
+    defaultsDeep(...sources) { return get$1(FuncChain.prototype, '_defaultsDeep').call(this, ...arguments); }
+    eq(b) { return get$1(FuncChain.prototype, '_eq').call(this, ...arguments); }
+    findKey(predicate) { return get$1(FuncChain.prototype, '_findKey').call(this, ...arguments); }
+    fromPairs() { return get$1(FuncChain.prototype, '_fromPairs').call(this, ...arguments); }
+    functions() { return get$1(FuncChain.prototype, '_functions').call(this, ...arguments); }
+    get(path, defaultValue) { return get$1(FuncChain.prototype, '_get').call(this, ...arguments); }
+    has(key) { return get$1(FuncChain.prototype, '_has').call(this, ...arguments); }
+    keys() { return get$1(FuncChain.prototype, '_keys').call(this, ...arguments); }
+    keysIn() { return get$1(FuncChain.prototype, '_keysIn').call(this, ...arguments); }
+    merge(...sources) { return get$1(FuncChain.prototype, '_merge').call(this, ...arguments); }
+    mergeWith(...sources) { return get$1(FuncChain.prototype, '_mergeWith').call(this, ...arguments); }
+    omit(...props) { return get$1(FuncChain.prototype, '_omit').call(this, ...arguments); }
+    omitBy(predicate) { return get$1(FuncChain.prototype, '_omitBy').call(this, ...arguments); }
+    parseJSON(ignore = false) { return get$1(FuncChain.prototype, '_parseJSON').call(this, ...arguments); }
+    pick(...props) { return get$1(FuncChain.prototype, '_pick').call(this, ...arguments); }
+    pickBy(predicate) { return get$1(FuncChain.prototype, '_pickBy').call(this, ...arguments); }
+    prop() { return get$1(FuncChain.prototype, '_prop').call(this, ...arguments); }
+    set(path, value) { return get$1(FuncChain.prototype, '_set').call(this, ...arguments); }
+    toObject() { return get$1(FuncChain.prototype, '_toObject').call(this, ...arguments); }
+    toPairs() { return get$1(FuncChain.prototype, '_toPairs').call(this, ...arguments); }
+    unset(path) { return get$1(FuncChain.prototype, '_unset').call(this, ...arguments); }
+    values() { return get$1(FuncChain.prototype, '_values').call(this, ...arguments); }
+    valuesIn() { return get$1(FuncChain.prototype, '_valuesIn').call(this, ...arguments); }
+    camelCase() { return get$1(FuncChain.prototype, '_camelCase').call(this, ...arguments); }
+    capitalize() { return get$1(FuncChain.prototype, '_capitalize').call(this, ...arguments); }
+    endsWith(searchStr, position) { return get$1(FuncChain.prototype, '_endsWith').call(this, ...arguments); }
+    escapeRegExp() { return get$1(FuncChain.prototype, '_escapeRegExp').call(this, ...arguments); }
+    indexOf(search, fromIndex) { return get$1(FuncChain.prototype, '_indexOf').call(this, ...arguments); }
+    kebabCase() { return get$1(FuncChain.prototype, '_kebabCase').call(this, ...arguments); }
+    lastIndexOf(search, fromIndex) { return get$1(FuncChain.prototype, '_lastIndexOf').call(this, ...arguments); }
+    lowerCase() { return get$1(FuncChain.prototype, '_lowerCase').call(this, ...arguments); }
+    lowerFirst() { return get$1(FuncChain.prototype, '_lowerFirst').call(this, ...arguments); }
+    padEnd(len, padString) { return get$1(FuncChain.prototype, '_padEnd').call(this, ...arguments); }
+    padStart(len, padString) { return get$1(FuncChain.prototype, '_padStart').call(this, ...arguments); }
+    padZ(len) { return get$1(FuncChain.prototype, '_padZ').call(this, ...arguments); }
+    pascalCase() { return get$1(FuncChain.prototype, '_pascalCase').call(this, ...arguments); }
+    repeat(count) { return get$1(FuncChain.prototype, '_repeat').call(this, ...arguments); }
+    replace(searchValue, replaceValue) { return get$1(FuncChain.prototype, '_replace').call(this, ...arguments); }
+    replaceAll(searchValue, replaceValue) { return get$1(FuncChain.prototype, '_replaceAll').call(this, ...arguments); }
+    snakeCase() { return get$1(FuncChain.prototype, '_snakeCase').call(this, ...arguments); }
+    split(separator, limit) { return get$1(FuncChain.prototype, '_split').call(this, ...arguments); }
+    startsWith(searchStr, position) { return get$1(FuncChain.prototype, '_startsWith').call(this, ...arguments); }
+    substring(indexStart, indexEnd) { return get$1(FuncChain.prototype, '_substring').call(this, ...arguments); }
+    test(pattern, flags) { return get$1(FuncChain.prototype, '_test').call(this, ...arguments); }
+    toFixed(scale) { return get$1(FuncChain.prototype, '_toFixed').call(this, ...arguments); }
+    toString() { return get$1(FuncChain.prototype, '_toString').call(this, ...arguments); }
+    trim() { return get$1(FuncChain.prototype, '_trim').call(this, ...arguments); }
+    trimEnd() { return get$1(FuncChain.prototype, '_trimEnd').call(this, ...arguments); }
+    trimStart() { return get$1(FuncChain.prototype, '_trimStart').call(this, ...arguments); }
+    truncate(len, options) { return get$1(FuncChain.prototype, '_truncate').call(this, ...arguments); }
+    upperCase() { return get$1(FuncChain.prototype, '_upperCase').call(this, ...arguments); }
+    upperFirst() { return get$1(FuncChain.prototype, '_upperFirst').call(this, ...arguments); }
+    arrayToTree(idKey = 'id', pidKey, options = { childrenKey: 'children', rootParentValue: null, attrMap: undefined, sortKey: '' }) { return get$1(FuncChain.prototype, '_arrayToTree').call(this, ...arguments); }
+    closest(predicate, parentKey) { return get$1(FuncChain.prototype, '_closest').call(this, ...arguments); }
+    filterTree(predicate, options = { childrenKey: 'children' }) { return get$1(FuncChain.prototype, '_filterTree').call(this, ...arguments); }
+    findTreeNode(predicate, options) { return get$1(FuncChain.prototype, '_findTreeNode').call(this, ...arguments); }
+    findTreeNodes(predicate, options) { return get$1(FuncChain.prototype, '_findTreeNodes').call(this, ...arguments); }
+    alphaId() { return get$1(FuncChain.prototype, '_alphaId').call(this, ...arguments); }
+    defaultTo(defaultValue) { return get$1(FuncChain.prototype, '_defaultTo').call(this, ...arguments); }
+    matcher() { return get$1(FuncChain.prototype, '_matcher').call(this, ...arguments); }
+    noConflict() { return get$1(FuncChain.prototype, '_noConflict').call(this, ...arguments); }
+    snowflakeId(epoch) { return get$1(FuncChain.prototype, '_snowflakeId').call(this, ...arguments); }
+    times(iteratee) { return get$1(FuncChain.prototype, '_times').call(this, ...arguments); }
+    toPath() { return get$1(FuncChain.prototype, '_toPath').call(this, ...arguments); }
+    uniqueId() { return get$1(FuncChain.prototype, '_uniqueId').call(this, ...arguments); }
+    uuid() { return get$1(FuncChain.prototype, '_uuid').call(this, ...arguments); }
+} //#cfx
+/**
  * 用于定义FuncChain对象并构造函数链
  * 注意，该类仅用于内部构造函数链
  */
-class FuncChain {
+class FuncChain extends ChainFx {
     /**
      * @internal
      */
     constructor(v) {
+        super();
         this._wrappedValue = v;
         this._chain = [];
     }
@@ -8296,61 +9600,6 @@ class FuncChain {
         }, this._wrappedValue);
     }
 }
-/**
- * 返回一个包裹了参数v的FuncChain对象，并隐式开始函数链。函数链可以链接Myfx提供的所有函数，如
-
-```js
- _([1,2,3,4]).map(v=>v+1).filter(v=>v%2===0).take(2).join('-').value()
-```
-
- * 函数链与直接调用方法的区别不仅在于可以链式调用，更在于函数链是基于惰性求值的。
- * 上式中必须通过显式调用`value()`方法才能获取结果，
- * 而只有在`value()`方法调用时整个函数链才进行求值。
- *
- *
- * 惰性求值允许FuncChain实现捷径融合(shortcut fusion) —— 一项基于已有函数对数组循环次数进行大幅减少以提升性能的优化技术。
- * 下面的例子演示了原生函数链和Myfx函数链的性能差异
- * @example
- * let ary = _.range(20000000);
-console.time('native');
-let c = 0;
-let a = ary.map((v)=>{
-    c++;
-    return v+1;
-  }).filter((v) => {
-    c++;
-    return v%2==0;
-  })
-  .reverse()
-  .slice(1, 4)
-console.timeEnd('native');
-console.log(a, c, '次');//大约600ms左右，循环 40000000 次
-
-//Myfx
-ary = _.range(20000000);
-console.time('Myfx');
-let x = 0;
-let targets = _(ary)
-  .map((v) => {
-    x++;
-    return v+1;
-  })
-  .filter((v) => {
-    x++;
-    return v%2==0;
-  })
-  .reverse()
-  .slice(1, 4)
-  .value();
-console.timeEnd('Myfx');
-console.log(targets, x, '次');//大约0.5ms左右，循环 18 次
- *
- * @param v
- * @returns Myfx对象
- */
-function myfx(v) {
-    return v instanceof FuncChain ? v : new FuncChain(v);
-}
 const CAN_COMPREHENSIONS = [split$1.name, toArray$1.name, range.name];
 function createComprehension(fn, params) {
     const comprehension = {
@@ -8388,7 +9637,7 @@ function buildComprehension(comprehension, fn, params) {
                 comprehension.reverse = !comprehension.reverse;
             }
             break;
-        case slice$1.name:
+        case slice.name:
             if (size(comprehension.range) > 0)
                 return 2;
             comprehension.range[0] = params[0];
@@ -8405,7 +9654,6 @@ function buildComprehension(comprehension, fn, params) {
                 comprehension.count = params[0];
             }
             break;
-        case first.name:
         case first.name:
             if (isUndefined$1(comprehension.count) || 1 < comprehension.count) {
                 comprehension.count = 1;
@@ -8437,7 +9685,7 @@ function execComprehension(comprehension, collection) {
     const gsLen = gs.length;
     const range = comprehension.range;
     const hasRange = range.length > 0;
-    const forEach = comprehension.forEachRight ? eachRight : each$1;
+    const forEach = comprehension.forEachRight ? eachRight : each;
     forEach(collection, (v, k) => {
         let t = v;
         // before save target
@@ -8471,714 +9719,67 @@ function execComprehension(comprehension, collection) {
     return targets;
 }
 
-/* eslint-disable max-len */
-/**
- * 模板函数
- *
- * @packageDocumentation
- */
-/**
- *
- * @author holyhigh
- */
-/**
- * 使用FTL(Fun.js Template Language)编译字符串模板，并返回编译后的render函数
- *
- * ### 一个FTL模板由如下部分组成：
- * - **文本** 原样内容输出
- * - **注释** `[%-- 注释 --%]` 仅在模板中显示，编译后不存在也不会输出
- * - **插值** `[%= 插值内容 %]` 输出表达式的结果，支持js语法
- * - **混入** `[%@名称 {参数} %]` 可以混入模板片段。被混入的片段具有独立作用域，可以通过JSON格式的对象传递参数给片段
- * - **语句** `[% _.each(xxxx... %]` 原生js语句
- *
- * @example
- * let render = _.template("1 [%= a %] 3");
- * //1 4 3
- * console.log(render({a:4}))
- *
- * render = _.template("1 [% print(_.range(2,5)) %] 5");
- * //1 2,3,4 5
- * console.log(render())
- *
- * render = _.template("[%-- 注释1 --%] [%@mix {x:5}%] [%-- 注释2 --%]",{
- *  mixins:{
- *    mix:'<div>[%= x %]</div>'
- *  }
- * });
- * //<div>5</div>
- * console.log(render())
- *
- * @param string 模板字符串
- * @param options FTL参数
- * @param options.delimiters 分隔符，默认 ['[%' , '%]']
- * @param options.mixins 混入对象。\{名称:模板字符串\}
- * @param options.globals 全局变量对象，可以在任意位置引用。模板内置的全局对象有两个：`print(content)`函数、`_` 对象，Myfx的命名空间
- * @param options.stripWhite 是否剔除空白，默认false。剔除发生在编译期间，渲染时不会受到影响。剔除规则：如果一行只有一个FTL注释或语句，则该行所占空白会被移除。
- * @returns 编译后的执行函数。该函数需要传递一个对象类型的参数作为运行时参数
- * @since 1.0.0
- */
-function template$1(string, options) {
-    const delimiters = map(template$1.settings.delimiters, (d) => {
-        const letters = replace(d, /\//gim, '');
-        return map(letters, (l) => {
-            return includes(ESCAPES, l) ? '\\' + l : l;
-        }).join('');
-    });
-    options = toObject(options);
-    const mixins = options.mixins;
-    const stripWhite = options.stripWhite || false;
-    const comment = delimiters[0] + template$1.settings.comment + delimiters[1];
-    const interpolate = delimiters[0] + template$1.settings.interpolate + delimiters[1];
-    const evaluate = delimiters[0] + template$1.settings.evaluate + delimiters[1];
-    const mixin = delimiters[0] + template$1.settings.mixin + delimiters[1];
-    const splitExp = new RegExp(`(?:${comment})|(?:${mixin})|(?:${interpolate})|(?:${evaluate})`, 'mg');
-    // ///////////////////////////////----拆分表达式与文本
-    // 1. 对指令及插值进行分段
-    const tokens = parse(string, splitExp, mixins, stripWhite);
-    // 2. 编译render函数
-    const render = compile(tokens, options);
-    return render;
-}
-const ESCAPES = ['[', ']', '{', '}', '$'];
-/**
- * 模板设置对象
- */
-template$1.settings = {
-    /**
-     * @defaultValue ['[%', '%]']
-     */
-    delimiters: ['[%', '%]'],
-    interpolate: '=([\\s\\S]+?)',
-    comment: '--[\\s\\S]+?--',
-    mixin: '@([a-zA-Z_$][\\w_$]*)([\\s\\S]+?)',
-    evaluate: '([\\s\\S]+?)',
-};
-function parse(str, splitExp, mixins, stripWhite) {
-    let indicator = 0;
-    let lastSegLength = 0;
-    const tokens = [];
-    const fullStack = [];
-    let prevText = null;
-    let prevNode = null;
-    while (true) {
-        const rs = splitExp.exec(str);
-        if (rs == null) {
-            const node = getText(str.substring(indicator + lastSegLength, str.length));
-            if (prevText) {
-                tokens.push(getText(prevText));
-            }
-            if (prevNode) {
-                tokens.push(prevNode);
-            }
-            tokens.push(node);
-            break;
-        }
-        else {
-            let text = str.substring(indicator + lastSegLength, rs.index);
-            if (prevText) {
-                // check strip white
-                if (stripWhite) {
-                    const stripStart = prevText.replace(/\n\s*$/, '\n');
-                    const stripEnd = text.replace(/^\s*\n/, '');
-                    const prevTextNode = getText(stripStart);
-                    if (stripStart.length !== prevText.length &&
-                        stripEnd.length !== text.length) {
-                        text = stripEnd;
-                    }
-                    if (prevNode?.comment) {
-                        tokens.push(prevTextNode);
-                    }
-                    else {
-                        // FTL标签之间都是\s\n，可以合并
-                        const lastToken = last(tokens);
-                        const merge1 = prevText.replace(/\n|\s/g, '');
-                        const merge2 = lastToken
-                            ? lastToken.source.replace(/\n|\s/g, '')
-                            : true;
-                        if (!merge1 && !merge2 && lastToken) {
-                            lastToken.source = '';
-                        }
-                        else {
-                            tokens.push(getText(prevText));
-                        }
-                        if (prevNode)
-                            tokens.push(prevNode);
-                    }
-                }
-                else {
-                    tokens.push(getText(prevText));
-                    if (prevNode)
-                        tokens.push(prevNode);
-                }
-            }
-            prevText = text;
-            indicator = rs.index;
-            const node = getText(text);
-            fullStack.push(node);
-            try {
-                const node2 = parseNode(rs, mixins);
-                prevNode = node2;
-                fullStack.push(node2);
-            }
-            catch (error) {
-                // 获取最近信息
-                const recInfo = takeRight(fullStack, 5);
-                const tipInfo = map(recInfo, 'source').join('') + rs[0];
-                let tipIndicator = map(rs[0], () => '^').join('');
-                const tipLineStartIndex = lastIndexOf(substring(str, 0, rs.index), '\n') + 1;
-                tipIndicator = padStart(tipIndicator, rs.index - tipLineStartIndex + tipIndicator.length, ' ');
-                console.error('...', tipInfo + '\n' + tipIndicator + '\n', error);
-                return tokens;
-            }
-            lastSegLength = rs[0].length;
-        }
-    }
-    return tokens;
-}
-function getText(str) {
-    return {
-        text: true,
-        source: str,
-    };
-}
-function parseNode(rs, mixins) {
-    const parts = compact$1(rs);
-    const src = parts[0];
-    const modifier = src.replace(template$1.settings.delimiters[0], '')[0];
-    switch (modifier) {
-        case '-':
-            return {
-                comment: true,
-                source: src,
-            };
-        case '=':
-            return {
-                interpolate: true,
-                source: src,
-                expression: parts[1],
-            };
-        case '@':
-            const mixin = parts[1];
-            if (!mixins || !mixins[mixin]) {
-                throw new SyntaxError(`The mixin '${mixin}' does not exist, check if the options.mixins has been set`);
-            }
-            let paramters = trim(parts[2]);
-            if (paramters) {
-                const matcher = paramters.match(/\{(?:,?[a-zA-Z_$][a-zA-Z0-9_$]*(?::.*?)?)+\}/gm);
-                if (!matcher) {
-                    throw new SyntaxError(`Invalid mixin paramters '${parts[2]}', must be JSON form`);
-                }
-                paramters = matcher[0];
-            }
-            return {
-                mixin: true,
-                source: src,
-                tmpl: mixins[mixin],
-                paramters,
-            };
-        default:
-            return {
-                evaluate: true,
-                source: src,
-                expression: parts[1],
-            };
-    }
-}
-// 返回编译后的render函数
-// 函数中不能出现异步代码，否则会导致render失败
-// 默认全局变量 print() / _
-function compile(tokens, options) {
-    let funcStr = '';
-    each$1(tokens, (token) => {
-        if (token.comment)
-            return;
-        if (token.text) {
-            funcStr += '\nprint(`' + token.source + '`);';
-        }
-        else if (token.interpolate) {
-            funcStr += `\nprint(${token.expression});`;
-        }
-        else if (token.evaluate) {
-            funcStr += '\n' + token.expression;
-        }
-        else if (token.mixin) {
-            funcStr += `\nprint(_.template(${JSON.stringify(token.tmpl)},$options)(${token.paramters}));`;
-        }
-    });
-    return (obj) => {
-        let declarations = keys$1(obj).join(',');
-        if (declarations) {
-            declarations = '{' + declarations + '}';
-        }
-        let globalKeys = [];
-        let globalValues = [];
-        const paramAry = unzip(toPairs(options.globals));
-        if (size(paramAry) > 0) {
-            globalKeys = paramAry[0];
-            globalValues = paramAry[1];
-        }
-        globalKeys.push('_');
-        globalValues.push(myfx);
-        const getRender = new Function(...globalKeys, '$options', `return function(${declarations}){
-      const textQ=[];
-      const print=(str)=>{
-        textQ.push(str)
-      };` +
-            funcStr +
-            ';return textQ.join("")}')(...globalValues, options);
-        return getRender(obj);
-    };
-}
-
-var template = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  template: template$1
-});
-
-/**
- * 使用高性能算法，将array结构数据变为tree结构数据
- * @example
- * //生成测试数据
- * function addChildren(count,parent){
- *  const data = [];
- *  const pid = parent?parent.id:null;
- *  const parentName = parent?parent.name+'-':'';
- *  _.each(_.range(0,count),i=>{
- *    const sortNo = _.randi(0,count);
- *    data.push({id:_.alphaId(),pid,name:parentName+i,sortNo})
- *  });
- *  return data;
- * }
- *
- * function genTree(depth,parents,data){
- *  _.each(parents,r=>{
- *    const children = addChildren(_.randi(1,4),r);
- *    if(depth-1>0){
- *      genTree(depth-1,children,data);
- *    }
- *    _.append(data,...children);
- *  });
- * }
- *
- * const roots = addChildren(2);
- * const data = [];
- * genTree(2,roots,data);
- * _.insert(data,0,...roots);
- *
- * const tree = _.arrayToTree(data,'id','pid',{attrMap:{text:'name'}});
- * _.walkTree(tree,(parentNode,node,chain)=>console.log('node',node.text,'sortNo',node.sortNo,'chain',_.map(chain,n=>n.name)));
- *
- *
- * @param array 原始数据集。如果非Array类型，返回空数组
- * @param idKey id标识
- * @param pidKey='pid' 父id标识
- * @param options 自定义选项
- * @param options.rootParentValue 根节点的parentValue，用于识别根节点。默认null
- * @param options.childrenKey 包含子节点容器的key。默认'children'
- * @param options.attrMap 转换tree节点时的属性映射，如\{text:'name'\}表示把array中一条记录的name属性映射为tree节点的text属性
- * @param options.sortKey 如果指定排序字段，则会在转换tree时自动排序。字段值可以是数字或字符等可直接进行比较的类型。性能高于转换后再排序
- * @returns 返回转换好的顶级节点数组或空数组
- * @since 1.0.0
- */
-function arrayToTree(array, idKey = 'id', pidKey, options = {}) {
-    if (!isArray$1(array))
-        return [];
-    const pk = pidKey || 'pid';
-    const attrMap = options.attrMap;
-    const hasAttrMap = !!attrMap && isObject$1(attrMap);
-    const rootParentValue = get$1(options, 'rootParentValue', null);
-    const childrenKey = options.childrenKey || 'children';
-    const sortKey = options.sortKey;
-    const hasSortKey = !!sortKey;
-    const roots = [];
-    const nodeMap = {};
-    const sortMap = {};
-    array.forEach((record) => {
-        const nodeId = record[idKey || 'id'];
-        nodeMap[nodeId] = record;
-        if (hasSortKey) {
-            const sortNo = record[sortKey];
-            sortMap[nodeId] = [sortNo, sortNo]; // min,max
-        }
-        if (record[pk] === rootParentValue) {
-            if (hasAttrMap) {
-                each$1(attrMap, (v, k) => (record[k] = record[v]));
-            }
-            roots.push(record);
-        }
-    });
-    array.forEach((record) => {
-        const parentId = record[pk];
-        const parentNode = nodeMap[parentId];
-        if (parentNode) {
-            let children = parentNode[childrenKey];
-            if (!children) {
-                children = parentNode[childrenKey] = [];
-            }
-            if (hasAttrMap) {
-                each$1(attrMap, (v, k) => (record[k] = record[v]));
-            }
-            if (hasSortKey) {
-                const [min, max] = sortMap[parentId];
-                const sortNo = record[sortKey];
-                if (sortNo <= min) {
-                    children.unshift(record);
-                    sortMap[parentId][0] = sortNo;
-                }
-                else if (sortNo >= max) {
-                    children.push(record);
-                    sortMap[parentId][1] = sortNo;
-                }
-                else {
-                    const i = sortedIndexBy(children, { [sortKey]: sortNo }, sortKey);
-                    children.splice(i, 0, record);
-                }
-            }
-            else {
-                children.push(record);
-            }
-        }
-    });
-    return hasSortKey ? sortBy(roots, sortKey) : roots;
-}
-
-/**
- * 根据指定的node及parentKey属性，查找最近的祖先节点
- * @param node Element节点或普通对象节点
- * @param predicate (node,times,cancel)断言函数，如果返回true表示节点匹配。或调用cancel中断查找
- * @param parentKey 父节点引用属性名
- * @returns 断言为true的最近一个祖先节点
- * @since 1.0.0
- */
-function closest$1(node, predicate, parentKey) {
-    let p = node;
-    let t = null;
-    let k = true;
-    let i = 0;
-    while (k && p) {
-        if (predicate(p, i++, () => { k = false; })) {
-            t = p;
-            break;
-        }
-        p = p[parentKey];
-    }
-    return t;
-}
-
-/**
- * 以给定节点为根遍历所有子孙节点。深度优先
- * @example
- * //生成测试数据
- * function addChildren(count,parent){
- *  const data = [];
- *  const pid = parent?parent.id:null;
- *  const parentName = parent?parent.name+'-':'';
- *  _.each(_.range(0,count),i=>{
- *    const sortNo = _.randi(0,count);
- *    data.push({id:_.alphaId(),pid,name:parentName+i,sortNo})
- *  });
- *  return data;
- * }
- *
- * function genTree(depth,parents,data){
- *  _.each(parents,r=>{
- *    const children = addChildren(_.randi(1,4),r);
- *    if(depth-1>0){
- *      genTree(depth-1,children,data);
- *    }
- *    _.append(data,...children);
- *  });
- * }
- *
- * const roots = addChildren(2);
- * const data = [];
- * genTree(2,roots,data);
- * _.insert(data,0,...roots);
- * const tree = _.arrayToTree(data,'id','pid',{sortKey:'sortNo'});
- *
- * _.walkTree(tree,(node,parentNode,chain)=>console.log('node',node.name,'sortNo',node.sortNo,'chain',_.map(chain,n=>n.name)))
- *
- * @param treeNodes 一组节点或一个节点
- * @param callback (node,parentNode,chain,level)回调函数，如果返回false则中断遍历，如果返回-1则停止分支遍历
- * @param options 自定义选项
- * @param options.childrenKey 包含子节点容器的key。默认'children'
- * @since 1.0.0
- */
-function walkTree(treeNodes, callback, options) {
-    _walkTree(treeNodes, callback, options);
-}
-function _walkTree(treeNodes, callback, options, ...rest) {
-    options = options || {};
-    const parentNode = rest[0];
-    const chain = rest[1] || [];
-    const childrenKey = options.childrenKey || 'children';
-    const data = isArrayLike$1(treeNodes) ? treeNodes : [treeNodes];
-    for (let i = 0; i < data.length; i++) {
-        const node = data[i];
-        const rs = callback(node, parentNode, chain, chain.length);
-        if (rs === false)
-            return;
-        if (rs === -1)
-            continue;
-        if (!isEmpty(node[childrenKey])) {
-            let nextChain = [node];
-            if (parentNode) {
-                nextChain = chain.concat(nextChain);
-            }
-            const rs = _walkTree(node[childrenKey], callback, options, node, nextChain);
-            if (rs === false)
-                return;
-        }
-    }
-}
-
-/**
- * 类似<code>findTreeNodes</code>，但会返回包含所有父节点的节点副本数组，已做去重处理。
- * 结果集可用于重新构建tree
- * @example
- * //生成测试数据
- * function addChildren(count,parent){
- *  const data = [];
- *  const pid = parent?parent.id:null;
- *  const parentName = parent?parent.name+'-':'';
- *  _.each(_.range(0,count),i=>{
- *    const sortNo = _.randi(1,4);
- *    data.push({id:_.alphaId(),pid,name:parentName+i,sortNo})
- *  });
- *  return data;
- * }
- *
- * function genTree(depth,parents,data){
- *  _.each(parents,r=>{
- *    const children = addChildren(_.randi(1,4),r);
- *    if(depth-1>0){
- *      genTree(depth-1,children,data);
- *    }
- *    _.append(data,...children);
- *  });
- * }
- *
- * const roots = addChildren(2);
- * const data = [];
- * genTree(2,roots,data);
- * _.insert(data,0,...roots);
- * const tree = _.arrayToTree(data,'id','pid',{sortKey:'sortNo'});
- *
- * _.each(_.filterTree(tree,node=>node.sortNo>1),node=>console.log(_.omit(node,'children','id','pid')))
- *
- *
- * @param treeNodes 一组节点或一个节点
- * @param predicate (node,parentNode,chain,level) 断言
- * <br>当断言是函数时回调参数见定义
- * <br>其他类型请参考 {@link utils!iteratee}
- * @param options 自定义选项
- * @param options.childrenKey 包含子节点容器的key。默认'children'
- * @returns 找到的符合条件的所有节点副本或空数组
- * @since 1.0.0
- */
-function filterTree(treeNodes, predicate, options) {
-    options = options || {};
-    const callback = iteratee$1(predicate);
-    const childrenKey = options.childrenKey || 'children';
-    let nodes = [];
-    walkTree(treeNodes, (n, p, c, l) => {
-        const rs = callback(n, p, c, l);
-        if (rs) {
-            c.forEach((node) => {
-                if (!includes(nodes, node)) {
-                    nodes.push(node);
-                }
-            });
-            nodes.push(n);
-        }
-    }, options);
-    nodes = map(nodes, (item) => cloneWith(item, (v, k) => (k === childrenKey ? null : v)));
-    return nodes;
-}
-
-/**
- * 查找给定节点及所有子孙节点中符合断言的第一个节点并返回
- * @example
- * //生成测试数据
- * function addChildren(count,parent){
- *  const data = [];
- *  const pid = parent?parent.id:null;
- *  const parentName = parent?parent.name+'-':'';
- *  _.each(_.range(0,count),i=>{
- *    const sortNo = _.randi(0,count);
- *    data.push({id:_.alphaId(),pid,name:parentName+i,sortNo})
- *  });
- *  return data;
- * }
- *
- * function genTree(depth,parents,data){
- *  _.each(parents,r=>{
- *    const children = addChildren(_.randi(2,5),r);
- *    if(depth-1>0){
- *      genTree(depth-1,children,data);
- *    }
- *    _.append(data,...children);
- *  });
- * }
- *
- * const roots = addChildren(2);
- * const data = [];
- * genTree(4,roots,data);
- * _.insert(data,0,...roots);
- * const tree = _.arrayToTree(data,'id','pid',{sortKey:'sortNo'});
- *
- * console.log(_.omit(_.findTreeNode(tree,node=>node.sortNo>2),'children','id','pid'))
- *
- *
- * @param treeNodes 一组节点或一个节点
- * @param predicate (node,parentNode,chain,level) 断言
- * <br>当断言是函数时回调参数见定义
- * <br>其他类型请参考 {@link utils!iteratee}
- * @param options 自定义选项
- * @param options.childrenKey 包含子节点容器的key。默认'children'
- * @returns 第一个匹配断言的节点或undefined
- * @since 1.0.0
- */
-function findTreeNode(treeNodes, predicate, options) {
-    const callback = iteratee$1(predicate);
-    let node;
-    walkTree(treeNodes, (n, p, c, l) => {
-        const rs = callback(n, p, c, l);
-        if (rs) {
-            node = n;
-            return false;
-        }
-    }, options);
-    return node;
-}
-
-/**
- * 查找给定节点及所有子孙节点中符合断言的所有节点并返回
- * @example
- * //生成测试数据
- * function addChildren(count,parent){
- *  const data = [];
- *  const pid = parent?parent.id:null;
- *  const parentName = parent?parent.name+'-':'';
- *  _.each(_.range(0,count),i=>{
- *    const sortNo = _.randi(0,count);
- *    data.push({id:_.alphaId(),pid,name:parentName+i,sortNo})
- *  });
- *  return data;
- * }
- *
- * function genTree(depth,parents,data){
- *  _.each(parents,r=>{
- *    const children = addChildren(_.randi(2,5),r);
- *    if(depth-1>0){
- *      genTree(depth-1,children,data);
- *    }
- *    _.append(data,...children);
- *  });
- * }
- *
- * const roots = addChildren(2);
- * const data = [];
- * genTree(3,roots,data);
- * _.insert(data,0,...roots);
- * const tree = _.arrayToTree(data,'id','pid',{sortKey:'sortNo'});
- *
- * _.each(_.findTreeNodes(tree,node=>node.sortNo>2),node=>console.log(_.omit(node,'children','id','pid')))
- *
- *
- * @param treeNodes 一组节点或一个节点
- * @param predicate (node,parentNode,chain,level) 断言
- * <br>当断言是函数时回调参数见定义
- * <br>其他类型请参考 {@link utils!iteratee}
- * @param options 自定义选项
- * @param options.childrenKey 包含子节点容器的key。默认'children'
- * @returns 找到的符合条件的所有节点或空数组
- * @since 1.0.0
- */
-function findTreeNodes(treeNodes, predicate, options) {
-    const callback = iteratee$1(predicate);
-    const nodes = [];
-    walkTree(treeNodes, (n, p, c, l) => {
-        const rs = callback(n, p, c, l);
-        if (rs) {
-            nodes.push(n);
-        }
-    }, options);
-    return nodes;
-}
-
-/**
- * 对给定节点及所有子孙节点(同级)排序
- * @example
- * //生成测试数据
- * function addChildren(count,parent){
- *  const data = [];
- *  const pid = parent?parent.id:null;
- *  const parentName = parent?parent.name+'-':'';
- *  _.each(_.range(0,count),i=>{
- *    const sortNo = _.randi(0,9);
- *    data.push({id:_.alphaId(),pid,name:parentName+i,sortNo})
- *  });
- *  return data;
- * }
- *
- * function genTree(depth,parents,data){
- *  _.each(parents,r=>{
- *    const children = addChildren(_.randi(1,4),r);
- *    if(depth-1>0){
- *      genTree(depth-1,children,data);
- *    }
- *    _.append(data,...children);
- *  });
- * }
- *
- * const roots = addChildren(1);
- * const data = [];
- * genTree(2,roots,data);
- * _.insert(data,0,...roots);
- * let tree = _.arrayToTree(data,'id','pid');
- *
- * console.log('Before sort---------------');
- * _.walkTree(_.cloneDeep(tree),(parentNode,node,chain)=>console.log('node',node.name,'sortNo',node.sortNo))
- * _.sortTree(tree,(a,b)=>a.sortNo - b.sortNo);
- * console.log('After sort---------------');
- * _.walkTree(tree,(parentNode,node,chain)=>console.log('node',node.name,'sortNo',node.sortNo))
- *
- * @param treeNodes 一组节点或一个节点
- * @param comparator (a,b) 排序函数
- * @param options 自定义选项
- * @param options.childrenKey 包含子节点容器的key。默认'children'
- *
- * @since 1.0.0
- */
-function sortTree(treeNodes, comparator, options) {
-    options = options || {};
-    const childrenKey = options.childrenKey || 'children';
-    const data = isArray$1(treeNodes)
-        ? treeNodes
-        : [treeNodes];
-    data.sort((a, b) => comparator(a, b));
-    data.forEach((node) => {
-        if (!isEmpty(node[childrenKey])) {
-            sortTree(node[childrenKey], comparator);
-        }
-    });
-}
-
-var tree = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  arrayToTree: arrayToTree,
-  closest: closest$1,
-  filterTree: filterTree,
-  findTreeNode: findTreeNode,
-  findTreeNodes: findTreeNodes,
-  sortTree: sortTree,
-  walkTree: walkTree
-});
-
 /* eslint-disable require-jsdoc */
 /* eslint-disable no-invalid-this */
 /* eslint-disable max-len */
+const VERSION$1 = "1.14.0"; //#ver
+/**
+* 显式开启myfx的函数链，返回一个包裹了参数v的myfx链式对象。函数链可以链接Myfx提供的所有函数，如
+ <p>
+* 函数链使用惰性计算 —— 直到显示调用value()方法时，函数链才会进行计算并返回结果
+* </p>
+```js
+_.chain([1,2,3,4]).map(v=>v+1).filter(v=>v%2===0).take(2).join('-').value()
+```
+
+* 函数链与直接调用方法的区别不仅在于可以链式调用，更在于函数链是基于惰性求值的。
+* 上式中必须通过显式调用`value()`方法才能获取结果，
+* 而只有在`value()`方法调用时整个函数链才进行求值。
+*
+*
+* 惰性求值允许FuncChain实现捷径融合(shortcut fusion) —— 一项基于已有函数对数组循环次数进行大幅减少以提升性能的优化技术。
+* 下面的例子演示了原生函数链和Myfx函数链的性能差异
+* @example
+* let ary = _.range(20000000);
+console.time('native');
+let c = 0;
+let a = ary.map((v)=>{
+   c++;
+   return v+1;
+ }).filter((v) => {
+   c++;
+   return v%2==0;
+ })
+ .reverse()
+ .slice(1, 4)
+console.timeEnd('native');
+console.log(a, c, '次');//大约600ms左右，循环 40000000 次
+
+//Myfx
+ary = _.range(20000000);
+console.time('Myfx');
+let x = 0;
+let targets = _(ary)
+ .map((v) => {
+   x++;
+   return v+1;
+ })
+ .filter((v) => {
+   x++;
+   return v%2==0;
+ })
+ .reverse()
+ .slice(1, 4)
+ .value();
+console.timeEnd('Myfx');
+console.log(targets, x, '次');//大约0.5ms左右，循环 18 次
+*
+* @param v
+* @returns Myfx对象
+*/
+function chain(v) {
+    return v instanceof FuncChain ? v : new FuncChain(v);
+}
 mixin(FuncChain, {
     ...str,
     ...num,
@@ -9188,12 +9789,14 @@ mixin(FuncChain, {
     ...collection,
     ...math,
     ...utils,
-    ...functions,
+    ...functions$1,
     ...array,
     ...template,
     ...tree,
 });
-mixin(myfx, {
+const myfx = {
+    VERSION: VERSION$1,
+    chain,
     ...str,
     ...num,
     ...datetime,
@@ -9202,33 +9805,20 @@ mixin(myfx, {
     ...collection,
     ...math,
     ...utils,
-    ...functions,
+    ...functions$1,
     ...array,
     ...template,
     ...tree,
-});
-myfx.VERSION = '1.1.0'; //version
-/**
- * 显式开启myfx的函数链，返回一个包裹了参数v的myfx链式对象。
- * <p>
- * 函数链使用惰性计算 —— 直到显示调用value()方法时，函数链才会进行计算并返回结果
- * </p>
- * @example
- * //3-5
- * console.log(_.chain([1,2,3,4]).map(v=>v+1).filter(v=>v%2!==0).take(2).join('-').value())
- *
- * @param v
- * @returns myfx对象
- */
-myfx.chain = myfx;
+};
 //bind _
 const ctx = globalThis;
 if (ctx.myff) {
     setTimeout(function () {
         ctx.__f_prev = ctx._;
-        ctx._ = ctx.myfx = myfx;
+        ctx._ = myfx;
     }, 0);
 }
+ctx.myfx = myfx;
 
 /* eslint-disable max-len */
 const CLASS_RESIZABLE_HANDLE = "uii-resizable-handle";
@@ -9382,10 +9972,7 @@ class Resizable extends Uii {
                     }
                     if (ghostNode) {
                         if (ghostClass) {
-                            ghostNode.className =
-                                ghostNode.className.replace(ghostClass, "") +
-                                    " " +
-                                    ghostClass;
+                            ghostNode.classList.add(ghostClass);
                         }
                         ghostNode.classList.toggle(CLASS_RESIZABLE_GHOST, true);
                         (_a = panel.parentNode) === null || _a === void 0 ? void 0 : _a.appendChild(ghostNode);
@@ -9750,14 +10337,31 @@ class Resizable extends Uii {
             onPointerEnd((args) => {
                 var _a, _b;
                 const { ev } = args;
+                let doDefault = true;
+                handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
+                let ghostLeft = '0';
+                let ghostTop = '0';
+                let ghostWidth = '0';
+                let ghostHeight = '0';
                 if (ghost && ghostNode) {
-                    panelStyle.left = ghostNode.style.left;
-                    panelStyle.top = ghostNode.style.top;
-                    transform = wrapper(panel);
-                    transform.moveTo((lastX + sX), (lastY + sY));
+                    ghostLeft = ghostNode.style.left;
+                    ghostTop = ghostNode.style.top;
+                    ghostWidth = ghostNode.style.width;
+                    ghostHeight = ghostNode.style.height;
                     ((_a = panel.parentNode) === null || _a === void 0 ? void 0 : _a.contains(ghostNode)) &&
                         ((_b = panel.parentNode) === null || _b === void 0 ? void 0 : _b.removeChild(ghostNode));
-                    resize(transform, panelStyle, parseFloat(ghostNode.style.width), parseFloat(ghostNode.style.height));
+                }
+                if (onEnd) {
+                    doDefault = onEnd.call(uiik, { w: currentW, h: currentH, transform, handle, ghost: ghostNode }, ev);
+                }
+                if (doDefault === false)
+                    return;
+                if (ghost && ghostNode) {
+                    panelStyle.left = ghostLeft;
+                    panelStyle.top = ghostTop;
+                    transform = wrapper(panel);
+                    transform.moveTo((lastX + sX), (lastY + sY));
+                    resize(transform, panelStyle, parseFloat(ghostWidth), parseFloat(ghostHeight));
                 }
                 if (setOrigin)
                     panel.style.transformOrigin = originalTransformOrigin;
@@ -9779,13 +10383,7 @@ class Resizable extends Uii {
                         }
                     }
                 } //if setOrigin
-                handle.classList.remove(CLASS_RESIZABLE_HANDLE_ACTIVE);
-                onEnd &&
-                    onEnd.call(uiik, { w: currentW, h: currentH, transform, handle, ghost: ghostNode }, ev);
             });
-        }, {
-            threshold: THRESHOLD,
-            lockPage: true,
         });
     }
     initHandle(panel) {
@@ -9863,10 +10461,10 @@ function newResizable(els, opts) {
 }
 
 /**
-   * myfx/array v1.1.0
+   * myfx/array v1.14.0
    * A modular utility library with more utils, higher performance and simpler declarations ...
    * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   * (c) 2021-2025 @holyhigh2 may be freely distributed under the MIT license
    */
   /**
  * 判断参数是否为Array对象的实例
@@ -9881,11 +10479,6 @@ function newResizable(els, opts) {
  * @returns
  */
 function isArray(v) {
-    // 使用 instanceof Array 无法鉴别某些场景，比如
-    // Array.prototype instanceof Array => false
-    // Array.isArray(Array.prototype) => true
-    // typeof new Proxy([],{}) => object
-    // Array.isArray(new Proxy([],{})) => true
     return Array.isArray(v);
 }
 
@@ -9902,41 +10495,14 @@ function isArray(v) {
  * @returns
  */
 function isFunction(v) {
-    return typeof v == 'function' || v instanceof Function;
+    return v instanceof Function || typeof v == 'function';
 }
 
 /**
- * 判断值是不是一个Set对象
+ * 内部使用类型
  *
- * @example
- * //false
- * console.log(_.isSet(new WeakSet))
- * //true
- * console.log(_.isSet(new Set))
- *
- * @param v
- * @returns
+ * @packageDocumentation
  */
-function isSet(v) {
-    return v instanceof Set;
-}
-
-/**
- * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
- *
- * @example
- * //true
- * console.log(_.isString(new String('')))
- * //true
- * console.log(_.isString(''))
- *
- * @param v
- * @returns
- */
-function isString(v) {
-    return typeof v === 'string' || v instanceof String;
-}
-
 const PRIMITIVE_TYPES = [
     'string',
     'number',
@@ -9945,6 +10511,7 @@ const PRIMITIVE_TYPES = [
     'undefined',
     'symbol',
 ];
+
 /**
  * 判断值是不是一个非基本类型外的值，如果true则认为值是一个对象
  * 同样，该方法还可以用来判断一个值是不是基本类型
@@ -9964,6 +10531,22 @@ const PRIMITIVE_TYPES = [
  */
 function isObject(v) {
     return null !== v && PRIMITIVE_TYPES.indexOf(typeof v) < 0;
+}
+
+/**
+ * 判断参数是否为字符串，包括String类的实例以及基本类型string的值
+ *
+ * @example
+ * //true
+ * console.log(_.isString(new String('')))
+ * //true
+ * console.log(_.isString(''))
+ *
+ * @param v
+ * @returns
+ */
+function isString(v) {
+    return v instanceof String || Object.prototype.toString.call(v) === '[object String]';
 }
 
 /**
@@ -9987,16 +10570,35 @@ function isArrayLike(v) {
         return false;
     // 具有length属性
     const list = v;
-    if (list.length !== undefined) {
-        const proto = list.constructor.prototype;
+    if ('length' in list) {
+        const proto = Reflect.getPrototypeOf(list);
         // NodeList/HTMLCollection/CSSRuleList/...
-        if (isFunction(proto.item))
+        if (isFunction(proto?.item))
             return true;
         // arguments
         if (isFunction(list[Symbol.iterator]))
             return true;
     }
     return false;
+}
+
+/**
+ * 判断值是不是迭代器对象
+ *
+ * @example
+ * //true
+ * console.log(_.isIterator(new Map()))
+ * //true
+ * console.log(_.isIterator(new Map().values()))
+ * //false
+ * console.log(_.isIterator({a:1}))
+ *
+ * @param v
+ * @returns
+ * @since 1.10.0
+ */
+function isIterator(v) {
+    return typeof v === 'object' && v !== null && Symbol.iterator in v;
 }
 
 /**
@@ -10012,31 +10614,36 @@ function isArrayLike(v) {
  * @returns
  */
 function isMap(v) {
-    return v instanceof Map;
+    return v instanceof Map || Object.prototype.toString.call(v) === '[object Map]';
 }
 
 /**
- * 返回对象的所有key数组
- *
- * > 只返回对象的自身可枚举属性
+ * 判断值是不是一个Set对象
  *
  * @example
- * let f = new Function("this.a=1;this.b=2;");
- * f.prototype.c = 3;
- * //[a,b]
- * console.log(_.keys(new f()))
+ * //false
+ * console.log(_.isSet(new WeakSet))
+ * //true
+ * console.log(_.isSet(new Set))
  *
- * @param obj
- * @returns 对象的key
+ * @param v
+ * @returns
  */
+function isSet(v) {
+    return v instanceof Set || Object.prototype.toString.call(v) === '[object Set]';
+}
+
 function keys(obj) {
     if (obj === null || obj === undefined)
         return [];
+    if (isMap(obj)) {
+        return Array.from(obj.keys());
+    }
     return Object.keys(obj);
 }
 
 /**
- * 返回对象的所有value数组
+ * 返回对象/Map的所有value数组
  * <div class="alert alert-secondary">
       只返回对象的自身可枚举属性
     </div>
@@ -10049,9 +10656,12 @@ function keys(obj) {
  * console.log(_.values(new f()))
  *
  * @param obj
- * @returns 对象根属性对应的值列表
+ * @returns 值列表
  */
 function values(obj) {
+    if (isMap(obj)) {
+        return Array.from(obj.values());
+    }
     return keys(obj).map((k) => obj[k]);
 }
 
@@ -10071,6 +10681,8 @@ function values(obj) {
  * console.log(_.toArray({x:1,y:2,z:'b'}))
  * //[[1, 'a'], [3, 'b'], ['a', 5]]
  * console.log(_.toArray(new Map([[1,'a'],[3,'b'],['a',5]])))
+ * //[1, 3, 'a']
+ * console.log(_.toArray(new Map([[1,'a'],[3,'b'],['a',5]])).keys())
  *
  * @param collection 如果是Map/Object对象会转换为值列表
  *
@@ -10092,6 +10704,9 @@ function toArray(collection) {
     }
     else if (isMap(collection)) {
         return Array.from(collection.values());
+    }
+    else if (isIterator(collection)) {
+        return Array.from(collection);
     }
     else if (isObject(collection)) {
         return values(collection);
@@ -10116,92 +10731,6 @@ function compact(array) {
     return toArray(array).filter(identity);
 }
 
-function _eachIterator(collection, callback, forRight) {
-    let values;
-    let keys;
-    if (isString(collection) || isArrayLike(collection)) {
-        let size = collection.length;
-        if (forRight) {
-            while (size--) {
-                const r = callback(collection[size], size, collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            for (let i = 0; i < size; i++) {
-                const r = callback(collection[i], i, collection);
-                if (r === false)
-                    return;
-            }
-        }
-    }
-    else if (isSet(collection)) {
-        let size = collection.size;
-        if (forRight) {
-            values = Array.from(collection);
-            while (size--) {
-                const r = callback(values[size], size, collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            values = collection.values();
-            for (let i = 0; i < size; i++) {
-                const r = callback(values.next().value, i, collection);
-                if (r === false)
-                    return;
-            }
-        }
-    }
-    else if (isMap(collection)) {
-        let size = collection.size;
-        keys = collection.keys();
-        values = collection.values();
-        if (forRight) {
-            keys = Array.from(keys);
-            values = Array.from(values);
-            while (size--) {
-                const r = callback(values[size], keys[size], collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            for (let i = 0; i < size; i++) {
-                const r = callback(values.next().value, keys.next().value, collection);
-                if (r === false)
-                    return;
-            }
-        }
-    }
-    else if (isObject(collection)) {
-        keys = Object.keys(collection);
-        let size = keys.length;
-        if (forRight) {
-            while (size--) {
-                const k = keys[size];
-                const r = callback(collection[k], k, collection);
-                if (r === false)
-                    return;
-            }
-        }
-        else {
-            for (let i = 0; i < size; i++) {
-                const k = keys[i];
-                const r = callback(collection[k], k, collection);
-                if (r === false)
-                    return;
-            }
-        }
-    }
-}
-
-function each(collection, callback) {
-    _eachIterator(collection, callback, false);
-}
-
 /**
  * 判断参数是否为undefined
  * @example
@@ -10222,14 +10751,14 @@ function toPath$1(path) {
     if (isArray(chain)) {
         chain = chain.join('.');
     }
-    else {
-        chain += '';
+    let rs = chain + '';
+    if (rs.includes('[')) {
+        rs = rs.replace(/\[(['"])?([^\]'"]+)\1?\]/gm, '.$2');
     }
-    const rs = (chain + '')
-        .replace(/\[([^\]]+)\]/gm, '.$1')
-        .replace(/^\./g, '')
-        .split('.');
-    return rs;
+    if (rs[0] === '.') {
+        rs = rs.substring(1);
+    }
+    return rs.split('.');
 }
 
 /**
@@ -10257,6 +10786,11 @@ function toPath$1(path) {
 function get(obj, path, defaultValue) {
     if (!isObject(obj))
         return defaultValue;
+    if (!isArray(path) || (path.length === 1 && (path = path[0]) !== undefined)) {
+        let v = obj[path];
+        if (v !== undefined)
+            return v;
+    }
     const chain = toPath$1(path);
     let target = obj;
     for (let i = 0; i < chain.length; i++) {
@@ -10293,22 +10827,8 @@ function prop(path) {
     };
 }
 
-/**
- * 解析path并返回数组
- * @example
- * //['a', 'b', '2', 'c']
- * console.log(_.toPath('a.b[2].c'))
- * //['a', 'b', 'c', '1']
- * console.log(_.toPath(['a','b','c[1]']))
- * //['1']
- * console.log(_.toPath(1))
- *
- * @param path 属性路径，可以是数字索引，字符串key，或者多级属性数组
- * @returns path数组
- * @since 0.16.0
- */
-function toPath(path) {
-    return toPath$1(path);
+function eq(a, b) {
+    return Object.is(a, b);
 }
 
 /**
@@ -10332,10 +10852,21 @@ function isNil$1(v) {
     return v === null || v === undefined;
 }
 
-function eq(a, b) {
-    if (Number.isNaN(a) && Number.isNaN(b))
-        return true;
-    return a === b;
+/**
+ * 判断值是不是Node的实例
+ *
+ * @example
+ * //true
+ * console.log(_.isNode(document.body.attributes[0]))
+ * //true
+ * console.log(_.isNode(document))
+ *
+ * @param v
+ * @returns
+ * @since 1.5.0
+ */
+function isNode(v) {
+    return typeof v === 'object' && v instanceof (globalThis.Node || Object);
 }
 
 /**
@@ -10345,9 +10876,9 @@ function eq(a, b) {
  * @example
  * let target = {a:{x:1,y:2},b:1}
  * //true
- * console.log(_.isMatchWith(target,{b:1}))
+ * console.log(_.isMatchWith(target,{b:1},_.eq))
  * //false
- * console.log(_.isMatchWith(target,{b:'1'}))
+ * console.log(_.isMatchWith(target,{b:'1'},_.eq))
  *
  * target = {a:null,b:0}
  * //true
@@ -10355,11 +10886,11 @@ function eq(a, b) {
  *
  * @param target 如果不是对象类型，返回false
  * @param props 对比属性对象，如果是nil，返回true
- * @param [comparator=eq] 比较器，参数(object[k],props[k],k,object,props)，返回true表示匹配
+ * @param comparator 比较器。参数(object[k],props[k],k,object,props)，返回true表示匹配
  * @returns 匹配所有props返回true
  * @since 0.18.1
  */
-function isMatchWith(target, props, comparator = eq) {
+function isMatchWith(target, props, comparator) {
     if (isNil$1(props))
         return true;
     const ks = Object.keys(props);
@@ -10370,7 +10901,7 @@ function isMatchWith(target, props, comparator = eq) {
         const k = ks[i];
         const v1 = target[k];
         const v2 = props[k];
-        if (isObject(v1) && isObject(v2)) {
+        if (isObject(v1) && isObject(v2) && !isNode(v1) && !isNode(v2) && !isFunction(v1) && !isFunction(v2)) {
             if (!isMatchWith(v1, v2, comparator)) {
                 rs = false;
                 break;
@@ -10436,6 +10967,24 @@ function matcher(props) {
     };
 }
 
+/**
+ * 解析path并返回数组
+ * @example
+ * //['a', 'b', '2', 'c']
+ * console.log(_.toPath('a.b[2].c'))
+ * //['a', 'b', 'c', '1']
+ * console.log(_.toPath(['a','b','c[1]']))
+ * //['1']
+ * console.log(_.toPath(1))
+ *
+ * @param path 属性路径，可以是数字索引，字符串key，或者多级属性数组
+ * @returns path数组
+ * @since 0.16.0
+ */
+function toPath(path) {
+    return toPath$1(path);
+}
+
 function iteratee(value) {
     if (isUndefined(value)) {
         return identity;
@@ -10456,25 +11005,6 @@ function iteratee(value) {
 }
 
 /**
- * 对数组进行切片，并返回切片后的新数组，原数组不变。新数组内容是对原数组内容的浅拷贝
- *
- * @example
- * //[2,3,4]
- * console.log(_.slice([1,2,3,4,5],1,4))
- * //[2,3,4,5]
- * console.log(_.slice([1,2,3,4,5],1))
- *
- *
- * @param array 数组
- * @param [begin=0] 切片起始下标，包含下标位置元素
- * @param [end] 切片结束下标，<b>不包含</b>下标位置元素
- * @returns 切片元素组成的新数组
- */
-function slice(array, begin, end) {
-    return toArray(array).slice(begin || 0, end);
-}
-
-/**
  * 对集合内的所有元素进行断言并返回第一个匹配的元素索引
  *
  * @example
@@ -10485,7 +11015,7 @@ function slice(array, begin, end) {
  * //2
  * console.log(_.findIndex([{a:1},{a:2},{a:3}],{a:3}))
  *
- * @param array 数组
+ * @param array 数组，非数组返回-1
  * @param predicate (value[,index[,array]]);断言
  * <br>当断言是函数时回调参数见定义
  * <br>其他类型请参考 {@link utils!iteratee}
@@ -10493,27 +11023,29 @@ function slice(array, begin, end) {
  * @returns 第一个匹配断言的元素索引或-1
  */
 function findIndex(array, predicate, fromIndex) {
+    if (!Array.isArray(array))
+        return -1;
     let rs = -1;
     let fromIndexNum = fromIndex || 0;
     const itee = iteratee(predicate);
-    each(slice(array, fromIndexNum), (v, k, c) => {
-        const r = itee(v, k, c);
+    for (let i = fromIndexNum; i < array.length; i++) {
+        const v = array[i];
+        const r = itee(v, i, array);
         if (r) {
-            rs = k + fromIndexNum;
-            return false;
+            rs = i + fromIndexNum;
+            break;
         }
-    });
+    }
     return rs;
 }
 
 /**
-   * myfx/string v1.1.0
+   * myfx/string v1.14.0
    * A modular utility library with more utils, higher performance and simpler declarations ...
    * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   * (c) 2021-2025 @holyhigh2 may be freely distributed under the MIT license
    */
-
-/**
+  /**
  * 判断值是否为null或undefined
  *
  * @example
@@ -10576,7 +11108,7 @@ function toString(v) {
  * @since 0.19.0
  */
 function isRegExp(v) {
-    return typeof v === 'object' && v instanceof RegExp;
+    return v instanceof RegExp || Object.prototype.toString.call(v) === '[object RegExp]';
 }
 
 /**
@@ -10622,42 +11154,16 @@ function test(str, pattern, flags) {
     return regExp.test(str);
 }
 
-/**
-   * myfx/tree v1.1.0
-   * A modular utility library with more utils, higher performance and simpler declarations ...
-   * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
-   */
-
-/**
- * 根据指定的node及parentKey属性，查找最近的祖先节点
- * @param node Element节点或普通对象节点
- * @param predicate (node,times,cancel)断言函数，如果返回true表示节点匹配。或调用cancel中断查找
- * @param parentKey 父节点引用属性名
- * @returns 断言为true的最近一个祖先节点
- * @since 1.0.0
- */
-function closest(node, predicate, parentKey) {
-    let p = node;
-    let t = null;
-    let k = true;
-    let i = 0;
-    while (k && p) {
-        if (predicate(p, i++, () => { k = false; })) {
-            t = p;
-            break;
-        }
-        p = p[parentKey];
-    }
-    return t;
-}
-
-var _Draggable_instances, _Draggable_handleMap, _Draggable_container, _Draggable_initStyle;
+var _Draggable_instances, _Draggable_container, _Draggable_initHandle, _Draggable_initStyle;
 const DRAGGER_GROUPS = {};
 const CLASS_DRAGGABLE = "uii-draggable";
 const CLASS_DRAGGABLE_HANDLE = "uii-draggable-handle";
 const CLASS_DRAGGABLE_ACTIVE = "uii-draggable-active";
 const CLASS_DRAGGABLE_GHOST = "uii-draggable-ghost";
+const HANDLE_MAP = new WeakMap();
+const OPTION_MAP = new WeakMap();
+const BINDED_CONTAINER = new WeakSet();
+const WATCH_MAP = {};
 /**
  * 用于表示一个或多个可拖动元素的定义
  * 每个拖动元素可以有独立handle，也可以公用一个handle
@@ -10685,17 +11191,9 @@ class Draggable extends Uii {
             self: false,
         }, opts));
         _Draggable_instances.add(this);
-        _Draggable_handleMap.set(this, new WeakMap());
         _Draggable_container.set(this, null);
         if (this.opts.handle) {
-            each$2(this.ele, (el) => {
-                const h = el.querySelector(this.opts.handle);
-                if (!h) {
-                    console.error('No handle found "' + this.opts.handle + '"');
-                    return false;
-                }
-                __classPrivateFieldGet(this, _Draggable_handleMap, "f").set(el, h);
-            });
+            __classPrivateFieldGet(this, _Draggable_instances, "m", _Draggable_initHandle).call(this, this.ele);
         }
         this.onOptionChanged(this.opts);
         //put into group
@@ -10726,15 +11224,20 @@ class Draggable extends Uii {
             else {
                 con = isEmpty$1(this.ele) ? null : this.ele[0].parentElement;
             }
-            this.bindEvent(con || document.body, this.opts, __classPrivateFieldGet(this, _Draggable_handleMap, "f"));
+            let bindTarget = con || document.body;
+            if (BINDED_CONTAINER.has(bindTarget))
+                return;
+            WATCH_MAP[this.eleString] = this;
+            this.bindEvent(bindTarget);
+            BINDED_CONTAINER.add(bindTarget);
         }
         else {
             each$2(this.ele, (el) => {
-                this.bindEvent(el, this.opts, __classPrivateFieldGet(this, _Draggable_handleMap, "f"));
+                this.bindEvent(el);
             });
         }
     }
-    bindEvent(bindTarget, opts, handleMap) {
+    bindEvent(bindTarget) {
         const container = __classPrivateFieldGet(this, _Draggable_container, "f");
         let draggableList = this.ele;
         const eleString = this.eleString;
@@ -10744,26 +11247,39 @@ class Draggable extends Uii {
             let t = ev.target;
             if (!t)
                 return true;
-            //refresh draggableList
-            if (opts.watch && eleString) {
-                draggableList = bindTarget.querySelectorAll(eleString);
-                initStyle(draggableList);
-            }
+            let opts = {};
             //find drag dom & handle
-            let findRs = closest(t, (node) => includes$1(draggableList, node), "parentNode");
-            if (!findRs)
-                return true;
+            let findRs = closest$1(t, (node) => node && get$2(node, UII_KEY), "parentElement");
+            if (!findRs) {
+                let toBreak = true;
+                each$2(WATCH_MAP, (v, k) => {
+                    draggableList = bindTarget.querySelectorAll(eleString);
+                    if (!isEmpty$1(draggableList) && (findRs = closest$1(t, (node) => includes$1(draggableList, node), "parentNode"))) {
+                        initStyle(draggableList);
+                        opts = v.opts;
+                        __classPrivateFieldGet(v, _Draggable_instances, "m", _Draggable_initHandle).call(v, draggableList);
+                        toBreak = false;
+                        return false;
+                    }
+                });
+                if (toBreak)
+                    return true;
+            }
             const dragDom = findRs;
-            let handle = handleMap.get(dragDom);
-            if (handle && !handle.contains(t)) {
+            let handle = HANDLE_MAP.get(dragDom);
+            if (handle && !isCustomElement(t) && !handle.contains(t)) {
                 return true;
             }
+            if (isEmpty$1(opts))
+                opts = OPTION_MAP.get(dragDom);
+            if (!opts || isEmpty$1(opts))
+                return true;
             if (opts.self && dragDom !== t)
                 return true;
             //检测
             const onPointerDown = opts.onPointerDown;
             if (onPointerDown &&
-                onPointerDown({ draggable: dragDom }, ev) === false)
+                onPointerDown({ draggable: dragDom, handle }, ev) === false)
                 return true;
             const filter = opts.filter;
             //check filter
@@ -11128,7 +11644,7 @@ class Draggable extends Uii {
                 let moveToGhost = true;
                 if (onEnd) {
                     moveToGhost =
-                        onEnd({ draggable: dragDom, x: endX, y: endY, transform }, ev) ===
+                        onEnd({ draggable: dragDom, x: endX, y: endY, transform, ghost: ghostNode }, ev) ===
                             false
                             ? false
                             : true;
@@ -11146,13 +11662,19 @@ class Draggable extends Uii {
                 if (ghost) {
                     (_a = ghostNode.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(ghostNode);
                     if (moveToGhost !== false) {
-                        wrapper(dragDom, opts.useTransform).moveTo(transform.x, transform.y);
+                        let transf = wrapper(dragDom, opts.useTransform);
+                        if (direction === "v") {
+                            transf.moveToY(endY);
+                        }
+                        else if (direction === "h") {
+                            transf.moveToX(endX);
+                        }
+                        else {
+                            transf.moveTo(endX, endY);
+                        }
                     }
                 }
             });
-        }, {
-            threshold: this.opts.threshold || 0,
-            lockPage: true,
         });
     }
     /**
@@ -11176,12 +11698,27 @@ class Draggable extends Uii {
         }
     }
 }
-_Draggable_handleMap = new WeakMap(), _Draggable_container = new WeakMap(), _Draggable_instances = new WeakSet(), _Draggable_initStyle = function _Draggable_initStyle(draggableList) {
+_Draggable_container = new WeakMap(), _Draggable_instances = new WeakSet(), _Draggable_initHandle = function _Draggable_initHandle(ele) {
+    each$2(ele, (el) => {
+        let h;
+        if (isString$3(this.opts.handle)) {
+            h = el.querySelector(this.opts.handle);
+            if (!h) {
+                console.error('No handle found "' + this.opts.handle + '"');
+                return false;
+            }
+        }
+        else if (isElement$1(this.opts.handle)) {
+            h = this.opts.handle;
+        }
+        HANDLE_MAP.set(el, h);
+    });
+}, _Draggable_initStyle = function _Draggable_initStyle(draggableList) {
     each$2(draggableList, (el) => {
         if (isDefined$1(this.opts.type))
             el.dataset.dropType = this.opts.type;
         el.classList.toggle(CLASS_DRAGGABLE, true);
-        const ee = __classPrivateFieldGet(this, _Draggable_handleMap, "f").get(el) || el;
+        const ee = HANDLE_MAP.get(el) || el;
         ee.classList.toggle(CLASS_DRAGGABLE_HANDLE, true);
         if (!isUndefined$2(this.opts.cursor)) {
             el.style.cursor = this.opts.cursor.default || "move";
@@ -11190,6 +11727,7 @@ _Draggable_handleMap = new WeakMap(), _Draggable_container = new WeakMap(), _Dra
                 el.dataset.cursorActive = this.opts.cursor.active || "move";
             }
         }
+        OPTION_MAP.set(el, this.opts);
     });
 };
 /**
@@ -11285,7 +11823,7 @@ class Droppable extends Uii {
         const opts = this.opts;
         if (opts.watch && this.eleString) {
             let nodes = document.querySelectorAll(this.eleString);
-            this.ele = toArray$3(nodes);
+            this.ele = toArray$2(nodes);
         }
         //check accepts
         if (isString$3(opts.accepts)) {
@@ -11464,9 +12002,6 @@ function bindHandle(uiik, handle, el, opts) {
             el.classList.toggle(CLASS_ROTATABLE_ACTIVE, false);
             onEnd && onEnd({ deg }, ev);
         });
-    }, {
-        threshold: THRESHOLD,
-        lockPage: true,
     });
 }
 /**
@@ -11811,9 +12346,6 @@ _Selectable__detector = new WeakMap(), _Selectable__lastSelected = new WeakMap()
             if (onEnd)
                 onEnd({ selection, selectable: con }, ev);
         });
-    }, {
-        threshold: THRESHOLD,
-        lockPage: true
     });
 };
 /**
@@ -11827,10 +12359,10 @@ function newSelectable(container, opts) {
 }
 
 /**
-   * myfx/utils v1.1.0
+   * myfx/utils v1.14.0
    * A modular utility library with more utils, higher performance and simpler declarations ...
    * https://github.com/holyhigh2/myfx
-   * (c) 2021-2023 @holyhigh2 may be freely distributed under the MIT license
+   * (c) 2021-2025 @holyhigh2 may be freely distributed under the MIT license
    */
   const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'.split('');
 /**
@@ -11846,7 +12378,7 @@ function newSelectable(container, opts) {
  * @since 1.0.0
  */
 function alphaId(len) {
-    const bytes = self.crypto.getRandomValues(new Uint8Array(len || 16));
+    const bytes = globalThis.crypto.getRandomValues(new Uint8Array(len || 16));
     let rs = '';
     bytes.forEach(b => rs += ALPHABET[b % ALPHABET.length]);
     return rs;
@@ -11962,7 +12494,7 @@ function bindContainer(registerEvent, container, opts) {
         const filteredItems = con.querySelectorAll(":scope > *" + filterStr);
         const handles = opts.handle
             ? map$1(filteredItems, (el) => el.querySelector(opts.handle || ""))
-            : toArray$3(filteredItems);
+            : toArray$2(filteredItems);
         const i = findIndex(handles, (handle) => handle.contains(t));
         if (i < 0)
             return;
@@ -12280,7 +12812,7 @@ function newSortable(container, opts) {
     return new Sortable(container, opts);
 }
 
-var version = "1.3.7";
+var version = "1.4.1";
 var repository = {
 	type: "git",
 	url: "https://github.com/holyhigh2/uiik"
@@ -12314,4 +12846,4 @@ var index = {
     newSortable
 };
 
-export { CollisionDetector, DRAGGING_RULE, Draggable, Droppable, EDGE_THRESHOLD, ONE_ANG, ONE_RAD, Resizable, Rotatable, Selectable, Sortable, Splittable, THRESHOLD, Uii, UiiTransform, VERSION, calcVertex, index as default, getBox, getCenterXy, getCenterXySVG, getMatrixInfo, getPointInContainer, getPointOffset, getRectCenter, getRectInContainer, getStyleSize, getStyleXy, getTranslate, getVertex, isSVGEl, isVisible, lockPage, moveBy, moveTo, newCollisionDetector, newDraggable, newDroppable, newResizable, newRotatable, newSelectable, newSortable, newSplittable, normalizeVector, parseOxy, restoreCursor, rotateTo, saveCursor, setCursor, transformMoveTo, unlockPage, wrapper };
+export { CollisionDetector, DRAGGING_RULE, Draggable, Droppable, EDGE_THRESHOLD, ONE_ANG, ONE_RAD, Resizable, Rotatable, Selectable, Sortable, Splittable, THRESHOLD, UII_KEY, Uii, UiiTransform, VERSION, calcVertex, index as default, getBox, getCenterXy, getCenterXySVG, getMatrixInfo, getPointInContainer, getPointOffset, getRectCenter, getRectInContainer, getStyleSize, getStyleXy, getTranslate, getVertex, isSVGEl, isVisible, lockPage, moveBy, moveTo, newCollisionDetector, newDraggable, newDroppable, newResizable, newRotatable, newSelectable, newSortable, newSplittable, normalizeVector, parseOxy, restoreCursor, rotateTo, saveCursor, setCursor, transformMoveTo, unlockPage, wrapper };

@@ -1,6 +1,7 @@
 import { each, map, toArray } from "myfx/collection";
 import { isArrayLike, isElement, isEmpty, isString } from "myfx/is";
-import { assign, get } from "myfx/object";
+import { assign, get, set } from "myfx/object";
+import { closest } from "myfx/tree";
 import { UiiTransform } from "./transform";
 import {
   getMatrixInfo,
@@ -10,7 +11,9 @@ import {
   setCursor,
   unlockPage,
 } from "./utils";
-
+export const UII_KEY = '__uii_target_'
+const UII_MAP: Record<string, Uii> = {}
+let UiiSn = 0
 /**
  * A Base class for all Uii classes
  */
@@ -33,6 +36,7 @@ export abstract class Uii {
   ) {
     this.opts = opts || {};
     this.opts.mouseButton = this.opts.mouseButton || 'left'
+    this.opts.eventCapture = this.opts.eventCapture ?? true
 
     if (isArrayLike(ele) && !isString(ele)) {
       this.ele = map<HTMLElement>(ele, (el) => {
@@ -56,6 +60,9 @@ export abstract class Uii {
         ? toArray<HTMLElement>(el)
         : [el as HTMLElement];
     }
+    let uid = UiiSn++ + ''
+    UII_MAP[uid] = this
+    this._bindUiik(uid)
   }
 
   /**
@@ -72,16 +79,12 @@ export abstract class Uii {
   addPointerDown(
     el: Element,
     pointerDown: (args: Record<string, any>) => void | boolean,
-    opts: {
-      threshold?: number;
-      lockPage?: boolean;
-    }
   ) {
     const onPointerDown = pointerDown;
-    const threshold = opts.threshold || 0;
-    const toLockPage = opts.lockPage || false;
 
     const uiiOptions = this.opts;
+    let threshold = 0
+    let toLockPage = true;
 
     this.registerEvent(
       el,
@@ -145,6 +148,17 @@ export abstract class Uii {
           return false;
         }
 
+        let target = closest<HTMLElement | SVGGraphicsElement>(
+          t,
+          (node: Element) => node && get(node, UII_KEY),
+          "parentElement"
+        );
+        if (target) {
+          let uiiInstance = UII_MAP[get<string>(target, UII_KEY)]
+          threshold = uiiInstance.opts.threshold || 0;
+          toLockPage = uiiInstance.opts.lockPage ?? true;
+        }
+
         let matrixInfo = getMatrixInfo(el as any, true)
 
         //函数
@@ -206,7 +220,7 @@ export abstract class Uii {
         e.preventDefault();
         return false;
       },
-      true
+      this.opts.eventCapture
     );
   }
 
@@ -278,6 +292,15 @@ export abstract class Uii {
   /**
    * @internal
    */
+  protected _bindUiik(uid: string) {
+    each(this.ele, el => {
+      set(el, UII_KEY, uid)
+    })
+  }
+
+  /**
+   * @internal
+   */
   protected onOptionChanged(opts?: Record<string, any>): void { }
 }
 
@@ -321,6 +344,10 @@ export type ResizableOptions = {
   //仅对SVG元素有效，对于非SVG元素使用transform-origin属性
   ox?: number | string;
   oy?: number | string;
+  /**
+   * 指针点击事件是否启用事件捕获，默认true
+   */
+  eventCapture?: boolean;
   /**
    * 指针点击时触发，可用于阻止后续逻辑
    * @param event
@@ -393,6 +420,10 @@ export type SplittableOptions = {
    * 自定义handle选择器，多个使用空格分隔。handle元素可以是与分割元素平级或在分割元素内
    */
   handle?: string | HTMLElement | HTMLElement[];
+  /**
+   * 指针点击事件是否启用事件捕获，默认true
+   */
+  eventCapture?: boolean;
   onStart?: (data: { size1: number; size2: number }, event: MouseEvent) => void;
   onSplit?: (data: { size1: number; size2: number }, event: MouseEvent) => void;
   onEnd?: (data: { size1: number; size2: number }, event: MouseEvent) => void;
@@ -434,9 +465,9 @@ export type DraggableOptions = {
    */
   threshold?: number;
   /**
-   * 实际响应拖动的元素选择器，字符串
+   * 实际响应拖动的元素选择器，字符串或元素
    */
-  handle?: string;
+  handle?: string | HTMLElement | SVGGraphicsElement;
   /**
    * 禁止触发元素的css选择器
    */
@@ -509,12 +540,16 @@ export type DraggableOptions = {
    */
   type?: string;
   /**
+   * 指针点击事件是否启用事件捕获，默认true
+   */
+  eventCapture?: boolean;
+  /**
    * 指针点击时触发，可用于阻止后续逻辑
    * @param event
    * @returns 返回false则停止后续逻辑
    */
   onPointerDown?: (
-    data: { draggable: HTMLElement | SVGGraphicsElement },
+    data: { draggable: HTMLElement | SVGGraphicsElement, handle: HTMLElement | SVGGraphicsElement },
     event: MouseEvent
   ) => boolean;
   onStart?: (
@@ -557,6 +592,7 @@ export type DraggableOptions = {
       x: number;
       y: number;
       transform: UiiTransform;
+      ghost: HTMLElement | SVGGraphicsElement;
     },
     event: MouseEvent
   ) => boolean | void;
@@ -595,6 +631,10 @@ export type DroppableOptions = {
   accepts?:
   | ((ele: Array<HTMLElement>, draggable: HTMLElement) => boolean)
   | string;
+  /**
+   * 指针点击事件是否启用事件捕获，默认true
+   */
+  eventCapture?: boolean;
   /**
    * 当accepts的draggable对象开始拖动时触发
    * @param draggable
@@ -664,6 +704,10 @@ export type RotatableOptions = {
   | HTMLElement
   | SVGGraphicsElement;
   /**
+   * 指针点击事件是否启用事件捕获，默认true
+   */
+  eventCapture?: boolean;
+  /**
    * 指针点击时触发，可用于阻止后续逻辑
    * @param event
    * @returns 返回false则停止后续逻辑
@@ -720,6 +764,10 @@ export type SelectableOptions = {
    * 禁止触发元素的css选择器或校验函数，函数返回true表示需要过滤
    */
   filter?: ((el: HTMLElement) => boolean) | string;
+  /**
+   * 指针点击事件是否启用事件捕获，默认true
+   */
+  eventCapture?: boolean;
   /**
    * 指针点击时触发，可用于阻止后续逻辑
    * @param event
@@ -799,6 +847,10 @@ export type SortableOptions = {
    * 是否可排序，默认true
    */
   sort?: boolean;
+  /**
+   * 指针点击事件是否启用事件捕获，默认true
+   */
+  eventCapture?: boolean;
   /**
    * 当一组中的任意sortable容器中的元素被拖动时，其他容器会触发激活事件
    * @param data

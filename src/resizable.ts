@@ -19,7 +19,6 @@ import { ResizableOptions, Uii } from "./types";
 import {
   ONE_ANG,
   ONE_RAD,
-  THRESHOLD,
   calcVertex,
   getMatrixInfo,
   getPointInContainer,
@@ -27,7 +26,7 @@ import {
   getRectInContainer,
   getStyleSize,
   normalizeVector,
-  parseOxy,
+  parseOxy
 } from "./utils";
 
 const CLASS_RESIZABLE_HANDLE = "uii-resizable-handle";
@@ -751,10 +750,6 @@ export class Resizable extends Uii {
           } //if setOrigin
 
         });
-      },
-      {
-        threshold: THRESHOLD,
-        lockPage: true,
       }
     );
   }

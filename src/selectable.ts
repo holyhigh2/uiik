@@ -3,14 +3,14 @@
  * selector
  * @author holyhigh2
  */
-import { each,includes,some } from 'myfx/collection'
+import { compact } from 'myfx/array'
+import { each, includes, some } from 'myfx/collection'
+import { isFunction } from 'myfx/is'
 import { assign } from 'myfx/object'
 import { split } from 'myfx/string'
-import { compact } from 'myfx/array'
-import { isFunction } from 'myfx/is'
-import { CollisionDetector, newCollisionDetector } from "./detector";
-import { SelectableOptions, Uii } from "./types";
-import { EDGE_THRESHOLD, THRESHOLD, getPointInContainer } from "./utils";
+import { CollisionDetector, newCollisionDetector } from "./detector"
+import { SelectableOptions, Uii } from "./types"
+import { EDGE_THRESHOLD, getPointInContainer } from "./utils"
 
 const CLASS_SELECTOR = "uii-selector";
 const CLASS_SELECTING = "uii-selecting";
@@ -43,7 +43,7 @@ export class Selectable extends Uii {
     const domEl = this.ele[0] as HTMLElement;
 
     //create selector
-    let selector:any = document.createElement("div");
+    let selector: any = document.createElement("div");
     if (domEl instanceof SVGElement) {
       selector = document.createElementNS('http://www.w3.org/2000/svg', "rect");
     }
@@ -59,7 +59,7 @@ export class Selectable extends Uii {
     }
     selector.style.display = 'none'
     domEl.appendChild(selector);
-    
+
     //create detector
     this.#_detector = newCollisionDetector(selector, this.opts.targets, {
       container: domEl,
@@ -80,9 +80,9 @@ export class Selectable extends Uii {
    */
   #bindEvent(selector: HTMLElement, con: HTMLElement) {
     const that = this;
-    const opts:SelectableOptions = this.opts
+    const opts: SelectableOptions = this.opts
 
-    this.addPointerDown(con, ({ ev,target,currentRect,currentCStyle, currentTarget, onPointerStart, onPointerMove, onPointerEnd }) => {
+    this.addPointerDown(con, ({ ev, target, currentRect, currentCStyle, currentTarget, onPointerStart, onPointerMove, onPointerEnd }) => {
       const onStart = opts.onStart;
       const onSelect = opts.onSelect;
       const onEnd = opts.onEnd;
@@ -98,16 +98,16 @@ export class Selectable extends Uii {
         if (isFunction(filter)) {
           if (filter(target)) return true;
         } else if (some(con.querySelectorAll(filter), (el) => el.contains(target)))
-        return true;
+          return true;
       }
 
       //检测
       const onPointerDown = opts.onPointerDown;
-      if (onPointerDown && onPointerDown(ev) === false)return true;
+      if (onPointerDown && onPointerDown(ev) === false) return true;
 
       let originPos = "";
 
-      let startPointXy:{x:number,y:number} = getPointInContainer(ev, con, currentRect, currentCStyle)
+      let startPointXy: { x: number, y: number } = getPointInContainer(ev, con, currentRect, currentCStyle)
       let hitPosX = startPointXy.x
       let hitPosY = startPointXy.y
 
@@ -115,8 +115,8 @@ export class Selectable extends Uii {
 
       let selection: HTMLElement[] = [];
       let lastSelection: HTMLElement[] = [];
-      let x1 = hitPosX,y1 = hitPosY;
-      
+      let x1 = hitPosX, y1 = hitPosY;
+
       let timer: any = null;
       let toLeft = false;
       let toTop = false;
@@ -239,7 +239,7 @@ export class Selectable extends Uii {
         const { ev, currentStyle } = args
 
         style.display = 'none'
-        
+
         if (scroll) {
           if (timer) {
             clearInterval(timer);
@@ -266,9 +266,6 @@ export class Selectable extends Uii {
 
         if (onEnd) onEnd({ selection, selectable: con }, ev);
       })
-    }, {
-      threshold: THRESHOLD,
-      lockPage: true
     })
   }
 

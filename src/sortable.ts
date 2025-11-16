@@ -442,7 +442,7 @@ function bindContainer(
         if (draggingItem.parentElement)
           draggingItem.parentElement.removeChild(draggingItem);
         // let toIndex = 0;
-        const list = filter(FilteredNodeMap.get(container) as NodeListOf<Element>, x => x !== draggingItem)
+        const list = filter<Element>(FilteredNodeMap.get(container) as NodeListOf<Element>, x => x !== draggingItem)
         if (dir[0] === "t") {
           container.insertBefore(draggingItem, list[0]);
         } else {
@@ -538,7 +538,7 @@ function listenItems(
     e.preventDefault();
   };
 
-  each<HTMLElement>(items, (item, i) => {
+  each<HTMLElement>(items as ArrayLike<any>, (item, i) => {
     item.style.position = "relative";
     if (item === draggingItem) return;
 
@@ -549,7 +549,7 @@ function listenItems(
 
   return () => {
     //解绑enter事件
-    each<HTMLElement>(items, (item, i) => {
+    each<HTMLElement>(items as ArrayLike<any>, (item, i) => {
       if (item === draggingItem) return;
       item.removeEventListener("mouseenter", listener);
     });

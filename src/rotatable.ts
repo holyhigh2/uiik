@@ -4,17 +4,16 @@
  * @author holyhigh2
  */
 import { each } from "myfx/collection";
-import { RotatableOptions, Uii } from "./types";
-import { rotateTo } from "./transform";
 import { isFunction, isString } from "myfx/is";
+import { rotateTo } from "./transform";
+import { RotatableOptions, Uii } from "./types";
 import {
   ONE_RAD,
-  THRESHOLD,
   getMatrixInfo,
   getPointInContainer,
   getRectCenter,
   getStyleSize,
-  parseOxy,
+  parseOxy
 } from "./utils";
 
 const CLASS_ROTATABLE = "uii-rotatable";
@@ -35,9 +34,9 @@ export class Rotatable extends Uii {
 
     each(this.ele, (el) => {
       let tmp = el as any
-      if(tmp._uiik_rotatable){
+      if (tmp._uiik_rotatable) {
         tmp._uiik_rotatable.destroy()
-        return false  
+        return false
       }
     })
 
@@ -97,7 +96,7 @@ function bindHandle(
       let startDeg = 0;
       let container: HTMLElement | SVGGraphicsElement;
 
-      let startPointXy:{x:number,y:number}
+      let startPointXy: { x: number, y: number }
 
       //bind events
       onPointerStart(function (args: Record<string, any>) {
@@ -105,7 +104,7 @@ function bindHandle(
 
         const { w, h } = getStyleSize(el);
 
-        const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h,el);
+        const { originX, originY } = parseOxy(opts.ox, opts.oy, w, h, el);
         startOx = originX;
         startOy = originY;
 
@@ -161,10 +160,6 @@ function bindHandle(
 
         onEnd && onEnd({ deg }, ev);
       });
-    },
-    {
-      threshold: THRESHOLD,
-      lockPage: true,
     }
   );
 }
