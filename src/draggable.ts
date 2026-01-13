@@ -131,6 +131,7 @@ export class Draggable extends Uii {
 
   #initHandle(ele: HTMLElement[]) {
     each(ele, (el) => {
+      if (HANDLE_MAP.has(el)) return
       let h
       if (isString(this.opts.handle)) {
         h = el.querySelector(this.opts.handle);
@@ -148,6 +149,7 @@ export class Draggable extends Uii {
   //初始化样式
   #initStyle(draggableList: HTMLElement[]) {
     each(draggableList, (el) => {
+      if (OPTION_MAP.has(el)) return
       if (isDefined(this.opts.type)) el.dataset.dropType = this.opts.type;
       el.classList.toggle(CLASS_DRAGGABLE, true);
       const ee = HANDLE_MAP.get(el) || el;
@@ -191,7 +193,7 @@ export class Draggable extends Uii {
           (node: Element) => node && get(node, UII_KEY),
           "parentElement"
         );
-        if (!findRs) {
+        if (!findRs || isEmpty(OPTION_MAP.get(findRs))) {
           let toBreak = true
           each(WATCH_MAP, (v, k) => {
             draggableList = bindTarget.querySelectorAll(eleString);
