@@ -1,6 +1,13 @@
 node_modules
 dist
+dist-website
 package-lock.json
 todo.*
 docs
 *.eddx
+
+# 兜底：构建产物只应出现在 dist/ 与 website/，根目录出现即为异常输出
+/index.js
+/index.esm.js
+/index.d.ts
+/*.d.ts

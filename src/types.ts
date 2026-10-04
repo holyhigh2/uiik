@@ -1,7 +1,4 @@
-import { each, map, toArray } from "myfx/collection";
-import { isArrayLike, isElement, isEmpty, isString } from "myfx/is";
-import { assign, get, set } from "myfx/object";
-import { closest } from "myfx/tree";
+import { assign, closest, each, get, isArrayLike, isElement, isEmpty, isString, map, set, toArray } from "myfx";
 import { UiiTransform } from "./transform";
 import {
   getMatrixInfo,
@@ -27,7 +24,7 @@ export abstract class Uii {
    */
   opts: Record<string, any>;
   protected enabled: boolean = true;
-  #listeners: Array<[Element, string, Function, boolean]> = [];
+  private __listeners: Array<[Element, string, Function, boolean]> = [];
   protected eleString: string;
 
   constructor(
@@ -69,10 +66,10 @@ export abstract class Uii {
    * 销毁uii对象，包括卸载事件、清空元素等
    */
   destroy(): void {
-    each(this.#listeners, (ev) => {
+    each(this.__listeners, (ev) => {
       ev[0].removeEventListener(ev[1], ev[2] as any, ev[3]);
     });
-    this.#listeners = [];
+    this.__listeners = [];
   }
 
   //通用指针事件处理接口
@@ -90,8 +87,25 @@ export abstract class Uii {
       el,
       "mousedown",
       (e: PointerEvent) => {
-        if (uiiOptions.mouseButton) {
-          switch (uiiOptions.mouseButton) {
+        let t = e.target as HTMLElement;
+        if (!t) return;
+
+        let ownerOpts = uiiOptions;
+        const ownerEl = closest<HTMLElement>(
+          t,
+          (node: Element) => node && get(node, UII_KEY),
+          "parentElement"
+        );
+        if (ownerEl) {
+          const ownerInst = UII_MAP[get<string>(ownerEl, UII_KEY)];
+          if (ownerInst && ownerInst.opts) {
+            ownerOpts = ownerInst.opts;
+          }
+        }
+
+        const mouseButton = ownerOpts.mouseButton;
+        if (mouseButton) {
+          switch (mouseButton) {
             case "left":
               if (e.button != 0) return;
               break;
@@ -101,11 +115,8 @@ export abstract class Uii {
           }
         }
 
-        let t = e.target as HTMLElement;
-        if (!t) return;
-
         //uiik options
-        const hasCursor = !isEmpty(get(uiiOptions, "cursor.active"));
+        const hasCursor = !isEmpty(get(ownerOpts, "cursor.active"));
 
         //提取通用信息
         const currentStyle = (el as HTMLStyleElement).style;
@@ -175,7 +186,7 @@ export abstract class Uii {
               }
 
               if (hasCursor) {
-                setCursor(uiiOptions.cursor.active);
+                setCursor(ownerOpts.cursor.active);
               }
 
               onPointerStart && onPointerStart({ ev });
@@ -237,13 +248,21 @@ export abstract class Uii {
     hook: Function,
     useCapture: boolean = false
   ) {
+    // 同一实例对同一元素的同类事件只保留一个监听，
+    this.__listeners = this.__listeners.filter((l) => {
+      if (l[0] === el && l[1] === event) {
+        l[0].removeEventListener(l[1], l[2] as EventListener, l[3]);
+        return false;
+      }
+      return true;
+    });
     const wrapper = ((ev: MouseEvent) => {
       if (!this.enabled) return;
 
       hook(ev);
     }).bind(this);
     el.addEventListener(event, wrapper, useCapture);
-    this.#listeners.push([el, event, wrapper, useCapture]);
+    this.__listeners.push([el, event, wrapper, useCapture]);
   }
   /**
    * 禁用uii实例，禁用后的dom不会响应事件
@@ -494,7 +513,7 @@ export type DraggableOptions = {
    */
   direction?: "v" | "h";
   /**
-   * 是否在鼠标到达容器边缘时自动滚动，默认true
+   * 是否在鼠标到达容器边缘时自动滚动，默认false
    */
   scroll?: boolean;
   /**
@@ -514,14 +533,39 @@ export type DraggableOptions = {
    */
   classes?: string;
   /**
-   * 拖动元素可自动吸附的目标元素选择器。字符串
+   * 拖动元素可自动吸附的目标。
+   * 支持选择器字符串/元素/元素数组/返回元素数组的函数。
+   * 选择器在 snapOptions.container 指定的容器内查询
    */
-  snap?: string;
+  snap?:
+  | string
+  | HTMLElement
+  | SVGGraphicsElement
+  | Array<HTMLElement | SVGGraphicsElement>
+  | (() => Array<HTMLElement | SVGGraphicsElement>);
   snapOptions?: {
     /**
      * 吸附元素的移动误差，默认10
      */
     tolerance: number;
+    /**
+     * 纵向吸附误差，缺省同tolerance
+     */
+    toleranceY?: number;
+    /**
+     * 参与吸附的锚点，缺省start/center/end全开，即3×3共9种对齐组合。
+     * start/end为矩形的起始边/结束边，center为中线
+     */
+    points?: Array<"start" | "center" | "end">;
+    /**
+     * 多候选取舍。nearest取位移最小者（默认），first按遍历顺序取首个命中
+     */
+    strategy?: "nearest" | "first";
+    /**
+     * 选择器的查询根。缺省依次为 containment 容器、首个可拖动元素的父元素。
+     * 组件位于shadow dom内时必须指定，否则选择器无法命中
+     */
+    container?: string | HTMLElement;
   };
   /**
    * 可定义拖动时不同状态下的指针，默认move
@@ -607,6 +651,12 @@ export type DraggableOptions = {
       targetV: HTMLElement | SVGGraphicsElement;
       dirH: string;
       dirV: string;
+      /**
+       * 吸附产生的位移。
+       * onDrag返回false（位移由外部自行控制）时，可据此让外部元素跟随吸附
+       */
+      dx: number;
+      dy: number;
     },
     event: MouseEvent
   ) => void;
@@ -753,7 +803,7 @@ export type SelectableOptions = {
    */
   mode?: "overlap" | "inclusion";
   /**
-   * 是否在鼠标到达容器边缘时自动滚动，默认true
+   * 是否在鼠标到达容器边缘时自动滚动，默认false
    */
   scroll?: boolean;
   /**
@@ -791,7 +841,7 @@ export type SelectableOptions = {
 
 export type SortableOptions = {
   /**
-   * 是否在鼠标到达容器边缘时自动滚动，默认true
+   * 是否在鼠标到达容器边缘时自动滚动，默认false
    */
   scroll?: boolean;
   /**

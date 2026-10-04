@@ -3,16 +3,10 @@
  * sortable
  * @author holyhigh2
  */
-import { compact, findIndex } from 'myfx/array'
-import { each, flatMap, map, reject, size, toArray } from 'myfx/collection'
-import { isEmpty, isFunction } from 'myfx/is'
-import { merge } from 'myfx/object'
-import { split } from 'myfx/string'
-import { alphaId } from 'myfx/utils'
-
-import { filter, last } from 'myfx'
-import { SortableOptions, Uii } from "./types"
-import { THRESHOLD, lockPage, restoreCursor, saveCursor, unlockPage } from "./utils"
+import { alphaId, compact, each, filter, findIndex, flatMap, isEmpty, isFunction, last, map, merge, reject, size, split, toArray } from 'myfx';
+import type { SortableOptions } from "./types";
+import { Uii } from "./types";
+import { THRESHOLD, lockPage, restoreCursor, saveCursor, unlockPage } from "./utils";
 
 const SORTABLE_GROUPS: Record<string, Array<[Sortable, HTMLElement[]]>> = {};
 const CLASS_SORTABLE_CONTAINER = "uii-sortable-container";
@@ -30,7 +24,7 @@ const ATTR_SORTABLE_ACTIVE = "uii-sortable-active";
  * @public
  */
 export class Sortable extends Uii {
-  #removeListenItems: any[];
+  private __removeListenItems: any[];
   constructor(
     container: string | HTMLElement | Array<HTMLElement>,
     opts?: SortableOptions
@@ -43,7 +37,7 @@ export class Sortable extends Uii {
             from: true,
             to: true,
           },
-          scroll: true,
+          scroll: false,
           sort: true
         },
         opts
@@ -99,7 +93,7 @@ export class Sortable extends Uii {
       }
     });
 
-    this.#removeListenItems = map(activableContainers, (con) => {
+    this.__removeListenItems = map(activableContainers, (con) => {
       const filteredItems = con.querySelectorAll(":scope > *");
       return listenItems(toOpts, con, draggingItem, filteredItems);
     });
@@ -125,7 +119,7 @@ export class Sortable extends Uii {
       }
     });
 
-    each(this.#removeListenItems, (fn) => {
+    each(this.__removeListenItems, (fn) => {
       fn();
     });
 
@@ -168,7 +162,7 @@ function bindContainer(
       ? map(filteredItems, (el) => el.querySelector(opts.handle || ""))
       : toArray(filteredItems);
 
-    const i = findIndex<any>(handles, (handle) => handle.contains(t));
+    const i = findIndex<any>(handles, (handle) => handle && handle.contains(t));
     if (i < 0) return;
 
     const draggingItem = filteredItems[i] as HTMLElement;
@@ -250,7 +244,7 @@ function bindContainer(
             removeListenItems = listenItems(
               opts,
               con,
-              toCopy ? draggingItem : copy!,
+              toCopy ? copy! : draggingItem,
               filteredItems,
               i
             );
@@ -262,7 +256,7 @@ function bindContainer(
               const filtered = reject(ele, (el) => el === container);
               if (isEmpty(filtered)) return;
               sortable.active(
-                toCopy ? draggingItem : copy!,
+                toCopy ? copy! : draggingItem,
                 container,
                 filtered,
                 sortable.getOptions()

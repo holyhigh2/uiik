@@ -3,10 +3,10 @@
  * dom rotator
  * @author holyhigh2
  */
-import { each } from "myfx/collection";
-import { isFunction, isString } from "myfx/is";
+import { each, isFunction, isString } from "myfx";
 import { rotateTo } from "./transform";
-import { RotatableOptions, Uii } from "./types";
+import { Uii } from "./types";
+import type { RotatableOptions } from "./types"
 import {
   ONE_RAD,
   getMatrixInfo,

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>uiik · API 查询</title>
+  <link rel="stylesheet" href="./demo.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="./index.html">
+        <span class="brand__mark">ui</span>
+        <span>uiik</span>
+        <span class="brand__ver" id="version">v-</span>
+      </a>
+      <nav class="topnav">
+        <a href="./index.html">首页</a>
+        <a href="./index-dom.html">DOM 示例</a>
+        <a href="./index-svg.html">SVG 示例</a>
+        <a href="./index-api.html" aria-current="page">API 查询</a>
+      </nav>
+      <span class="topbar__spacer"></span>
+      <button class="btn btn--ghost" data-theme-toggle>☾ dark</button>
+    </div>
+  </header>
+
+  <div class="layout layout--wide">
+    <main class="main">
+      <div class="page-head">
+        <h1>API 查询</h1>
+        <p>
+          列出 uiik 全部 API —— 数据直接来自
+          <code>import * as uiik from "./uiik.js"</code>。
+          支持按名称 / 说明搜索，按分组筛选，点击名称即可复制。
+        </p>
+        <div class="page-head__meta">
+          <span class="tag" id="api-total">载入中…</span>
+          <span class="tag">fn 函数 · class 类 · 常量</span>
+        </div>
+      </div>
+
+      <div class="api-bar">
+        <input id="api-search" class="api-search" type="search" placeholder="搜索 API 名称或说明，如 snap / measure / wrapper" />
+        <span class="api-shown" id="api-shown">0 / 0</span>
+        <button class="btn btn--sm btn--ghost" id="api-reset" type="button">重置</button>
+      </div>
+      <div class="api-groups" id="api-groups"></div>
+
+      <div id="api-list"></div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { setupTheme } from "./demo.js";
+    import "./api-demo.js";
+
+    // 主题切换要靠 demo.js 绑定事件，API 页原本漏了调用，
+    // 结果按钮点了没反应、也永远停在深色
+    setupTheme();
+  </script>
+</body>
+
+</html>

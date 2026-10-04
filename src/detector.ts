@@ -3,21 +3,19 @@
  * CollisionDetector
  * @author holyhigh2
  */
-import { flatMap, reject } from "myfx/collection"
-import { isElement, isFunction, isString } from "myfx/is"
-import { assign } from "myfx/object"
-import { CollisionData, CollisionDetectorOptions } from "./types"
+import { flatMap, reject, isElement, isFunction, isString, assign } from "myfx";
+import type { CollisionData, CollisionDetectorOptions } from "./types"
 import { getBox, getRectInContainer } from "./utils"
 
 export class CollisionDetector {
-  #_targets: (() => Array<HTMLElement>) | string | HTMLElement | Array<HTMLElement> | NodeList | HTMLCollection | NodeListOf<Element>
+  private __targets: (() => Array<HTMLElement>) | string | HTMLElement | Array<HTMLElement> | NodeList | HTMLCollection | NodeListOf<Element>
   targetsData: Array<CollisionData>
   el: Element
   elData: CollisionData
   opts: Record<string, any>
 
   constructor(el: string | HTMLElement, targets: (() => Array<HTMLElement>) | string | HTMLElement | Array<HTMLElement> | NodeList | HTMLCollection, opts?: CollisionDetectorOptions) {
-    this.#_targets = targets
+    this.__targets = targets
     this.opts = {
       container: document.body
     }
@@ -50,15 +48,15 @@ export class CollisionDetector {
    */
   update() {
     let targets
-    if (isFunction(this.#_targets)) {
-      targets = this.#_targets()
-    } else if (isString(this.#_targets)) {
-      targets = this.opts.container.querySelectorAll(this.#_targets)
+    if (isFunction(this.__targets)) {
+      targets = this.__targets()
+    } else if (isString(this.__targets)) {
+      targets = this.opts.container.querySelectorAll(this.__targets)
       targets = reject(targets, t => t === this.el)
-    } else if (isElement(this.#_targets)) {
-      targets = [this.#_targets]
+    } else if (isElement(this.__targets)) {
+      targets = [this.__targets]
     } else {
-      targets = this.#_targets
+      targets = this.__targets
     }
 
     this.targetsData = flatMap<HTMLElement, any, CollisionData>(targets, t => {

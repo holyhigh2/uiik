@@ -4,33 +4,20 @@
  * dom dragger
  * @author holyhigh2
  */
-import { compact } from "myfx/array";
-import { each, includes, map, some } from "myfx/collection";
-import {
-  isArray,
-  isArrayLike,
-  isBoolean,
-  isDefined,
-  isElement,
-  isEmpty,
-  isFunction,
-  isNumber,
-  isString,
-  isUndefined,
-} from "myfx/is";
-import { assign, get } from "myfx/object";
-import { split } from "myfx/string";
-import { closest } from "myfx/tree";
-
-import { isCustomElement } from "myfx";
+import { assign, closest, compact, each, get, includes, isArray, isArrayLike, isBoolean, isCustomElement, isDefined, isElement, isEmpty, isFunction, isNumber, isString, isUndefined, map, reject, some, split } from "myfx";
+import { findSnap, snapToGrid } from "./geometry";
+import type { Rect, SnapHit, SnapPoint } from "./geometry"
 import { UiiTransform, wrapper } from "./transform";
-import { DraggableOptions, Uii, UII_KEY } from "./types";
+import { Uii, UII_KEY } from "./types";
+import type { DraggableOptions } from "./types"
 import {
   EDGE_THRESHOLD,
   getCenterXy,
   getMatrixInfo,
   getPointInContainer,
   getRectInContainer,
+  getScrollParent,
+  getScrollViewportRect,
   THRESHOLD
 } from "./utils";
 
@@ -44,6 +31,67 @@ const HANDLE_MAP = new WeakMap();
 const OPTION_MAP = new WeakMap();
 const BINDED_CONTAINER = new WeakSet()
 const WATCH_MAP: Record<string, Draggable> = {};
+
+/**
+ * 解析snap的查询根
+ * 优先级：snapOptions.container > containment容器 > 首个可拖动元素的父元素 > document
+ * 后两级使组件位于shadow dom内时，无需显式配置也能命中同容器内的选择器
+ * @param opts
+ * @param container containment容器
+ * @param fallbackParent 首个可拖动元素的父元素
+ */
+function resolveSnapRoot(
+  opts: Record<string, any>,
+  container: HTMLElement | null,
+  fallbackParent: Element | null
+): Element | Document {
+  const c = opts.snapOptions?.container;
+  if (isString(c)) {
+    const el = document.querySelector(c);
+    if (el) return el;
+  } else if (isElement(c)) {
+    return c;
+  }
+  return container || fallbackParent || document;
+}
+
+/**
+ * 解析snap目标，支持选择器/元素/元素数组/返回元素数组的函数。
+ * 与draggable.droppable、CollisionDetector.targets 的多态保持一致
+ * @param snap
+ * @param root 选择器的查询根
+ */
+function resolveSnapTargets(snap: any, root: Element | Document): Element[] {
+  let list: any;
+  if (isFunction(snap)) {
+    list = snap();
+  } else if (isString(snap)) {
+    list = root.querySelectorAll(snap);
+  } else if (isElement(snap)) {
+    list = [snap];
+  } else if (isArrayLike(snap)) {
+    list = snap;
+  } else {
+    list = [];
+  }
+  return reject(list || [], (el: any) => !el);
+}
+
+/** 锚点对应的dir字符：起始边l、结束边r、中线c */
+const SNAP_DIR_CHAR: Record<SnapPoint, string> = {
+  start: "l",
+  center: "c",
+  end: "r",
+};
+
+/**
+ * 生成dirH/dirV，如l2l、c2r。保持与旧版边缘配对命名兼容
+ * @param hit
+ */
+function snapDir(hit?: SnapHit): string {
+  if (!hit) return "";
+  return SNAP_DIR_CHAR[hit.point] + "2" + SNAP_DIR_CHAR[hit.targetPoint];
+}
 /**
  * 用于表示一个或多个可拖动元素的定义
  * 每个拖动元素可以有独立handle，也可以公用一个handle
@@ -56,7 +104,7 @@ const WATCH_MAP: Record<string, Draggable> = {};
  * @public
  */
 export class Draggable extends Uii {
-  #container: HTMLElement | null = null;
+  private __container: HTMLElement | null = null;
 
   constructor(
     els: string | HTMLElement | Array<string | HTMLElement> | NodeListOf<Element>,
@@ -71,7 +119,7 @@ export class Draggable extends Uii {
           threshold: THRESHOLD,
           ghost: false,
           direction: "",
-          scroll: true,
+          scroll: false,
           useTransform: true,
           snapOptions: {
             tolerance: 10,
@@ -83,7 +131,7 @@ export class Draggable extends Uii {
     );
 
     if (this.opts.handle) {
-      this.#initHandle(this.ele)
+      this.__initHandle(this.ele)
     }
 
     this.onOptionChanged(this.opts);
@@ -96,16 +144,16 @@ export class Draggable extends Uii {
       DRAGGER_GROUPS[this.opts.group].push(...this.ele);
     }
 
-    this.#initStyle(this.ele);
+    this.__initStyle(this.ele);
 
     //containment
     if (this.opts.containment) {
       if (isBoolean(this.opts.containment)) {
-        this.#container = isEmpty(this.ele) ? null : this.ele[0].parentElement;
+        this.__container = isEmpty(this.ele) ? null : this.ele[0].parentElement;
       } else if (isString(this.opts.containment)) {
-        this.#container = document.querySelector(this.opts.containment);
+        this.__container = document.querySelector(this.opts.containment);
       } else if (isElement(this.opts.containment)) {
-        this.#container = this.opts.containment as HTMLElement;
+        this.__container = this.opts.containment as HTMLElement;
       }
     }
 
@@ -129,7 +177,7 @@ export class Draggable extends Uii {
     }
   }
 
-  #initHandle(ele: HTMLElement[]) {
+  private __initHandle(ele: HTMLElement[]) {
     each(ele, (el) => {
       if (HANDLE_MAP.has(el)) return
       let h
@@ -147,7 +195,7 @@ export class Draggable extends Uii {
     });
   }
   //初始化样式
-  #initStyle(draggableList: HTMLElement[]) {
+  private __initStyle(draggableList: HTMLElement[]) {
     each(draggableList, (el) => {
       if (OPTION_MAP.has(el)) return
       if (isDefined(this.opts.type)) el.dataset.dropType = this.opts.type;
@@ -170,10 +218,10 @@ export class Draggable extends Uii {
   bindEvent(
     bindTarget: Element
   ) {
-    const container = this.#container;
+    const container = this.__container;
     let draggableList: any = this.ele;
     const eleString = this.eleString;
-    const initStyle = this.#initStyle.bind(this);
+    const initStyle = this.__initStyle.bind(this);
     this.addPointerDown(
       bindTarget,
       ({
@@ -200,7 +248,7 @@ export class Draggable extends Uii {
             if (!isEmpty(draggableList) && (findRs = closest<HTMLElement | SVGGraphicsElement>(t, (node) => includes(draggableList, node), "parentNode"))) {
               initStyle(draggableList);
               opts = v.opts
-              v.#initHandle(draggableList)
+              v.__initHandle(draggableList)
               toBreak = false
               return false
             }
@@ -241,6 +289,13 @@ export class Draggable extends Uii {
         let offsetParent: Element;
         let offsetParentRect: DOMRect;
         let offsetParentCStyle: CSSStyleDeclaration;
+        let scrollParent: HTMLElement | null;
+        let scrollViewportRect: { x: number; y: number; width: number; height: number } | null;
+        // 拖拽开始时的滚动位置，以及滚动定时器已经补偿掉的位移
+        let startScrollLeft = 0;
+        let startScrollTop = 0;
+        let compensatedX = 0;
+        let compensatedY = 0;
 
         let offsetPointX = 0;
         let offsetPointY = 0;
@@ -268,8 +323,18 @@ export class Draggable extends Uii {
         let gridX: number | undefined, gridY: number | undefined;
 
         const snapOn = opts.snap;
-        let snappable: Array<any>;
+        // 吸附目标在拖动开始时冻结，与旧版行为一致
+        let snapTargets: Element[] = [];
+        let snapRects: Rect[] = [];
         const snapTolerance = opts.snapOptions?.tolerance || 10;
+        const snapToleranceY = opts.snapOptions?.toleranceY || snapTolerance;
+        const snapPoints: SnapPoint[] | undefined = opts.snapOptions?.points;
+        const snapStrategy = opts.snapOptions?.strategy;
+        const snapRoot = resolveSnapRoot(
+          opts,
+          container,
+          (this.ele[0] as Element)?.parentElement || null
+        );
         const onSnap = opts.onSnap;
         let lastSnapDirY = "",
           lastSnapDirX = "";
@@ -297,6 +362,9 @@ export class Draggable extends Uii {
         let endX = 0,
           endY = 0;
 
+        let dragging = false;
+        let snapTimer: any = null;
+
         let startMatrixInfo: any
         let startPointXy: { x: number, y: number }
 
@@ -304,11 +372,22 @@ export class Draggable extends Uii {
         onPointerStart(function (args: Record<string, any>) {
           const { ev } = args;
 
+          dragging = true;
+
           ///////////////////////// initial states start;
           offsetParent =
             dragDom instanceof HTMLElement
               ? dragDom.offsetParent || document.body
               : dragDom.ownerSVGElement!;
+
+          scrollParent = getScrollParent(offsetParent as Element, container);
+          scrollViewportRect = scrollParent
+            ? getScrollViewportRect(scrollParent)
+            : null;
+          startScrollLeft = scrollParent ? scrollParent.scrollLeft : 0;
+          startScrollTop = scrollParent ? scrollParent.scrollTop : 0;
+          compensatedX = 0;
+          compensatedY = 0;
 
           offsetParentRect = offsetParent.getBoundingClientRect();
           offsetParentCStyle = window.getComputedStyle(offsetParent);
@@ -364,25 +443,19 @@ export class Draggable extends Uii {
           }
 
           if (snapOn) {
-            //获取拖动元素所在容器内的可吸附对象
-            snappable = map(
-              (container || document).querySelectorAll(snapOn),
-              (el) => {
-                //计算相对容器xy
-                const { x, y, w, h } = getRectInContainer(
-                  el,
-                  offsetParent as any
-                );
-
-                return {
-                  x1: x,
-                  y1: y,
-                  x2: x + w,
-                  y2: y + h,
-                  el: el,
-                };
-              }
+            //获取可吸附对象
+            snapTargets = reject(
+              resolveSnapTargets(snapOn, snapRoot),
+              (el: any) => el === dragDom
             );
+            snapRects = map(snapTargets, (el) => {
+              const { x, y, w, h } = getRectInContainer(
+                el,
+                offsetParent as any,
+                startMatrixInfo
+              );
+              return { x, y, w, h };
+            });
           }
 
           if (inContainer) {
@@ -445,15 +518,24 @@ export class Draggable extends Uii {
         onPointerMove((args: Record<string, any>) => {
           const { ev, pointX, pointY, offX, offY } = args;
 
-          let newX = startPointXy.x + offX
-          let newY = startPointXy.y + offY
+          const scrollDeltaX = scrollParent
+            ? scrollParent.scrollLeft - startScrollLeft - compensatedX
+            : 0;
+          const scrollDeltaY = scrollParent
+            ? scrollParent.scrollTop - startScrollTop - compensatedY
+            : 0;
+
+          let newX = startPointXy.x + offX + scrollDeltaX
+          let newY = startPointXy.y + offY + scrollDeltaY
 
           //edge detect
-          if (scroll) {
-            const lX = pointX - offsetParentRect.x;
-            const lY = pointY - offsetParentRect.y;
-            const rX = offsetParentRect.x + offsetParentRect.width - pointX;
-            const rY = offsetParentRect.y + offsetParentRect.height - pointY;
+          if (scroll && scrollParent && scrollViewportRect) {
+            const sp = scrollParent;
+            const vp = scrollViewportRect;
+            const lX = pointX - vp.x;
+            const lY = pointY - vp.y;
+            const rX = vp.x + vp.width - pointX;
+            const rY = vp.y + vp.height - pointY;
 
             toLeft = lX < EDGE_THRESHOLD;
             toTop = lY < EDGE_THRESHOLD;
@@ -463,15 +545,40 @@ export class Draggable extends Uii {
             if (toLeft || toTop || toRight || toBottom) {
               if (!timer) {
                 timer = setInterval(() => {
+                  const beforeL = sp.scrollLeft;
+                  const beforeT = sp.scrollTop;
                   if (toLeft) {
-                    offsetParent.scrollLeft -= scrollSpeed;
+                    sp.scrollLeft -= scrollSpeed;
                   } else if (toRight) {
-                    offsetParent.scrollLeft += scrollSpeed;
+                    sp.scrollLeft += scrollSpeed;
                   }
                   if (toTop) {
-                    offsetParent.scrollTop -= scrollSpeed;
+                    sp.scrollTop -= scrollSpeed;
                   } else if (toBottom) {
-                    offsetParent.scrollTop += scrollSpeed;
+                    sp.scrollTop += scrollSpeed;
+                  }
+
+                  const dx = sp.scrollLeft - beforeL;
+                  const dy = sp.scrollTop - beforeT;
+                  if (dx || dy) {
+                    compensatedX += dx;
+                    compensatedY += dy;
+
+                    let nx = transform.x + dx;
+                    let ny = transform.y + dy;
+                    if (inContainer) {
+                      if (nx < minX) nx = 0;
+                      if (ny < minY) ny = 0;
+                      if (nx > maxX) nx = maxX;
+                      if (ny > maxY) ny = maxY;
+                    }
+                    if (direction === "v") {
+                      transform.moveToY(ny);
+                    } else if (direction === "h") {
+                      transform.moveToX(nx);
+                    } else {
+                      transform.moveTo(nx, ny);
+                    }
                   }
                 }, 20);
               }
@@ -488,8 +595,8 @@ export class Draggable extends Uii {
 
           //grid
           if (isNumber(gridX) && isNumber(gridY)) {
-            x = ((x / gridX) >> 0) * gridX;
-            y = ((y / gridY) >> 0) * gridY;
+            x = snapToGrid(x, gridX);
+            y = snapToGrid(y, gridY);
           }
 
           if (inContainer) {
@@ -509,100 +616,51 @@ export class Draggable extends Uii {
           let canDrag = true;
           let emitSnap = false;
 
-          if (snapOn) {
-            const currPageX1 = x;
-            const currPageY1 = y;
-            const currPageX2 = currPageX1 + originW;
-            const currPageY2 = currPageY1 + originH;
-            //check snappable
-            let snapX: number = NaN,
-              snapY: number = NaN;
-            let targetX: HTMLElement, targetY: HTMLElement;
-            let snapDirX: string, snapDirY: string;
-            if (!direction || direction === "v") {
-              each<{
-                x1: number;
-                y1: number;
-                x2: number;
-                y2: number;
-                el: HTMLElement;
-              }>(snappable, (data) => {
-                if (Math.abs(data.y1 - currPageY1) <= snapTolerance) {
-                  //top parallel
-                  snapY = data.y1;
-                  snapDirY = "t2t";
-                } else if (Math.abs(data.y2 - currPageY1) <= snapTolerance) {
-                  //b2t
-                  snapY = data.y2;
-                  snapDirY = "t2b";
-                } else if (Math.abs(data.y1 - currPageY2) <= snapTolerance) {
-                  //t2b
-                  snapY = data.y1 - originH;
-                  snapDirY = "b2t";
-                } else if (Math.abs(data.y2 - currPageY2) <= snapTolerance) {
-                  //bottom parallel
-                  snapY = data.y2 - originH;
-                  snapDirY = "b2b";
-                }
-                if (snapY) {
-                  lastSnapDirY = snapDirY;
-                  targetY = data.el;
-                  return false;
-                }
-              });
+          if (snapOn && snapRects.length) {
+            const scale = startMatrixInfo.scale || 1;
+            const snapResult = findSnap(
+              { x, y, w: originW / scale, h: originH / scale },
+              snapRects,
+              {
+                tolerance: snapTolerance,
+                toleranceY: snapToleranceY,
+                points: snapPoints,
+                strategy: snapStrategy,
+              }
+            );
+            // 单向拖动的轴不参与吸附
+            if (direction === "v") {
+              snapResult.dx = 0;
+              snapResult.hitX = undefined;
+            } else if (direction === "h") {
+              snapResult.dy = 0;
+              snapResult.hitY = undefined;
             }
 
-            if (!direction || direction === "h") {
-              each<{
-                x1: number;
-                y1: number;
-                x2: number;
-                y2: number;
-                el: HTMLElement;
-              }>(snappable, (data) => {
-                if (Math.abs(data.x1 - currPageX1) <= snapTolerance) {
-                  //left parallel
-                  snapX = data.x1;
-                  snapDirX = "l2l";
-                } else if (Math.abs(data.x2 - currPageX1) <= snapTolerance) {
-                  //r2l
-                  snapX = data.x2;
-                  snapDirX = "l2r";
-                } else if (Math.abs(data.x1 - currPageX2) <= snapTolerance) {
-                  //l2r
-                  snapX = data.x1 - originW;
-                  snapDirX = "r2l";
-                } else if (Math.abs(data.x2 - currPageX2) <= snapTolerance) {
-                  //right parallel
-                  snapX = data.x2 - originW;
-                  snapDirX = "r2r";
-                }
-
-                if (snapX) {
-                  lastSnapDirX = snapDirX;
-                  targetX = data.el;
-                  return false;
-                }
-              });
-            }
-
-            if (snapX || snapY) {
-              if (snapX) {
-                x = snapX;
-              }
-              if (snapY) {
-                y = snapY;
-              }
+            if (snapResult.dx || snapResult.dy) {
+              x += snapResult.dx;
+              y += snapResult.dy;
+              lastSnapDirX = snapDir(snapResult.hitX);
+              lastSnapDirY = snapDir(snapResult.hitY);
               if (onSnap && lastSnapping !== lastSnapDirX + "" + lastSnapDirY) {
-                setTimeout(() => {
+                // 取出后随闭包携带，避免 setTimeout 回调读到后续帧的结果
+                const hitX = snapResult.hitX;
+                const hitY = snapResult.hitY;
+                const snapDx = snapResult.dx;
+                const snapDy = snapResult.dy;
+                clearTimeout(snapTimer);
+                snapTimer = setTimeout(() => {
                   //emit after relocate
+                  if (!dragging) return;
                   onSnap(
                     {
                       el: ghostNode || dragDom,
-                      targetH: targetX,
-                      targetV: targetY,
-                      dirH: snapDirX,
-                      dirV: snapDirY,
+                      targetH: hitX ? (snapTargets[hitX.targetIndex] as any) : undefined,
+                      targetV: hitY ? (snapTargets[hitY.targetIndex] as any) : undefined,
+                      dirH: snapDir(hitX),
+                      dirV: snapDir(hitY),
+                      dx: snapDx,
+                      dy: snapDy,
                     },
                     ev
                   );
@@ -650,6 +708,11 @@ export class Draggable extends Uii {
         });
         onPointerEnd((args: Record<string, any>) => {
           const { ev, currentStyle } = args;
+
+          dragging = false;
+          clearTimeout(snapTimer);
+          snapTimer = null;
+
           if (scroll) {
             if (timer) {
               clearInterval(timer);

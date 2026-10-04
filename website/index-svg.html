@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>uiik · SVG 示例</title>
+    <link rel="stylesheet" href="./demo.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar__inner">
+        <a class="brand" href="./index.html">
+          <span class="brand__mark">ui</span>
+          <span>uiik</span>
+          <span class="brand__ver" id="version">v-</span>
+        </a>
+        <nav class="topnav">
+          <a href="./index.html">首页</a>
+          <a href="./index-dom.html">DOM 示例</a>
+          <a href="./index-svg.html" aria-current="page">SVG 示例</a>
+          <a href="./index-api.html">API 查询</a>
+        </nav>
+        <span class="topbar__spacer"></span>
+        <button class="btn btn--ghost" data-theme-toggle>☾ dark</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidenav" id="sidenav"></aside>
+      <main class="main">
+        <div class="page-head">
+          <h1>SVG 交互示例</h1>
+          <p>
+            与 DOM 页同构，演示 <code>newDraggable</code>、<code>newResizable</code>、<code
+              >newRotatable</code
+            >、<code>newSelectable</code> 在 SVG 图元上的用法（含 <code>useTransform</code>、<code
+              >ox/oy</code
+            > 圆心偏移、<code>getVertex</code> 顶点计算），以及 geometry / transform / utils
+            在 SVG 坐标系中的直接使用。
+          </p>
+          <div class="page-head__meta">
+            <span class="tag tag--svg">SVG Graphics</span>
+            <span class="tag">npm run website</span>
+            <span class="tag">localhost:8819</span>
+          </div>
+        </div>
+        <div id="main"></div>
+      </main>
+    </div>
+
+    <script type="module">
+      import { VERSION } from "./uiik.js";
+      import "./svg-demo.js";
+
+      document.getElementById("version").textContent = "v" + VERSION;
+    </script>
+  </body>
+</html>

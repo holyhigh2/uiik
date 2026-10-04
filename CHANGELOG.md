@@ -1,4 +1,17 @@
 # Changelog
+## [1.5.0] - 2026/10/3
+### 新增
+- Geometry 几何操作
+  - alignRects/distributeRects 一组矩形的对齐与等间距分布
+  - resizeRect 缩放求解（8方向、尺寸约束、等比、网格吸附）
+  - fitRectInViewport/zoomAt/panBy 相机换算
+  - findSnap/snapGuides 元素吸附求解与参考线
+- Draggable snap 支持元素、元素数组、返回元素数组的函数
+- Draggable snapOptions 新增 toleranceY/points/strategy/container
+- Draggable onSnap 新增 dx/dy，便于位移由外部自行控制时跟随吸附
+### 修复
+- Draggable 吸附及拖动问题
+
 ## [1.3.4] - 2025/8/24
 ### 修复
 - Sortable filter数据后spill表现异常

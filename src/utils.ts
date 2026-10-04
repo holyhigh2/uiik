@@ -4,8 +4,7 @@
  * @author holyhigh2
  */
 
-import { find, map } from "myfx/collection";
-import { isNumber, isString } from "myfx/is";
+import { find, isNumber, isString, map } from "myfx";
 import { rotateTo } from "./transform";
 
 /**
@@ -188,6 +187,19 @@ export function getMatrixInfo(
       const pMatrix = new DOMMatrix(pCStyle.transform);
       matrix = matrix.multiply(pMatrix);
       p = p.parentElement;
+    }
+  }
+
+  const svgRoot =
+    el instanceof SVGSVGElement
+      ? (el as SVGSVGElement)
+      : (el as SVGGraphicsElement).ownerSVGElement;
+  if (svgRoot && typeof svgRoot.getScreenCTM === "function") {
+    const ctm = svgRoot.getScreenCTM();
+    if (ctm) {
+      matrix = matrix.multiply(
+        new DOMMatrix([ctm.a, ctm.b, ctm.c, ctm.d, 0, 0])
+      );
     }
   }
 
@@ -475,4 +487,53 @@ export function isVisible(el: Element) {
     return false;
   }
   return true;
+}
+
+//元素在当前 overflow 下是否能滚动
+function isScrollableEl(el: Element | null | undefined): boolean {
+  if (!el) return false;
+  const node = el as HTMLElement;
+  const cs = window.getComputedStyle(node);
+  const oy = cs.overflowY;
+  const ox = cs.overflowX;
+  const scrollableY = oy === "auto" || oy === "scroll" || oy === "overlay";
+  const scrollableX = ox === "auto" || ox === "scroll" || ox === "overlay";
+  return (
+    (scrollableY && node.scrollHeight > node.clientHeight) ||
+    (scrollableX && node.scrollWidth > node.clientWidth)
+  );
+}
+
+/**
+ * 查找可滚动的祖先元素。
+ *
+ *
+ * @param el 起点元素
+ * @param preferred 优先候选（如 containment 指定的容器），可滚动时直接采用
+ */
+export function getScrollParent(
+  el: Element | null,
+  preferred?: HTMLElement | null
+): HTMLElement | null {
+  if (preferred && isScrollableEl(preferred)) return preferred;
+  let node: HTMLElement | null = el as HTMLElement | null;
+  while (node && node !== document.body && node !== document.documentElement) {
+    if (isScrollableEl(node)) return node;
+    node = node.parentElement;
+  }
+  return null;
+}
+
+/**
+ * 可视滚动视口的矩形（padding box，已排除边框与滚动条），坐标系为视口坐标
+ */
+export function getScrollViewportRect(el: HTMLElement) {
+  const cs = window.getComputedStyle(el);
+  const rect = el.getBoundingClientRect();
+  return {
+    x: rect.left + (parseFloat(cs.borderLeftWidth) || 0),
+    y: rect.top + (parseFloat(cs.borderTopWidth) || 0),
+    width: el.clientWidth,
+    height: el.clientHeight,
+  };
 }

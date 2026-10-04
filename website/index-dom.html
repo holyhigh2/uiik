@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>uiik · DOM 示例</title>
+  <link rel="stylesheet" href="./demo.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="./index.html">
+        <span class="brand__mark">ui</span>
+        <span>uiik</span>
+        <span class="brand__ver" id="version">v-</span>
+      </a>
+      <nav class="topnav">
+        <a href="./index.html">首页</a>
+        <a href="./index-dom.html" aria-current="page">DOM 示例</a>
+        <a href="./index-svg.html">SVG 示例</a>
+        <a href="./index-api.html">API 查询</a>
+      </nav>
+      <span class="topbar__spacer"></span>
+      <button class="btn btn--ghost" data-theme-toggle>☾ dark</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidenav" id="sidenav"></aside>
+    <main class="main">
+      <div class="page-head">
+        <h1>DOM 交互示例</h1>
+        <p>
+          按 API 分类组织的可交互示例，覆盖
+          <code>newDraggable</code>、<code>newDroppable</code>、<code>newResizable</code>、<code>newRotatable</code>、<code>newSplittable</code>、<code>newSelectable</code>、<code>newSortable</code>、<code>newCollisionDetector</code>，以及
+          geometry / transform / utils 全部导出函数。
+        </p>
+        <div class="page-head__meta">
+          <span class="tag tag--html">HTML Elements</span>
+          <span class="tag">npm run website</span>
+          <span class="tag">localhost:8819</span>
+        </div>
+      </div>
+      <div id="main"></div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { VERSION } from "./uiik.js";
+    import "./dom-demo.js";
+
+    document.getElementById("version").textContent = "v" + VERSION;
+  </script>
+</body>
+
+</html>

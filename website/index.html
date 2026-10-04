@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>uiik · 交互示例</title>
+  <link rel="stylesheet" href="./demo.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="./index.html">
+        <span class="brand__mark">ui</span>
+        <span>uiik</span>
+        <span class="brand__ver" id="version">v-</span>
+      </a>
+      <nav class="topnav">
+        <a href="./index.html" aria-current="page">首页</a>
+        <a href="./index-dom.html">DOM 示例</a>
+        <a href="./index-svg.html">SVG 示例</a>
+        <a href="./index-api.html">API 查询</a>
+      </nav>
+      <span class="topbar__spacer"></span>
+      <button class="btn btn--ghost" data-theme-toggle>☾ dark</button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <span class="hero__badge" id="badge">uiik · UI interactions kit</span>
+    <h1>把交互行为<em>声明式</em>地交给 uiik</h1>
+    <p>
+      draggable / droppable / resizable / rotatable / splittable / selectable /
+      sortable 全部使用同一套选项风格，HTML 与 SVG 图元共用一套 API。
+    </p>
+    <div class="hero__actions">
+      <a class="btn btn--primary btn--lg" href="./index-dom.html">进入 DOM 示例 →</a>
+      <a class="btn btn--lg" href="./index-svg.html">进入 SVG 示例 →</a>
+      <span class="btn btn--ghost btn--lg" style="cursor: default">npm run website</span>
+    </div>
+  </section>
+
+  <p class="section-label">示例页</p>
+  <div class="card-grid">
+    <a class="tile-link" href="./index-dom.html">
+      <h3>DOM 元素示例</h3>
+      <p>
+        8 个交互类 + geometry / transform / utils
+        全部导出函数的 HTML 用法。
+      </p>
+      <div class="tile-link__foot">
+        <span class="tag tag--html">HTML</span>
+        <span class="tag">Draggable</span>
+        <span class="tag">Splittable</span>
+        <span class="tag">Sortable</span>
+        <span class="tag">Geometry</span>
+      </div>
+    </a>
+    <a class="tile-link" href="./index-svg.html">
+      <h3>SVG 图元示例</h3>
+      <p>
+        同一套 API 在 &lt;g&gt; / &lt;rect&gt; 上的表现：transform 属性位移、ox/oy
+        圆心、顶点计算与几何吸附参考线。
+      </p>
+      <div class="tile-link__foot">
+        <span class="tag tag--svg">SVG</span>
+        <span class="tag">useTransform</span>
+        <span class="tag">getVertex</span>
+        <span class="tag">findSnap</span>
+      </div>
+    </a>
+  </div>
+
+  <p class="section-label">API 覆盖</p>
+  <div class="card-grid" id="api-map"></div>
+
+  <footer class="footer">
+    <div>
+      <code>import uii, { newDraggable, newResizable } from "uiik"</code> ·
+      MIT License ·
+      <a href="https://github.com/holyhigh2/uiik" style="color: var(--accent)">github.com/holyhigh2/uiik</a>
+    </div>
+    <div style="margin-top: 6px" id="foot-meta"></div>
+  </footer>
+
+  <script type="module">
+    import * as uiik from "./uiik.js";
+    import { setupTheme, el } from "./demo.js";
+    import { buildApiRows, groupOrder } from "./api-meta.js";
+
+    setupTheme();
+    document.getElementById("version").textContent = "v" + uiik.VERSION;
+    document.getElementById("badge").textContent =
+      "uiik v" + uiik.VERSION + " · UI interactions kit";
+
+    // 分组标题用英文，链接回 API 页时仍用中文分组名
+    const LABELS = {
+      "交互": "Interactions",
+      "类": "Classes",
+      "几何": "Geometry",
+      "变换": "Transform",
+      "测量": "DOM utils",
+      "常量": "Constants",
+      "其他": "Other",
+    };
+
+    // 清单来自模块的真实导出，不会与代码脱节；元数据漂移会在控制台告警
+    const { rows, missing, stale } = buildApiRows(uiik);
+    if (missing.length || stale.length) {
+      console.warn("[home] 元数据与实际导出不一致", { missing, stale });
+    }
+
+    const byGroup = new Map();
+    for (const r of rows) {
+      if (!byGroup.has(r.group)) byGroup.set(r.group, []);
+      byGroup.get(r.group).push(r.name);
+    }
+
+    const groups = groupOrder([...byGroup.keys()]).map((key) => ({
+      key,
+      name: LABELS[key] || key,
+      items: byGroup.get(key),
+    }));
+
+    // 每组标题链到 API 页的对应分组，点进去看说明与复制
+    document.getElementById("api-map").replaceChildren(
+      ...groups.map((g) =>
+        el("div", { class: "api-group" }, [
+          el("h3", {}, [
+            el("a", {
+              href: "./index-api.html?group=" + encodeURIComponent(g.key),
+              text: g.name,
+              title: "在 API 查询页查看 " + g.key + " 分组",
+            }),
+            el("span", { class: "api-group__n", text: String(g.items.length) }),
+          ]),
+          el(
+            "ul",
+            { class: "api-list" },
+            g.items.map((i) => el("li", { text: i }))
+          ),
+        ])
+      )
+    );
+
+    document.getElementById("foot-meta").textContent =
+      "";
+  </script>
+  <script type="module" src="./home-cursor.js"></script>
+</body>
+
+</html>

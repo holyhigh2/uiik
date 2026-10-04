@@ -3,10 +3,9 @@
  * splitter
  * @author holyhigh
  */
-import { each, includes, map, reject } from 'myfx/collection';
-import { isArray, isBlank, isEmpty, isString } from 'myfx/is';
-import { assign } from 'myfx/object';
-import { SplittableOptions, Uii } from './types';
+import { assign, each, includes, isArray, isBlank, isEmpty, isString, map, reject } from 'myfx';
+import { Uii } from './types';
+import type { SplittableOptions } from './types'
 import { isVisible } from './utils';
 
 const CLASS_SPLITTABLE = "uii-splittable";
@@ -67,7 +66,7 @@ export class Splittable extends Uii {
         if (includes(handleDoms, c)) return true
         return false
       })
-      const dir = this.#checkDirection(con)
+      const dir = this.__checkDirection(con)
 
       con.classList.toggle(dir === 'v' ? CLASS_SPLITTABLE_V : CLASS_SPLITTABLE_H, true)
 
@@ -91,7 +90,7 @@ export class Splittable extends Uii {
       if (isEmpty(handleDoms)) {
         const len = children.length - 1
         for (let i = 0; i < len; i++) {
-          this.#bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, children[i] as HTMLElement, children[i + 1] as HTMLElement)
+          this.__bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, children[i] as HTMLElement, children[i + 1] as HTMLElement)
         }
       } else {
         each(handleDoms, (h: HTMLElement, i: number) => {
@@ -113,7 +112,7 @@ export class Splittable extends Uii {
               dom2 = domR as HTMLElement;
             }
           }
-          this.#bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, dom1, dom2, h)
+          this.__bindHandle(minSizeAry.slice(i, i + 2), stickyAry.slice(i, i + 2), this.opts, dir, dom1, dom2, h)
         })
       }
     })
@@ -122,12 +121,16 @@ export class Splittable extends Uii {
   /**
    * @internal
    */
-  #checkDirection(container: HTMLElement) {
+  private __checkDirection(container: HTMLElement) {
     let dir = 'h'
     let cStyle = window.getComputedStyle(container)
     if (cStyle.display === 'inline-flex') return dir
-    if (cStyle.display === 'flex' && cStyle.flexDirection === 'row') return dir
+    if (cStyle.display === 'flex') {
+      if (cStyle.flexDirection === 'row') return dir
+      if (cStyle.flexDirection === 'column') return 'v'
+    }
 
+    // 非 flex 布局（如 float/grid/普通块级）再按几何位置判断
     const child = container.children[0] as HTMLElement
     let lastY = child.offsetTop
     let lastH = child.offsetHeight
@@ -143,7 +146,7 @@ export class Splittable extends Uii {
   /**
    * @internal
    */
-  #bindHandle(minSizeAry: number[], stickyAry: boolean[], opts: SplittableOptions, dir: string, dom1: HTMLElement, dom2: HTMLElement, handle?: HTMLElement) {
+  private __bindHandle(minSizeAry: number[], stickyAry: boolean[], opts: SplittableOptions, dir: string, dom1: HTMLElement, dom2: HTMLElement, handle?: HTMLElement) {
     const handleSize = opts.handleSize!
     if (!handle) {
       handle = document.createElement('div')

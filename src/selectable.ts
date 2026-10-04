@@ -3,13 +3,10 @@
  * selector
  * @author holyhigh2
  */
-import { compact } from 'myfx/array'
-import { each, includes, some } from 'myfx/collection'
-import { isFunction } from 'myfx/is'
-import { assign } from 'myfx/object'
-import { split } from 'myfx/string'
+import { compact, each, includes, some, isFunction, assign, split } from 'myfx';
 import { CollisionDetector, newCollisionDetector } from "./detector"
-import { SelectableOptions, Uii } from "./types"
+import { Uii } from "./types"
+import type { SelectableOptions } from "./types"
 import { EDGE_THRESHOLD, getPointInContainer } from "./utils"
 
 const CLASS_SELECTOR = "uii-selector";
@@ -25,8 +22,8 @@ const CLASS_SELECTED = "uii-selected";
  * @public
  */
 export class Selectable extends Uii {
-  #_detector: CollisionDetector;
-  #_lastSelected: HTMLElement[];
+  private __detector: CollisionDetector;
+  private __lastSelected: HTMLElement[];
 
   constructor(container: string | HTMLElement, opts?: SelectableOptions) {
     super(
@@ -34,7 +31,7 @@ export class Selectable extends Uii {
       assign(
         {
           targets: [],
-          scroll: true,
+          scroll: false,
         },
         opts
       )
@@ -61,24 +58,24 @@ export class Selectable extends Uii {
     domEl.appendChild(selector);
 
     //create detector
-    this.#_detector = newCollisionDetector(selector, this.opts.targets, {
+    this.__detector = newCollisionDetector(selector, this.opts.targets, {
       container: domEl,
     });
 
-    this.#bindEvent(selector, domEl);
+    this.__bindEvent(selector, domEl);
   }
 
   /**
    *  更新targets
    */
   updateTargets() {
-    this.#_detector.update();
+    this.__detector.update();
   }
 
   /**
    * @internal
    */
-  #bindEvent(selector: HTMLElement, con: HTMLElement) {
+  private __bindEvent(selector: HTMLElement, con: HTMLElement) {
     const that = this;
     const opts: SelectableOptions = this.opts
 
@@ -127,7 +124,7 @@ export class Selectable extends Uii {
       onPointerStart(function (args: Record<string, any>) {
         const { ev } = args
         //update targets count & positions
-        that.#_detector.update();
+        that.__detector.update();
 
         //detect container position
         const pos = currentCStyle.position;
@@ -137,13 +134,13 @@ export class Selectable extends Uii {
           con.style.position = "relative";
         }
         //clear _lastSelected
-        each(that.#_lastSelected, t => {
+        each(that.__lastSelected, t => {
           target.classList.toggle(CLASS_SELECTED, false);
         })
 
         style.display = 'block'
 
-        onStart && onStart({ selection: that.#_lastSelected, selectable: con }, ev);
+        onStart && onStart({ selection: that.__lastSelected, selectable: con }, ev);
       })
       onPointerMove(({ ev, offX, offY }: Record<string, any>) => {
 
@@ -208,9 +205,9 @@ export class Selectable extends Uii {
 
         //detect collision
         if (mode === "overlap") {
-          selection = that.#_detector.getOverlaps(x1, y1, x1 + w, y1 + h);
+          selection = that.__detector.getOverlaps(x1, y1, x1 + w, y1 + h);
         } else if (mode === "inclusion") {
-          selection = that.#_detector.getInclusions(x1, y1, x1 + w, y1 + h);
+          selection = that.__detector.getInclusions(x1, y1, x1 + w, y1 + h);
         }
 
         each(lastSelection, (t) => {
@@ -262,7 +259,7 @@ export class Selectable extends Uii {
           t.classList.toggle(CLASS_SELECTED, true);
         });
 
-        that.#_lastSelected = selection;
+        that.__lastSelected = selection;
 
         if (onEnd) onEnd({ selection, selectable: con }, ev);
       })

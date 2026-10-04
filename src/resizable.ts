@@ -3,19 +3,10 @@
  * dom resizer
  * @author holyhigh2
  */
-import { filter, isElement } from "myfx";
-import { each } from "myfx/collection";
-import {
-  isArray,
-  isArrayLike,
-  isDefined,
-  isFunction,
-  isNumber,
-  isString,
-} from "myfx/is";
-import { assign } from "myfx/object";
+import { assign, each, filter, isArray, isArrayLike, isDefined, isElement, isFunction, isNumber, isString } from "myfx";
 import { UiiTransform, wrapper } from "./transform";
-import { ResizableOptions, Uii } from "./types";
+import { Uii } from "./types";
+import type { ResizableOptions } from "./types"
 import {
   ONE_ANG,
   ONE_RAD,
@@ -307,8 +298,8 @@ export class Resizable extends Uii {
           }
 
           if (panel instanceof SVGGraphicsElement) {
-            sX = matrixInfo.x - currentVertex[0].x;
-            sY = matrixInfo.y - currentVertex[0].y;
+            sX = 0;
+            sY = 0;
           }
 
           startPointXy = getPointInContainer(
@@ -608,6 +599,34 @@ export class Resizable extends Uii {
               if (dir === "nw") {
                 y = originY - w / aspectRatio + originH;
               }
+            }
+          }
+
+          //w/h 已被 min/maxSize 截断，但 x/y 仍是未截断的指针位置，
+          //导致超出上限后 style.width 停住、transform 却继续平移（表现为整个图元被拉走）
+          //currentVertex 顺序：0 左上、1 右上、2 左下、3 右下。
+          if (changeX || changeY) {
+            switch (dir) {
+              case "n": //下边固定，仅高度变
+                x = originX;
+                y = currentVertex[3].y - h;
+                break;
+              case "w": //右边固定，仅宽度变
+                x = currentVertex[1].x - w;
+                y = originY;
+                break;
+              case "nw": //右下角固定
+                x = currentVertex[3].x - w;
+                y = currentVertex[3].y - h;
+                break;
+              case "ne": //左下角固定
+                x = currentVertex[2].x;
+                y = currentVertex[3].y - h;
+                break;
+              case "sw": //右上角固定
+                x = currentVertex[1].x - w;
+                y = originY;
+                break;
             }
           }
 

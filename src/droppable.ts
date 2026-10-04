@@ -4,16 +4,9 @@
  * 拖动器
  * @author holyhigh2
  */
-import {
-  each, toArray
-} from "myfx/collection";
-import {
-  isFunction,
-  isString
-} from "myfx/is";
-import { assign } from 'myfx/object';
-import { split, test } from 'myfx/string';
-import { DroppableOptions, Uii } from "./types";
+import { assign, each, isFunction, isString, split, test, toArray } from 'myfx';
+import { Uii } from "./types";
+import type { DroppableOptions } from "./types"
 import { setCursor } from "./utils";
 
 const Droppables: Array<Droppable> = []
@@ -26,7 +19,8 @@ const CLASS_DROPPABLE = "uii-droppable";
  * @public
  */
 export class Droppable extends Uii {
-  #active: HTMLElement | null
+  private __active: HTMLElement | null
+  private __boundEls = new WeakSet<HTMLElement>()
 
   constructor(
     el: string | HTMLElement | Array<string | HTMLElement> | NodeListOf<Element>,
@@ -54,8 +48,8 @@ export class Droppable extends Uii {
   ) {
     //dragenter
     this.registerEvent(droppable, "mouseenter", (e: MouseEvent) => {
-      if (!this.#active) return
-      if (this.#active === droppable) return
+      if (!this.__active) return
+      if (this.__active === droppable) return
 
       if (opts.hoverClass) {
         each(split(opts.hoverClass, ' '), cls => {
@@ -63,16 +57,16 @@ export class Droppable extends Uii {
         })
       }
 
-      if (this.#active.dataset.cursorOver) {
-        setCursor(this.#active.dataset.cursorOver)
+      if (this.__active.dataset.cursorOver) {
+        setCursor(this.__active.dataset.cursorOver)
       }
 
-      opts.onEnter && opts.onEnter({ draggable: this.#active, droppable }, e)
+      opts.onEnter && opts.onEnter({ draggable: this.__active, droppable }, e)
     })
     //dragleave
     this.registerEvent(droppable, "mouseleave", (e: MouseEvent) => {
-      if (!this.#active) return
-      if (this.#active === droppable) return
+      if (!this.__active) return
+      if (this.__active === droppable) return
 
       if (opts.hoverClass) {
         each(split(opts.hoverClass, ' '), cls => {
@@ -80,23 +74,23 @@ export class Droppable extends Uii {
         })
       }
 
-      if (this.#active.dataset.cursorOver) {
-        setCursor(this.#active.dataset.cursorActive || '')
+      if (this.__active.dataset.cursorOver) {
+        setCursor(this.__active.dataset.cursorActive || '')
       }
 
-      opts.onLeave && opts.onLeave({ draggable: this.#active, droppable }, e)
+      opts.onLeave && opts.onLeave({ draggable: this.__active, droppable }, e)
     })
     //dragover
     this.registerEvent(droppable, "mousemove", (e: MouseEvent) => {
-      if (!this.#active) return
-      if (this.#active === droppable) return
+      if (!this.__active) return
+      if (this.__active === droppable) return
 
-      opts.onOver && opts.onOver({ draggable: this.#active, droppable }, e)
+      opts.onOver && opts.onOver({ draggable: this.__active, droppable }, e)
     })
     //drop
     this.registerEvent(droppable, "mouseup", (e: MouseEvent) => {
-      if (!this.#active) return
-      if (this.#active === droppable) return
+      if (!this.__active) return
+      if (this.__active === droppable) return
 
       if (opts.hoverClass) {
         each(split(opts.hoverClass, ' '), cls => {
@@ -104,7 +98,7 @@ export class Droppable extends Uii {
         })
       }
 
-      opts.onDrop && opts.onDrop({ draggable: this.#active, droppable }, e)
+      opts.onDrop && opts.onDrop({ draggable: this.__active, droppable }, e)
     })
   }
 
@@ -128,7 +122,7 @@ export class Droppable extends Uii {
     }
     if (!valid) return
 
-    this.#active = target
+    this.__active = target
 
     if (opts.activeClass) {
       each(this.ele, el => {
@@ -144,6 +138,11 @@ export class Droppable extends Uii {
     each(this.ele, (el) => {
       el.classList.toggle(CLASS_DROPPABLE, true)
       el.style.pointerEvents = 'initial';
+      // 防止重复绑定：deactive 依赖 dragdeactive 事件冒泡，当拖动源已从
+      // 文档树移除时该事件无法冒泡到 document，destroy 不会执行，
+      // 此时重复 active() 会叠加 mouseup 等监听导致 onDrop 多次触发
+      if (this.__boundEls.has(el)) return
+      this.__boundEls.add(el)
       this.bindEvent(el, opts);
     });
   }
@@ -151,9 +150,9 @@ export class Droppable extends Uii {
    * @internal
    */
   deactive(target: HTMLElement) {
-    if (!this.#active) return
+    if (!this.__active) return
 
-    this.#active = null
+    this.__active = null
     const opts: DroppableOptions = this.opts
 
     if (opts.activeClass) {

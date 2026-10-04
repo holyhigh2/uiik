@@ -9,7 +9,6 @@
     "excludeInternal": true,
     "excludePrivate":true,
     "hideBreadcrumbs":true,
-    "hideInPageTOC":true, 
     "entryPoints": [
         "src/index.ts"
     ],

@@ -8,14 +8,12 @@
         "resolveJsonModule": true,
         "moduleResolution": "Node",
         "declaration": true,
-        "declarationDir":"/dist",
         "skipLibCheck": true,
         "strictNullChecks": true,
-        "isolatedModules":false,
-        "outDir": "/dist"
+        "isolatedModules":false
     },
     "include": [
-        "src/index.ts"
+        "src"
     ],
     "exclude": [
         "node_modules",

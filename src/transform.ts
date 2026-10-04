@@ -5,8 +5,8 @@
  * @author holyhigh2
  */
 
-import { isDefined, isNaN, isNumber } from "myfx/is";
-import { get } from "myfx/object";
+import { isDefined, isNaN, isNumber, get } from "myfx";
+
 
 const UtMap = new WeakMap();
 
@@ -288,14 +288,25 @@ export function rotateTo(
     let origin = "";
 
     if (originPos) {
-      //origin offset
+      //cx/cy 是相对图形自身原点的偏移，需先换算到父级用户坐标系。
+      //rect/image/svg 有 x/y，circle/ellipse 有 cx/cy，
+      //而 <g>/<path> 等没有这些属性，只能取 bbox 原点，
+      //否则旋转会围绕 (0,0) 或图形左上角而非指定的圆心。
+      let baseX = 0;
+      let baseY = 0;
       if ((el as any).x instanceof SVGAnimatedLength) {
-        cx += (el as any).x.animVal.value;
-        cy += (el as any).y.animVal.value;
+        baseX = (el as any).x.animVal.value;
+        baseY = (el as any).y.animVal.value;
       } else if ((el as any).cx instanceof SVGAnimatedLength) {
-        cx += (el as any).cx.animVal.value;
-        cy += (el as any).cy.animVal.value;
+        baseX = (el as any).cx.animVal.value;
+        baseY = (el as any).cy.animVal.value;
+      } else if (typeof el.getBBox === "function") {
+        const bbox = el.getBBox();
+        baseX = bbox.x;
+        baseY = bbox.y;
       }
+      cx = (cx as number) + baseX;
+      cy = (cy as number) + baseY;
       origin = `,${cx},${cy}`;
     }
 
