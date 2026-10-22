@@ -537,3 +537,30 @@ export function getScrollViewportRect(el: HTMLElement) {
     height: el.clientHeight,
   };
 }
+
+/**
+ * 测「包含块原点」在视口坐标系下的坐标。
+ *
+ * 当某祖先带 `transform`（或 `filter` / `will-change` 等）时，它会成为后代
+ * `position:fixed` 元素的**包含块**，此时这些后代的 `left/top` 是相对该祖先
+ * 的布局盒解析的，而非视口 —— 直接用 `clientX` 定位会整体偏移。
+ *
+ * 用法：在**与目标同处一个包含块**的地方插一个零尺寸 fixed 探针，
+ * 其 `getBoundingClientRect().left/top` 即精确等于包含块原点（视口坐标）。
+ * 无 transform 祖先时返回 `{x:0, y:0}`，调用方可据此判断"是否处于视口坐标系"。
+ *
+ * ⚠️ 探针无动画且 `left:0`，不受目标元素自身入场动画污染（用目标元素自身的
+ *   rect 测会因动画位移而不准）。
+ *
+ * @param ref 参照元素；探针插入其 `parentNode`（无父节点时插入 `document.body`）
+ * @returns 包含块原点（视口坐标）；常规无 transform 场景为 `{x:0, y:0}`
+ */
+export function containingBlockOrigin(ref: Element): { x: number; y: number } {
+  const probe = document.createElement("div");
+  probe.style.cssText =
+    "position:fixed;left:0;top:0;width:0;height:0;pointer-events:none;visibility:hidden";
+  (ref.parentNode ?? document.body).appendChild(probe);
+  const rect = probe.getBoundingClientRect();
+  probe.remove();
+  return { x: rect.left, y: rect.top };
+}

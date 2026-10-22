@@ -1,4 +1,5 @@
 import { assign, closest, each, get, isArrayLike, isElement, isEmpty, isString, map, set, toArray } from "myfx";
+import { beginPointerDrag } from "./pointer-drag";
 import { UiiTransform } from "./transform";
 import {
   getMatrixInfo,
@@ -123,7 +124,6 @@ export abstract class Uii {
         const currentCStyle = window.getComputedStyle(el);
         const currentRect = el.getBoundingClientRect();
 
-        let dragging = false;
         const originPosX = e.clientX;
         const originPosY = e.clientY;
 
@@ -172,61 +172,51 @@ export abstract class Uii {
 
         let matrixInfo = getMatrixInfo(el as any, true)
 
-        //函数
-        const pointerMove = (ev: MouseEvent) => {
-          const offX = (ev.clientX - originPosX) / matrixInfo.scale;
-          const offY = (ev.clientY - originPosY) / matrixInfo.scale;
-
-          if (!dragging) {
-            if (Math.abs(offX) > threshold || Math.abs(offY) > threshold) {
-              dragging = true;
-
-              if (toLockPage) {
-                lockPage();
-              }
-
-              if (hasCursor) {
-                setCursor(ownerOpts.cursor.active);
-              }
-
-              onPointerStart && onPointerStart({ ev });
-            } else {
-              ev.preventDefault();
-              return false;
-            }
-          }
-
-          onPointerMove &&
-            onPointerMove({
-              ev,
-              pointX: ev.clientX,
-              pointY: ev.clientY,
-              offX,
-              offY,
-              currentStyle,
-              currentCStyle,
-            });
-        };
-        const pointerEnd = (ev: MouseEvent) => {
-          document.removeEventListener("mousemove", pointerMove, false);
-          document.removeEventListener("mouseup", pointerEnd, false);
-          window.removeEventListener("blur", pointerEnd, false);
-
-          if (dragging) {
+        //会话骨架统一收敛到 beginPointerDrag（阈值/监听/失焦/离开视口/残留抢占）
+        beginPointerDrag<null>({
+          ev: e,
+          threshold,
+          //阈值前移动沿用旧语义：preventDefault 阻止选中/滚动
+          onPreMove: (ev) => ev.preventDefault(),
+          onStart: (ev) => {
             if (toLockPage) {
-              unlockPage();
+              lockPage();
             }
             if (hasCursor) {
-              restoreCursor();
+              setCursor(ownerOpts.cursor.active);
             }
+            onPointerStart && onPointerStart({ ev });
+          },
+          onMove: (_hit: null, ev: MouseEvent) => {
+            const offX = (ev.clientX - originPosX) / matrixInfo.scale;
+            const offY = (ev.clientY - originPosY) / matrixInfo.scale;
+            onPointerMove &&
+              onPointerMove({
+                ev,
+                pointX: ev.clientX,
+                pointY: ev.clientY,
+                offX,
+                offY,
+                currentStyle,
+                currentCStyle,
+              });
+          },
+          onDrop: (_hit: null, ev: MouseEvent) => endSession(ev),
+          onCancel: (ev?: Event) => {
+            if (ev) endSession(ev);
+          },
+        });
 
-            onPointerEnd && onPointerEnd({ ev, currentStyle });
+        //收尾：仅在已进入拖拽时触发，由会话层保证恰好一次
+        function endSession(ev: Event) {
+          if (toLockPage) {
+            unlockPage();
           }
-        };
-
-        document.addEventListener("mousemove", pointerMove);
-        document.addEventListener("mouseup", pointerEnd);
-        window.addEventListener("blur", pointerEnd);
+          if (hasCursor) {
+            restoreCursor();
+          }
+          onPointerEnd && onPointerEnd({ ev, currentStyle });
+        }
 
         e.preventDefault();
         return false;

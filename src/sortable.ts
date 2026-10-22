@@ -6,6 +6,7 @@
 import { alphaId, compact, each, filter, findIndex, flatMap, isEmpty, isFunction, last, map, merge, reject, size, split, toArray } from 'myfx';
 import type { SortableOptions } from "./types";
 import { Uii } from "./types";
+import { beginPointerDrag } from "./pointer-drag";
 import { THRESHOLD, lockPage, restoreCursor, saveCursor, unlockPage } from "./utils";
 
 const SORTABLE_GROUPS: Record<string, Array<[Sortable, HTMLElement[]]>> = {};
@@ -178,145 +179,121 @@ function bindContainer(
     const moveMode = toOutFn(draggingItem, con);
     const sort = opts.sort
 
-    const scroll = opts.scroll;
-    const scrollSpeed = opts.scrollSpeed || 10;
-
-    let hitPosX = e.offsetX + con.scrollLeft,
-      hitPosY = e.offsetY + con.scrollTop;
-
     saveCursor();
 
-    let dragging = false;
     let ghostNode: HTMLElement | null = null;
     let removeListenItems: (() => void) | null = null
 
     NextNodeMap.set(draggingItem, draggingItem.nextElementSibling);
     FilteredNodeMap.set(con, filteredItems);
 
-    const dragListener = (ev: MouseEvent) => {
-      const newX = ev.clientX;
-      const newY = ev.clientY;
+    /** 收尾（落位或中断均由会话层保证恰好一次、且仅在已进入拖拽时触发） */
+    const teardown = () => {
+      unlockPage();
+      restoreCursor();
+      if (ghostNode) ghostContainer.removeChild(ghostNode);
 
-      let offsetx = newX - hitPosX;
-      let offsety = newY - hitPosY;
+      const toContainer = DraggingData?.toContainer
 
-      if (!dragging) {
-        if (Math.abs(offsetx) > THRESHOLD || Math.abs(offsety) > THRESHOLD) {
-          dragging = true;
+      DraggingData?.item.classList.remove(CLASS_SORTABLE_ACTIVE);
+      DraggingData?.copy?.classList.remove(CLASS_SORTABLE_ACTIVE);
 
-          ghostNode = draggingItem.cloneNode(true) as HTMLElement;
-          ghostNode.style.opacity = "0.3";
-          ghostNode.style.pointerEvents = "none";
-          ghostNode.style.position = "fixed";
-          ghostNode.style.zIndex = "999";
+      DraggingData = null;
 
-          ghostNode.style.left = draggingItem.style.left;
-          ghostNode.style.top = draggingItem.style.top;
+      if (removeListenItems)
+        removeListenItems();
 
-          if (ghostClass) {
-            ghostNode.classList.add(...compact(split(ghostClass, " ")));
-          }
-          ghostNode.classList.toggle(CLASS_SORTABLE_GHOST, true);
-          ghostContainer.appendChild(ghostNode);
-
-          if (!toCopy)
-            draggingItem.classList.toggle(CLASS_SORTABLE_ACTIVE, true);
-          let copy: HTMLElement | undefined = undefined
-          if (toCopy) {
-            copy = draggingItem.cloneNode(true) as HTMLElement
-            copy.classList.toggle(CLASS_SORTABLE_ACTIVE, true);
-          }
-          DraggingData = {
-            item: draggingItem,
-            fromIndex: i,
-            fromContainer: con,
-            toContainer: con,
-            moveTo: toCopy ? "copy" : moveMode,
-            spill: opts.spill,
-            copy
-          };
-
-          onStart && onStart({ item: draggingItem, from: con, index: i }, ev);
-
-          lockPage();
-
-          if (sort) {
-            removeListenItems = listenItems(
-              opts,
-              con,
-              toCopy ? copy! : draggingItem,
-              filteredItems,
-              i
-            );
-          }
-
-          //active
-          if (moveMode && group && SORTABLE_GROUPS[group]) {
-            each(SORTABLE_GROUPS[group], ([sortable, ele]) => {
-              const filtered = reject(ele, (el) => el === container);
-              if (isEmpty(filtered)) return;
-              sortable.active(
-                toCopy ? copy! : draggingItem,
-                container,
-                filtered,
-                sortable.getOptions()
-              );
-            });
-          }
-        } else {
-          ev.preventDefault();
-          return false;
-        }
+      //deactive
+      if (group && SORTABLE_GROUPS[group]) {
+        each(SORTABLE_GROUPS[group], ([sortable, ele]) => {
+          const filtered = reject(ele, (el) => el === container);
+          if (isEmpty(filtered)) return;
+          sortable.deactive(
+            draggingItem,
+            container,
+            filtered,
+            sortable.getOptions()
+          );
+        });
       }
 
-      ghostNode!.style.left = newX + "px";
-      ghostNode!.style.top = newY + "px";
-
-      ev.preventDefault();
-      return false;
+      onEnd && onEnd({ item: draggingItem, from: container, to: toContainer! }, e);
     };
-    const dragEndListener = (ev: MouseEvent) => {
-      document.removeEventListener("mousemove", dragListener);
-      document.removeEventListener("mouseup", dragEndListener);
-      window.removeEventListener("blur", dragEndListener);
 
-      if (dragging) {
-        unlockPage();
-        restoreCursor();
-        if (ghostNode) ghostContainer.removeChild(ghostNode);
+    //会话骨架统一收敛到 beginPointerDrag（阈值/监听/失焦/离开视口/残留抢占）
+    beginPointerDrag<null>({
+      ev: e,
+      threshold: THRESHOLD,
+      onPreMove: (ev) => ev.preventDefault(),
+      onStart: (ev) => {
+        ghostNode = draggingItem.cloneNode(true) as HTMLElement;
+        ghostNode.style.opacity = "0.3";
+        ghostNode.style.pointerEvents = "none";
+        ghostNode.style.position = "fixed";
+        ghostNode.style.zIndex = "999";
 
-        const toContainer = DraggingData?.toContainer
+        ghostNode.style.left = draggingItem.style.left;
+        ghostNode.style.top = draggingItem.style.top;
 
-        DraggingData?.item.classList.remove(CLASS_SORTABLE_ACTIVE);
-        DraggingData?.copy?.classList.remove(CLASS_SORTABLE_ACTIVE);
+        if (ghostClass) {
+          ghostNode.classList.add(...compact(split(ghostClass, " ")));
+        }
+        ghostNode.classList.toggle(CLASS_SORTABLE_GHOST, true);
+        ghostContainer.appendChild(ghostNode);
 
-        DraggingData = null;
+        if (!toCopy)
+          draggingItem.classList.toggle(CLASS_SORTABLE_ACTIVE, true);
+        let copy: HTMLElement | undefined = undefined
+        if (toCopy) {
+          copy = draggingItem.cloneNode(true) as HTMLElement
+          copy.classList.toggle(CLASS_SORTABLE_ACTIVE, true);
+        }
+        DraggingData = {
+          item: draggingItem,
+          fromIndex: i,
+          fromContainer: con,
+          toContainer: con,
+          moveTo: toCopy ? "copy" : moveMode,
+          spill: opts.spill,
+          copy
+        };
 
-        if (removeListenItems)
-          removeListenItems();
+        onStart && onStart({ item: draggingItem, from: con, index: i }, ev);
 
-        //deactive
-        if (group && SORTABLE_GROUPS[group]) {
+        lockPage();
+
+        if (sort) {
+          removeListenItems = listenItems(
+            opts,
+            con,
+            toCopy ? copy! : draggingItem,
+            filteredItems,
+            i
+          );
+        }
+
+        //active
+        if (moveMode && group && SORTABLE_GROUPS[group]) {
           each(SORTABLE_GROUPS[group], ([sortable, ele]) => {
             const filtered = reject(ele, (el) => el === container);
             if (isEmpty(filtered)) return;
-            sortable.deactive(
-              draggingItem,
+            sortable.active(
+              toCopy ? copy! : draggingItem,
               container,
               filtered,
               sortable.getOptions()
             );
           });
         }
-
-        onEnd && onEnd({ item: draggingItem, from: container, to: toContainer! }, e);
-      }
-
-    };
-
-    document.addEventListener("mousemove", dragListener);
-    document.addEventListener("mouseup", dragEndListener);
-    window.addEventListener("blur", dragEndListener);
+      },
+      onMove: (_hit, ev) => {
+        ghostNode!.style.left = ev.clientX + "px";
+        ghostNode!.style.top = ev.clientY + "px";
+        ev.preventDefault();
+      },
+      onDrop: () => teardown(),
+      onCancel: () => teardown(),
+    });
 
     e.preventDefault();
     return false;

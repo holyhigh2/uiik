@@ -49,8 +49,10 @@ interface Pt {
 }
 
 function fire(el: EventTarget, type: string, init: Pt = { clientX: 0, clientY: 0 }) {
+  // 与真实浏览器一致：按下与拖动过程中 buttons 为 1，松开为 0（会话层靠 buttons 检测事件丢失）
+  const buttons = type === "mouseup" ? 0 : 1;
   el.dispatchEvent(
-    new MouseEvent(type, { bubbles: true, cancelable: true, ...init })
+    new MouseEvent(type, { bubbles: true, cancelable: true, buttons, ...init })
   );
 }
 

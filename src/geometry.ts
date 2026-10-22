@@ -65,6 +65,11 @@ export function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x <= getRectRight(b) && getRectRight(a) >= b.x && a.y <= getRectBottom(b) && getRectBottom(a) >= b.y;
 }
 
+/** 点是否落在矩形内（含边界） */
+export function rectContainsPoint(rect: Rect, x: number, y: number): boolean {
+  return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
+}
+
 /** outer 是否完全包含 inner */
 export function rectContains(outer: Rect, inner: Rect): boolean {
   return (

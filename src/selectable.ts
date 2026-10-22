@@ -134,8 +134,15 @@ export class Selectable extends Uii {
           con.style.position = "relative";
         }
         //clear _lastSelected
+        // ⚠️ 循环变量必须是 t：原来写的是外层 target，等于把同一个元素 toggle 了
+        // N 次，上一轮选中的高亮全部残留（onEnd 的 selection 与画面不一致）。
+        // 同时要把 selectedClass 一起摘掉 —— onEnd 给的是 selectedClass + CLASS_SELECTED
+        // 两套标记，只清后者会让自定义选中样式继续残留。
         each(that.__lastSelected, t => {
-          target.classList.toggle(CLASS_SELECTED, false);
+          t.classList.toggle(CLASS_SELECTED, false);
+          each(selectedClassAry, (cls) => {
+            t.classList.toggle(cls, false);
+          });
         })
 
         style.display = 'block'

@@ -428,8 +428,12 @@ export class Draggable extends Uii {
           if (group) {
             let i = -1;
             each(DRAGGER_GROUPS[group], (el) => {
-              const z = parseInt(currentCStyle.zIndex) || 0;
-              if (z > i) i = z;
+              // ⚠️ 原实现读的是 currentCStyle.zIndex（被拖元素自己的计算样式），
+              // 循环变量 el 完全没用 ⇒ 组内最大 zIndex 恒等于「拖动元素自己的 zIndex」，
+              // 分组 zIndex 管理等于没做，拖到兄弟元素下方时表现像“拖不动”。
+              const raw = el.style.zIndex || getComputedStyle(el).zIndex;
+              const z = parseInt(raw, 10);
+              if (!Number.isNaN(z) && z > i) i = z;
             });
             zIndex = i + 1;
           }

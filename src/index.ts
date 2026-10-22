@@ -41,6 +41,8 @@ export * from './detector'
 export * from './types'
 export * from './transform'
 export * from './geometry'
+export * from './routing'
+export * from './pointer-drag'
 export * from './utils'
 
 export const VERSION = packageInfo.version

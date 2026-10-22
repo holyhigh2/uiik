@@ -20,7 +20,11 @@ const CLASS_DROPPABLE = "uii-droppable";
  */
 export class Droppable extends Uii {
   private __active: HTMLElement | null
-  private __boundEls = new WeakSet<HTMLElement>()
+  // ⚠️ 原来是 WeakSet：只 add 从不 delete，而 deactive() 每次都调 destroy() 把
+  // bindEvent 注册的监听全摘掉 ⇒ 第二次拖放起 `__boundEls.has(el)` 恒为 true、
+  // 直接 return，onEnter/onOver/onDrop 全部静默失效（activeClass 仍在变，
+  // 表现成"诡异 bug"）。改为可清空的 Set，并在 destroy 后同步清空登记。
+  private __boundEls = new Set<HTMLElement>()
 
   constructor(
     el: string | HTMLElement | Array<string | HTMLElement> | NodeListOf<Element>,
@@ -167,6 +171,9 @@ export class Droppable extends Uii {
 
     //unbind events
     this.destroy()
+    // destroy() 已摘除全部监听，登记必须同步失效，否则下一次 active() 会因
+    // `__boundEls.has(el)` 为 true 而跳过重绑（拖放第二次起彻底失效）
+    this.__boundEls.clear()
   }
 }
 
